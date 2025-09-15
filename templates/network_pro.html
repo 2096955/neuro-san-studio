@@ -421,7 +421,7 @@
                 <h3>Agent Networks</h3>
                 <div style="font-size: 0.8rem; color: #6b7280;">
                     <i class="fas fa-circle" style="color: #10b981; font-size: 6px;"></i>
-                    8 active agents
+                    <span id="agent-count-status">0 active agents</span>
                 </div>
             </div>
             <div class="agent-networks" id="agent-list">
@@ -460,11 +460,11 @@
                 <div class="system-status">
                     <div class="status-row">
                         <span class="status-label">System</span>
-                        <span class="status-value">Connected to Agent: booking</span>
+                        <span class="status-value" id="connected-agent">No agent selected</span>
                     </div>
                     <div class="status-row">
                         <span class="status-label">Agents</span>
-                        <span class="status-value">8 active</span>
+                        <span class="status-value" id="agent-count-value">0 active</span>
                     </div>
                     <div class="status-row">
                         <span class="status-label">Model</span>
@@ -799,7 +799,7 @@
         // Chat functions
         function initializeChat() {
             // Add initial system message
-            addChatMessage('system', 'System', 'Welcome to the Multi-Agent Network. Connected to 8 active agents.');
+            addChatMessage('system', 'System', 'Welcome to the Multi-Agent Network. Loading agent topology...');
             
             // Add sample agent messages
             setTimeout(() => {
@@ -884,6 +884,36 @@
                 renderNetwork();
             }
         });
+        
+        // Update UI with loaded topology data
+        function updateUIFromTopology(topology) {
+            const agentCount = topology.nodes.length;
+            
+            // Update agent counts
+            const agentCountStatus = document.getElementById('agent-count-status');
+            const agentCountValue = document.getElementById('agent-count-value');
+            
+            if (agentCountStatus) {
+                agentCountStatus.textContent = `${agentCount} active agents`;
+            }
+            if (agentCountValue) {
+                agentCountValue.textContent = `${agentCount} active`;
+            }
+            
+            // Update selected agent
+            const connectedAgent = document.getElementById('connected-agent');
+            if (connectedAgent && topology.nodes.length > 0) {
+                connectedAgent.textContent = `Connected: ${topology.nodes[0].label}`;
+            }
+        }
+
+        // Call after topology loads
+        const originalRenderNetwork = renderNetwork;
+        renderNetwork = function(topology) {
+            updateUIFromTopology(topology);
+            return originalRenderNetwork(topology);
+        };
+        
     </script>
 </body>
 </html>

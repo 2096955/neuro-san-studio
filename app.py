@@ -46,27 +46,55 @@ class AgentNetworkInterface:
     async def get_network_topology(self) -> Dict[str, Any]:
         """Get the full agent network topology with connections"""
         if not NEURO_SAN_AVAILABLE:
-            # Return network topology based on your actual agent networks
+            # Return real insurance underwriting specialist network from Neuro SAN Studio
             return {
                 "nodes": [
-                    {"id": "music_nerd", "label": "Music Nerd", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4"},
-                    {"id": "hello_world", "label": "Hello World", "type": "greeting", "status": "active", "model": "AWS Bedrock Claude Sonnet 4"}, 
-                    {"id": "music_nerd_pro", "label": "Music Nerd Pro", "type": "advanced", "status": "active", "model": "AWS Bedrock Claude Sonnet 4"},
-                    {"id": "agent_network_designer", "label": "Network Designer", "type": "orchestrator", "status": "active", "model": "AWS Bedrock Claude Sonnet 4"},
-                    {"id": "six_thinking_hats", "label": "Six Thinking Hats", "type": "decision", "status": "active", "model": "AWS Bedrock Claude Sonnet 4"},
-                    {"id": "anthropic_code_execution", "label": "Code Execution", "type": "tool", "status": "active", "model": "AWS Bedrock Claude Sonnet 4"},
-                    {"id": "pdf_rag", "label": "PDF RAG", "type": "document", "status": "active", "model": "AWS Bedrock Claude Sonnet 4"},
-                    {"id": "smart_home", "label": "Smart Home", "type": "iot", "status": "active", "model": "AWS Bedrock Claude Sonnet 4"},
+                    # Frontman Agent
+                    {"id": "insurance_agent", "label": "Insurance Agent", "type": "frontman", "status": "active", "model": "AWS Bedrock Claude Sonnet 4", "description": "Main entry point for business insurance inquiries"},
+                    
+                    # Primary Domain Agents
+                    {"id": "underwriting_decision_agent", "label": "Underwriting Decision", "type": "domain", "status": "active", "model": "AWS Bedrock Claude Sonnet 4", "description": "Manages underwriting operations and risk analysis"},
+                    {"id": "claims_processing_agent", "label": "Claims Processing", "type": "domain", "status": "active", "model": "AWS Bedrock Claude Sonnet 4", "description": "Manages complete claims lifecycle"},
+                    
+                    # Underwriting Sub-Agents
+                    {"id": "insurance_broker_agent", "label": "Insurance Broker", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4", "description": "Handles broker submissions and communications"},
+                    {"id": "third_party_data_review_agent", "label": "Third Party Data Review", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4", "description": "Collects external risk data"},
+                    {"id": "underwriter_analysis_agent", "label": "Underwriter Analysis", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4", "description": "Analyzes exposure and portfolio alignment"},
+                    
+                    # Claims Sub-Agents
+                    {"id": "claims_intake_handler", "label": "Claims Intake", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4", "description": "Verifies coverage and collects claim details"},
+                    {"id": "claims_investigation_agent", "label": "Claims Investigation", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4", "description": "Investigates claim validity"},
+                    {"id": "claims_adjustment_agent", "label": "Claims Adjustment", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4", "description": "Finalizes settlements and payouts"},
+                    
+                    # Critical Sub-Specialists
+                    {"id": "acord_application_handler", "label": "ACORD Handler", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4", "description": "Validates ACORD applications"},
+                    {"id": "risk_exposure_analyzer", "label": "Risk Exposure", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4", "description": "Scores exposure to hazards"},
+                    {"id": "building_characteristics_reviewer", "label": "Building Review", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4", "description": "Evaluates building structure and safety"}
                 ],
                 "connections": [
-                    {"from": "agent_network_designer", "to": "music_nerd", "type": "delegates"},
-                    {"from": "agent_network_designer", "to": "music_nerd_pro", "type": "delegates"},
-                    {"from": "music_nerd", "to": "music_nerd_pro", "type": "collaborates"},
-                    {"from": "six_thinking_hats", "to": "agent_network_designer", "type": "advises"},
-                    {"from": "agent_network_designer", "to": "anthropic_code_execution", "type": "uses"},
-                    {"from": "pdf_rag", "to": "anthropic_code_execution", "type": "uses"},
-                    {"from": "agent_network_designer", "to": "pdf_rag", "type": "delegates"},
-                    {"from": "smart_home", "to": "six_thinking_hats", "type": "consults"}
+                    # Frontman to Primary Domains
+                    {"from": "insurance_agent", "to": "underwriting_decision_agent", "type": "delegates"},
+                    {"from": "insurance_agent", "to": "claims_processing_agent", "type": "delegates"},
+                    
+                    # Underwriting Decision Delegations
+                    {"from": "underwriting_decision_agent", "to": "insurance_broker_agent", "type": "delegates"},
+                    {"from": "underwriting_decision_agent", "to": "third_party_data_review_agent", "type": "delegates"},
+                    {"from": "underwriting_decision_agent", "to": "underwriter_analysis_agent", "type": "delegates"},
+                    
+                    # Claims Processing Delegations
+                    {"from": "claims_processing_agent", "to": "claims_intake_handler", "type": "delegates"},
+                    {"from": "claims_processing_agent", "to": "claims_investigation_agent", "type": "delegates"},
+                    {"from": "claims_processing_agent", "to": "claims_adjustment_agent", "type": "delegates"},
+                    
+                    # Sub-Agent Delegations
+                    {"from": "insurance_broker_agent", "to": "acord_application_handler", "type": "delegates"},
+                    {"from": "underwriter_analysis_agent", "to": "risk_exposure_analyzer", "type": "delegates"},
+                    {"from": "third_party_data_review_agent", "to": "building_characteristics_reviewer", "type": "delegates"},
+                    
+                    # Cross-Domain Collaborations
+                    {"from": "claims_investigation_agent", "to": "risk_exposure_analyzer", "type": "consults"},
+                    {"from": "underwriter_analysis_agent", "to": "claims_intake_handler", "type": "advises"},
+                    {"from": "acord_application_handler", "to": "building_characteristics_reviewer", "type": "collaborates"}
                 ]
             }
         
@@ -289,6 +317,6 @@ if __name__ == '__main__':
     print("✅ Network Orchestration: Ready")
     print(f"🌐 Network Visualization: http://localhost:5000")
     
-    # Run the Flask app
-    debug_mode = os.environ.get('FLASK_DEBUG', 'True').lower() == 'true'
+    # Run the Flask app (production-ready)
+    debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
     socketio.run(app, host='0.0.0.0', port=5000, debug=debug_mode)

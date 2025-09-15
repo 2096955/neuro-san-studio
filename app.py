@@ -25,7 +25,7 @@ except ImportError:
     print("Warning: NeuroSan client not available, using network topology from config")
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'neuro-san-network-visualization'
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'neuro-san-network-visualization-dev-only')
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Configure logging
@@ -188,7 +188,7 @@ neuro_interface = AgentNetworkInterface()
 @app.route('/')
 def index():
     """Main network visualization page"""
-    return render_template('network.html')
+    return render_template('network_pro.html')
 
 @app.route('/api/topology')
 def get_topology():
@@ -290,4 +290,5 @@ if __name__ == '__main__':
     print(f"🌐 Network Visualization: http://localhost:5000")
     
     # Run the Flask app
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+    debug_mode = os.environ.get('FLASK_DEBUG', 'True').lower() == 'true'
+    socketio.run(app, host='0.0.0.0', port=5000, debug=debug_mode)

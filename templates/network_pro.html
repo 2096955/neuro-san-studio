@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neuro AI - Multi Agent Accelerator Client</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0c1117;
+            color: #ffffff;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .top-nav {
+            background: #1a1f2e;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            border-bottom: 1px solid #2a3f5f;
+        }
+
+        .top-nav .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .nav-btn {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .nav-btn:hover {
+            background: #3b82f6;
+        }
+
+        .main-layout {
+            display: flex;
+            height: calc(100vh - 60px);
+        }
+
+        .sidebar-left {
+            width: 280px;
+            background: #151b26;
+            border-right: 1px solid #2a3f5f;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid #2a3f5f;
+        }
+
+        .sidebar-header h3 {
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            color: #e5e7eb;
+        }
+
+        .agent-networks {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .agent-card {
+            background: #1f2937;
+            border: 1px solid #374151;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .agent-card:hover {
+            background: #252f3f;
+            border-color: #4f46e5;
+        }
+
+        .agent-card.active {
+            background: #252f3f;
+            border-color: #3b82f6;
+        }
+
+        .agent-status {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+            animation: pulse 2s infinite;
+        }
+
+        .agent-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-bottom: 5px;
+        }
+
+        .agent-type {
+            font-size: 0.8rem;
+            color: #9ca3af;
+            margin-bottom: 8px;
+        }
+
+        .agent-model {
+            font-size: 0.75rem;
+            color: #6b7280;
+            background: #374151;
+            padding: 2px 6px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+
+        .network-center {
+            flex: 1;
+            background: #0f1419;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .network-header {
+            background: #1a1f2e;
+            padding: 15px 20px;
+            border-bottom: 1px solid #2a3f5f;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .network-title {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .network-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .control-btn {
+            background: #374151;
+            border: none;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .control-btn:hover {
+            background: #4b5563;
+        }
+
+        .network-canvas {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .sidebar-right {
+            width: 320px;
+            background: #151b26;
+            border-left: 1px solid #2a3f5f;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            background: #1a1f2e;
+            padding: 15px 20px;
+            border-bottom: 1px solid #2a3f5f;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-title {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .chat-status {
+            font-size: 0.8rem;
+            color: #10b981;
+        }
+
+        .chat-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .system-status {
+            padding: 15px 20px;
+            border-bottom: 1px solid #2a3f5f;
+        }
+
+        .status-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+        }
+
+        .status-label {
+            color: #9ca3af;
+        }
+
+        .status-value {
+            color: #10b981;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+
+        .message.agent {
+            background: #1f2937;
+            border-left: 3px solid #3b82f6;
+        }
+
+        .message.system {
+            background: #065f46;
+            border-left: 3px solid #10b981;
+        }
+
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+
+        .message-agent {
+            font-weight: 600;
+            color: #3b82f6;
+        }
+
+        .message-time {
+            font-size: 0.75rem;
+            color: #6b7280;
+        }
+
+        .chat-input {
+            border-top: 1px solid #2a3f5f;
+            padding: 15px;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input input {
+            flex: 1;
+            background: #1f2937;
+            border: 1px solid #374151;
+            color: white;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+
+        .chat-input input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+
+        .send-btn {
+            background: #3b82f6;
+            border: none;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .send-btn:hover {
+            background: #2563eb;
+        }
+
+        /* Network visualization styles */
+        .node {
+            cursor: pointer;
+        }
+
+        .node circle {
+            stroke: #fff;
+            stroke-width: 2px;
+        }
+
+        .node text {
+            font-size: 10px;
+            font-weight: 500;
+            text-anchor: middle;
+            fill: white;
+            pointer-events: none;
+        }
+
+        .link {
+            stroke: #4f46e5;
+            stroke-width: 2px;
+            stroke-opacity: 0.6;
+        }
+
+        .link.active {
+            stroke: #10b981;
+            stroke-width: 3px;
+            stroke-opacity: 1;
+            animation: pulse-link 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        @keyframes pulse-link {
+            0% { stroke-opacity: 0.6; }
+            50% { stroke-opacity: 1; }
+            100% { stroke-opacity: 0.6; }
+        }
+
+        .tooltip {
+            position: absolute;
+            background: #1f2937;
+            border: 1px solid #374151;
+            border-radius: 6px;
+            padding: 10px;
+            font-size: 0.8rem;
+            pointer-events: none;
+            z-index: 1000;
+            display: none;
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            font-size: 1.1rem;
+            color: #6b7280;
+        }
+
+        .loading i {
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Top Navigation -->
+    <div class="top-nav">
+        <div class="logo">
+            <i class="fas fa-brain"></i>
+            Neuro AI - Multi Agent Accelerator Client
+        </div>
+        <div class="nav-buttons">
+            <button class="nav-btn">Deploy</button>
+            <button class="nav-btn">Analytics</button>
+            <button class="nav-btn">Explicate</button>
+            <button class="nav-btn">Expert</button>
+        </div>
+    </div>
+
+    <!-- Main Layout -->
+    <div class="main-layout">
+        <!-- Left Sidebar - Agent Networks -->
+        <div class="sidebar-left">
+            <div class="sidebar-header">
+                <h3>Agent Networks</h3>
+                <div style="font-size: 0.8rem; color: #6b7280;">
+                    <i class="fas fa-circle" style="color: #10b981; font-size: 6px;"></i>
+                    8 active agents
+                </div>
+            </div>
+            <div class="agent-networks" id="agent-list">
+                <!-- Agent cards will be populated here -->
+            </div>
+        </div>
+
+        <!-- Center - Network Visualization -->
+        <div class="network-center">
+            <div class="network-header">
+                <div class="network-title">Multi-Agent Network Topology</div>
+                <div class="network-controls">
+                    <button class="control-btn">Reset</button>
+                    <button class="control-btn">Export</button>
+                    <button class="control-btn">Settings</button>
+                </div>
+            </div>
+            <div class="network-canvas" id="network-canvas">
+                <div class="loading" id="network-loading">
+                    <i class="fas fa-spinner"></i>
+                    Loading agent network...
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Sidebar - Chat Interface -->
+        <div class="sidebar-right">
+            <div class="chat-header">
+                <div class="chat-title">Chat</div>
+                <div class="chat-status">
+                    <i class="fas fa-circle" style="color: #10b981; font-size: 6px;"></i>
+                    Online
+                </div>
+            </div>
+            <div class="chat-content">
+                <div class="system-status">
+                    <div class="status-row">
+                        <span class="status-label">System</span>
+                        <span class="status-value">Connected to Agent: booking</span>
+                    </div>
+                    <div class="status-row">
+                        <span class="status-label">Agents</span>
+                        <span class="status-value">8 active</span>
+                    </div>
+                    <div class="status-row">
+                        <span class="status-label">Model</span>
+                        <span class="status-value">AWS Bedrock Claude Sonnet 4</span>
+                    </div>
+                </div>
+                <div class="chat-messages" id="chat-messages">
+                    <!-- Messages will be populated here -->
+                </div>
+                <div class="chat-input">
+                    <div class="input-row">
+                        <input type="text" id="message-input" placeholder="Type a message..." />
+                        <button class="send-btn" onclick="sendMessage()">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tooltip -->
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        // Global variables
+        let networkTopology = null;
+        let simulation = null;
+        let svg = null;
+        let socket = null;
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeSocket();
+            loadNetworkTopology();
+            initializeChat();
+        });
+
+        // Socket.IO initialization
+        function initializeSocket() {
+            socket = io();
+            
+            socket.on('connect', function() {
+                console.log('Connected to server');
+                addChatMessage('system', 'System', 'Connected to agent network');
+            });
+
+            socket.on('agent_message', function(data) {
+                addChatMessage('agent', data.agent, data.message);
+                highlightAgentActivity(data.agent);
+            });
+
+            socket.on('topology_update', function(data) {
+                console.log('Topology updated:', data);
+                networkTopology = data;
+                renderNetwork();
+            });
+        }
+
+        // Load network topology from server
+        async function loadNetworkTopology() {
+            try {
+                console.log('Loading network topology...');
+                const response = await fetch('/api/topology');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.status === 'success' && data.topology) {
+                    networkTopology = data.topology;
+                    console.log('Network topology loaded:', networkTopology);
+                    
+                    populateAgentList();
+                    renderNetwork();
+                    document.getElementById('network-loading').style.display = 'none';
+                } else {
+                    throw new Error('Invalid topology response');
+                }
+            } catch (error) {
+                console.error('Error loading topology:', error);
+                addChatMessage('system', 'System', 'Error loading agent network: ' + error.message);
+            }
+        }
+
+        // Populate agent list in left sidebar
+        function populateAgentList() {
+            const agentList = document.getElementById('agent-list');
+            agentList.innerHTML = '';
+
+            networkTopology.nodes.forEach(agent => {
+                const agentCard = document.createElement('div');
+                agentCard.className = 'agent-card';
+                agentCard.dataset.agentId = agent.id;
+                agentCard.innerHTML = `
+                    <div class="agent-status"></div>
+                    <div class="agent-name">${agent.label}</div>
+                    <div class="agent-type">${agent.type}</div>
+                    <div class="agent-model">${agent.model}</div>
+                `;
+                
+                agentCard.addEventListener('click', () => selectAgent(agent.id));
+                agentList.appendChild(agentCard);
+            });
+        }
+
+        // Render network visualization
+        function renderNetwork() {
+            if (!networkTopology) return;
+
+            const container = document.getElementById('network-canvas');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            // Clear existing SVG
+            d3.select('#network-canvas svg').remove();
+
+            // Create SVG
+            svg = d3.select('#network-canvas')
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height);
+
+            // Add arrow marker
+            svg.append('defs').append('marker')
+                .attr('id', 'arrowhead')
+                .attr('viewBox', '0 -5 10 10')
+                .attr('refX', 20)
+                .attr('refY', 0)
+                .attr('markerWidth', 6)
+                .attr('markerHeight', 6)
+                .attr('orient', 'auto')
+                .append('path')
+                .attr('d', 'M0,-5L10,0L0,5')
+                .attr('fill', '#4f46e5');
+
+            // Prepare data - fix API data mapping
+            const nodes = networkTopology.nodes.map(d => Object.assign({}, d));
+            const links = networkTopology.connections.map(d => Object.assign({
+                source: d.from,
+                target: d.to,
+                type: d.type
+            }, d));
+
+            // Create simulation with proper error handling
+            simulation = d3.forceSimulation(nodes)
+                .force('charge', d3.forceManyBody().strength(-400))
+                .force('center', d3.forceCenter(width / 2, height / 2))
+                .force('collision', d3.forceCollide().radius(50));
+            
+            // Add links with validation
+            try {
+                console.log('Setting up force links with nodes:', nodes.map(n => n.id));
+                console.log('Setting up force links with links:', links);
+                
+                simulation.force('link', d3.forceLink(links)
+                    .id(d => {
+                        console.log('ID accessor for:', d);
+                        return d.id;
+                    })
+                    .distance(120));
+                    
+                console.log('Force links set up successfully');
+            } catch (error) {
+                console.error('Error setting up force links:', error);
+                // Continue without links if there's an error
+            }
+
+            // Create links
+            const link = svg.append('g')
+                .selectAll('line')
+                .data(links)
+                .enter().append('line')
+                .attr('class', 'link')
+                .attr('marker-end', 'url(#arrowhead)');
+
+            // Create nodes
+            const node = svg.append('g')
+                .selectAll('g')
+                .data(nodes)
+                .enter().append('g')
+                .attr('class', 'node')
+                .call(d3.drag()
+                    .on('start', dragstarted)
+                    .on('drag', dragged)
+                    .on('end', dragended));
+
+            // Add circles to nodes
+            node.append('circle')
+                .attr('r', 25)
+                .style('fill', d => getNodeColor(d.type));
+
+            // Add labels to nodes
+            node.append('text')
+                .text(d => d.label.split(' ')[0])
+                .style('font-size', '10px')
+                .style('text-anchor', 'middle')
+                .style('fill', 'white')
+                .attr('dy', '0.35em');
+
+            // Add status indicators
+            node.append('circle')
+                .attr('r', 4)
+                .attr('cx', 20)
+                .attr('cy', -20)
+                .style('fill', '#10b981')
+                .attr('class', 'status-indicator');
+
+            // Add tooltips and click handlers
+            node.on('mouseover', function(event, d) {
+                showTooltip(event, d);
+            })
+            .on('mouseout', function() {
+                hideTooltip();
+            })
+            .on('click', function(event, d) {
+                selectAgent(d.id);
+            });
+
+            // Update positions on simulation tick
+            simulation.on('tick', () => {
+                link
+                    .attr('x1', d => d.source.x)
+                    .attr('y1', d => d.source.y)
+                    .attr('x2', d => d.target.x)
+                    .attr('y2', d => d.target.y);
+
+                node
+                    .attr('transform', d => `translate(${d.x},${d.y})`);
+            });
+        }
+
+        // Get node color based on type
+        function getNodeColor(type) {
+            const colors = {
+                'specialist': '#3b82f6',
+                'greeting': '#10b981',
+                'advanced': '#8b5cf6',
+                'orchestrator': '#f59e0b',
+                'decision': '#ef4444',
+                'tool': '#06b6d4',
+                'document': '#84cc16',
+                'iot': '#f97316'
+            };
+            return colors[type] || '#6b7280';
+        }
+
+        // Drag functions
+        function dragstarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+
+        function dragged(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
+
+        function dragended(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
+
+        // Select agent
+        function selectAgent(agentId) {
+            // Remove previous selection
+            document.querySelectorAll('.agent-card').forEach(card => {
+                card.classList.remove('active');
+            });
+
+            // Add selection to clicked agent
+            const agentCard = document.querySelector(`[data-agent-id="${agentId}"]`);
+            if (agentCard) {
+                agentCard.classList.add('active');
+            }
+
+            // Update chat title
+            const agent = networkTopology.nodes.find(n => n.id === agentId);
+            if (agent) {
+                document.querySelector('.chat-title').textContent = `Chat - ${agent.label}`;
+                addChatMessage('system', 'System', `Connected to ${agent.label}`);
+            }
+        }
+
+        // Highlight agent activity
+        function highlightAgentActivity(agentId) {
+            // Animate the agent node
+            d3.selectAll('.node')
+                .filter(d => d.id === agentId)
+                .select('circle')
+                .transition()
+                .duration(200)
+                .attr('r', 30)
+                .transition()
+                .duration(200)
+                .attr('r', 25);
+
+            // Highlight links from this agent
+            d3.selectAll('.link')
+                .filter(d => d.source.id === agentId || d.target.id === agentId)
+                .classed('active', true)
+                .transition()
+                .delay(1000)
+                .duration(500)
+                .on('end', function() {
+                    d3.select(this).classed('active', false);
+                });
+        }
+
+        // Tooltip functions
+        function showTooltip(event, d) {
+            const tooltip = document.getElementById('tooltip');
+            tooltip.innerHTML = `
+                <strong>${d.label}</strong><br/>
+                Type: ${d.type}<br/>
+                Status: ${d.status}<br/>
+                Model: ${d.model}
+            `;
+            tooltip.style.display = 'block';
+            tooltip.style.left = (event.pageX + 10) + 'px';
+            tooltip.style.top = (event.pageY - 10) + 'px';
+        }
+
+        function hideTooltip() {
+            document.getElementById('tooltip').style.display = 'none';
+        }
+
+        // Chat functions
+        function initializeChat() {
+            // Add initial system message
+            addChatMessage('system', 'System', 'Welcome to the Multi-Agent Network. Connected to 8 active agents.');
+            
+            // Add sample agent messages
+            setTimeout(() => {
+                addChatMessage('agent', 'Network Designer', 'Agent network initialized successfully. All systems operational.');
+            }, 1000);
+
+            setTimeout(() => {
+                addChatMessage('agent', 'Music Nerd', 'Ready to process music-related queries and recommendations.');
+            }, 2000);
+
+            // Handle enter key in chat input
+            document.getElementById('message-input').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+        }
+
+        function addChatMessage(type, agent, message) {
+            const chatMessages = document.getElementById('chat-messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString();
+            
+            messageDiv.innerHTML = `
+                <div class="message-header">
+                    <span class="message-agent">${agent}</span>
+                    <span class="message-time">${timeStr}</span>
+                </div>
+                <div class="message-content">${message}</div>
+            `;
+            
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('message-input');
+            const message = input.value.trim();
+            
+            if (message) {
+                addChatMessage('agent', 'You', message);
+                input.value = '';
+                
+                // Get selected agent or default to first active
+                const selectedAgent = document.querySelector('.agent-card.active')?.dataset.agentId || 'music_nerd';
+                
+                // Send to real backend
+                fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        network_name: selectedAgent,
+                        message: message,
+                        session_id: `session_${Date.now()}`
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        const agent = networkTopology.nodes.find(n => n.id === selectedAgent);
+                        addChatMessage('agent', agent?.label || 'Agent', data.data.response);
+                        highlightAgentActivity(selectedAgent);
+                    } else {
+                        addChatMessage('system', 'System', 'Error: ' + (data.message || 'Unknown error'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Chat error:', error);
+                    addChatMessage('system', 'System', 'Connection error: ' + error.message);
+                });
+            }
+        }
+
+        // Window resize handler
+        window.addEventListener('resize', function() {
+            if (networkTopology) {
+                renderNetwork();
+            }
+        });
+    </script>
+</body>
+</html>

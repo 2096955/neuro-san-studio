@@ -446,15 +446,23 @@
                 if (data.status === 'success' && data.topology) {
                     networkTopology = data.topology;
                     console.log('Network topology loaded:', networkTopology);
+                    
+                    console.log('Populating network select...');
                     populateNetworkSelect();
+                    
+                    console.log('Starting network rendering...');
                     renderNetwork();
+                    
+                    console.log('Hiding loading indicator...');
                     document.getElementById('network-loading').style.display = 'none';
+                    
+                    console.log('Topology loading process completed successfully');
                 } else {
                     console.error('Invalid topology response:', data);
                     showError('Failed to load network topology: ' + (data.message || 'Invalid response'));
                 }
             } catch (error) {
-                console.error('Error loading topology:', error);
+                console.error('Error in loadNetworkTopology:', error);
                 showError('Failed to connect to agent networks: ' + error.message);
             }
         }
@@ -463,121 +471,183 @@
             const select = document.getElementById('network-select');
             select.innerHTML = '<option value="">Select Network...</option>';
             
-            networkTopology.nodes.forEach(node => {
-                const option = document.createElement('option');
-                option.value = node.id;
-                option.textContent = node.label;
-                select.appendChild(option);
-            });
+            if (networkTopology && networkTopology.nodes) {
+                networkTopology.nodes.forEach(node => {
+                    if (node && node.id && node.label) {
+                        const option = document.createElement('option');
+                        option.value = node.id;
+                        option.textContent = node.label;
+                        select.appendChild(option);
+                    }
+                });
+            }
         }
         
         function renderNetwork() {
-            if (!networkTopology || !networkTopology.nodes || !networkTopology.connections) {
-                console.error('Invalid network topology data:', networkTopology);
-                showError('Invalid network topology data');
-                return;
-            }
-            
-            console.log('Rendering network with:', networkTopology.nodes.length, 'nodes and', networkTopology.connections.length, 'connections');
-            
-            const width = document.querySelector('.network-panel').clientWidth;
-            const height = document.querySelector('.network-panel').clientHeight;
-            
-            svg.selectAll("*").remove();
-            
-            // Re-add arrow marker
-            svg.append("defs").append("marker")
-                .attr("id", "arrowhead")
-                .attr("viewBox", "0 -5 10 10")
-                .attr("refX", 20)
-                .attr("refY", 0)
-                .attr("markerWidth", 6)
-                .attr("markerHeight", 6)
-                .attr("orient", "auto")
-                .append("path")
-                .attr("d", "M0,-5L10,0L0,5")
-                .attr("fill", "#555");
-            
-            // Create simulation
-            simulation = d3.forceSimulation(networkTopology.nodes)
-                .force("link", d3.forceLink(networkTopology.connections).id(d => d.id).distance(150))
-                .force("charge", d3.forceManyBody().strength(-300))
-                .force("center", d3.forceCenter(width / 2, height / 2))
-                .force("collision", d3.forceCollide().radius(40));
-            
-            // Create links
-            const link = svg.append("g")
-                .selectAll("line")
-                .data(networkTopology.connections)
-                .enter().append("line")
-                .attr("class", "link")
-                .style("stroke", "#555")
-                .style("stroke-width", 2)
-                .attr("marker-end", "url(#arrowhead)");
-            
-            // Create nodes
-            const node = svg.append("g")
-                .selectAll("g")
-                .data(networkTopology.nodes)
-                .enter().append("g")
-                .attr("class", "node")
-                .call(d3.drag()
-                    .on("start", dragstarted)
-                    .on("drag", dragged)
-                    .on("end", dragended));
-            
-            // Add circles to nodes
-            node.append("circle")
-                .attr("r", 30)
-                .style("fill", d => getNodeColor(d.type))
-                .style("stroke", "#fff")
-                .style("stroke-width", 2);
-            
-            // Add labels to nodes
-            node.append("text")
-                .text(d => d.label)
-                .style("font-size", "10px")
-                .style("text-anchor", "middle")
-                .style("fill", "white")
-                .style("pointer-events", "none");
-            
-            // Add status indicator
-            node.append("circle")
-                .attr("r", 5)
-                .attr("cx", 20)
-                .attr("cy", -20)
-                .style("fill", d => d.status === 'active' ? '#2ecc71' : '#e74c3c');
-            
-            // Add tooltips and click handlers
-            node.on("mouseover", function(event, d) {
-                tooltip.style("display", "block")
-                    .style("left", (event.pageX + 10) + "px")
-                    .style("top", (event.pageY - 10) + "px")
-                    .html(`
-                        <strong>${d.label}</strong><br/>
-                        Type: ${d.type}<br/>
-                        Status: ${d.status}<br/>
-                        Model: ${d.model}
-                    `);
-            })
-            .on("mouseout", function() {
-                tooltip.style("display", "none");
-            })
-            .on("click", function(event, d) {
-                selectNetwork(d.id);
-            });
-            
-            // Update positions on simulation tick
-            simulation.on("tick", () => {
-                link
-                    .attr("x1", d => d.source.x)
-                    .attr("y1", d => d.source.y)
-                    .attr("x2", d => d.target.x)
-                    .attr("y2", d => d.target.y);
+            try {
+                if (!networkTopology || !networkTopology.nodes || !networkTopology.connections) {
+                    console.error('Invalid network topology data:', networkTopology);
+                    showError('Invalid network topology data');
+                    return;
+                }
                 
-                node
-                    .attr("transform", d => `translate(${d.x},${d.y})`);
-            });
+                console.log('Rendering network with:', networkTopology.nodes.length, 'nodes and', networkTopology.connections.length, 'connections');
+                console.log('Nodes:', networkTopology.nodes);
+                console.log('Connections:', networkTopology.connections);
+                
+                const width = document.querySelector('.network-panel').clientWidth;
+                const height = document.querySelector('.network-panel').clientHeight;
+                
+                console.log('Canvas dimensions:', width, 'x', height);
+            
+                console.log('Clearing SVG...');
+                svg.selectAll("*").remove();
+                
+                console.log('Adding arrow marker...');
+                // Re-add arrow marker
+                svg.append("defs").append("marker")
+                    .attr("id", "arrowhead")
+                    .attr("viewBox", "0 -5 10 10")
+                    .attr("refX", 20)
+                    .attr("refY", 0)
+                    .attr("markerWidth", 6)
+                    .attr("markerHeight", 6)
+                    .attr("orient", "auto")
+                    .append("path")
+                    .attr("d", "M0,-5L10,0L0,5")
+                    .attr("fill", "#555");
+                
+                console.log('Creating node and link copies...');
+                // Create simulation with proper data handling
+                const nodes = networkTopology.nodes.map(d => {
+                    console.log('Processing node:', d);
+                    return Object.assign({}, d);
+                });
+                const links = networkTopology.connections.map(d => {
+                    console.log('Processing link:', d);
+                    return Object.assign({}, d);
+                });
+                
+                console.log('Creating D3 simulation...');
+                
+                // First create simulation with nodes only
+                simulation = d3.forceSimulation(nodes)
+                    .force("charge", d3.forceManyBody().strength(-300))
+                    .force("center", d3.forceCenter(width / 2, height / 2))
+                    .force("collision", d3.forceCollide().radius(40));
+                
+                console.log('Adding force links to simulation...');
+                // Then add links with proper error handling
+                try {
+                    const validLinks = links.filter(link => {
+                        const hasValidSource = nodes.some(node => node.id === link.from);
+                        const hasValidTarget = nodes.some(node => node.id === link.to);
+                        if (!hasValidSource) console.error('Invalid source node:', link.from, 'in link:', link);
+                        if (!hasValidTarget) console.error('Invalid target node:', link.to, 'in link:', link);
+                        return hasValidSource && hasValidTarget;
+                    });
+                    
+                    console.log('Valid links:', validLinks.length, 'out of', links.length);
+                    
+                    simulation.force("link", d3.forceLink(validLinks)
+                        .id(d => d.id)
+                        .source(d => d.from)
+                        .target(d => d.to)
+                        .distance(150));
+                        
+                    console.log('Force links added successfully');
+                } catch (linkError) {
+                    console.error('Error setting up force links:', linkError);
+                    // Continue without links if there's an error
+                }
+                
+                console.log('Creating link elements...');
+                // Create links
+                const link = svg.append("g")
+                    .selectAll("line")
+                    .data(links)
+                    .enter().append("line")
+                    .attr("class", "link")
+                    .style("stroke", "#555")
+                    .style("stroke-width", 2)
+                    .attr("marker-end", "url(#arrowhead)");
+                
+                console.log('Creating node elements...');
+                // Create nodes
+                const node = svg.append("g")
+                    .selectAll("g")
+                    .data(nodes)
+                    .enter().append("g")
+                    .attr("class", "node")
+                    .call(d3.drag()
+                        .on("start", dragstarted)
+                        .on("drag", dragged)
+                        .on("end", dragended));
+                
+                console.log('Adding circles to nodes...');
+                // Add circles to nodes
+                node.append("circle")
+                    .attr("r", 30)
+                    .style("fill", d => getNodeColor(d.type))
+                    .style("stroke", "#fff")
+                    .style("stroke-width", 2);
+                
+                console.log('Adding labels to nodes...');
+                // Add labels to nodes
+                node.append("text")
+                    .text(d => d.label)
+                    .style("font-size", "10px")
+                    .style("text-anchor", "middle")
+                    .style("fill", "white")
+                    .style("pointer-events", "none");
+                
+                console.log('Adding status indicators...');
+                // Add status indicator
+                node.append("circle")
+                    .attr("r", 5)
+                    .attr("cx", 20)
+                    .attr("cy", -20)
+                    .style("fill", d => d.status === 'active' ? '#2ecc71' : '#e74c3c');
+                
+                console.log('Adding event handlers...');
+                // Add tooltips and click handlers
+                node.on("mouseover", function(event, d) {
+                    tooltip.style("display", "block")
+                        .style("left", (event.pageX + 10) + "px")
+                        .style("top", (event.pageY - 10) + "px")
+                        .html(`
+                            <strong>${d.label}</strong><br/>
+                            Type: ${d.type}<br/>
+                            Status: ${d.status}<br/>
+                            Model: ${d.model}
+                        `);
+                })
+                .on("mouseout", function() {
+                    tooltip.style("display", "none");
+                })
+                .on("click", function(event, d) {
+                    selectNetwork(d.id);
+                });
+            
+                console.log('Setting up simulation tick...');
+                // Update positions on simulation tick
+                simulation.on("tick", () => {
+                    link
+                        .attr("x1", d => d.source ? d.source.x : 0)
+                        .attr("y1", d => d.source ? d.source.y : 0)
+                        .attr("x2", d => d.target ? d.target.x : 0)
+                        .attr("y2", d => d.target ? d.target.y : 0);
+                    
+                    node
+                        .attr("transform", d => `translate(${d.x || 0},${d.y || 0})`);
+                });
+                
+                console.log('Network rendering completed successfully');
+                
+            } catch (error) {
+                console.error('Error in renderNetwork:', error);
+                showError('Network rendering failed: ' + error.message);
+            }
         }
         
         function getNodeColor(type) {
@@ -691,14 +761,14 @@
         }
         
         function highlightActiveAgent(agentId, status) {
-            if (!svg) return;
+            if (!svg || !agentId) return;
             
             svg.selectAll('.node')
                 .classed('active', false)
                 .classed('processing', false);
             
             const activeNode = svg.selectAll('.node')
-                .filter(d => d.id === agentId);
+                .filter(d => d && d.id === agentId);
             
             if (status === 'processing') {
                 activeNode.classed('processing', true);

@@ -49,8 +49,8 @@ class NeuroSanRunner:
             "nsflow_host": os.getenv("NSFLOW_HOST", "localhost"),
             "nsflow_port": int(os.getenv("NSFLOW_PORT", "5000")),
             "nsflow_log_level": os.getenv("NSFLOW_LOG_LEVEL", "info"),
-            "vite_api_protocol": os.getenv("VITE_API_PROTOCOL", "http"),
-            "vite_ws_protocol": os.getenv("VITE_WS_PROTOCOL", "ws"),
+            "vite_api_protocol": os.getenv("VITE_API_PROTOCOL", ""),
+            "vite_ws_protocol": os.getenv("VITE_WS_PROTOCOL", ""),
             "neuro_san_web_client_port": int(os.getenv("NEURO_SAN_WEB_CLIENT_PORT", "5003")),
             "thinking_file": os.getenv("THINKING_FILE", self.thinking_file),
             "thinking_dir": os.getenv("THINKING_DIR", self.thinking_dir),
@@ -288,7 +288,7 @@ class NeuroSanRunner:
             "0.0.0.0",
             "--port",
             str(self.args["nsflow_port"]),
-            "--reload",
+            "--workers", "2",
         ]
 
         self.nsflow_process = self.start_process(command, "nsflow", "logs/nsflow.log")

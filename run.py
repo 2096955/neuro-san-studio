@@ -43,15 +43,26 @@ class NeuroSanRunner:
             os.environ["AWS_BEARER_TOKEN_BEDROCK"] = os.getenv("AWS_BEDROCK_API_KEY")
             print("✓ AWS Bedrock Bearer Token configured")
 
-        # Default Configuration
+        # Default Configuration - Separate external (frontend) from internal (binding) config
+        replit_domain = os.getenv("REPLIT_DEV_DOMAIN", "localhost")
+        is_replit = replit_domain != "localhost"
+        
+        # External config (what NSFlow advertises to frontend)
+        external_host = replit_domain if is_replit else "localhost"
+        external_grpc_port = 3000 if is_replit else 30011
+        
+        # Internal binding config (what server actually binds to)
+        self.bind_host = "0.0.0.0"
+        self.bind_grpc_port = 30011  # Always bind to internal port
+        
         self.args: Dict[str, Any] = {
-            "server_host": os.getenv("NEURO_SAN_SERVER_HOST", "localhost"),
-            "server_grpc_port": int(os.getenv("NEURO_SAN_SERVER_GRPC_PORT", "30011")),
+            "server_host": os.getenv("NEURO_SAN_SERVER_HOST", external_host),
+            "server_grpc_port": int(os.getenv("NEURO_SAN_SERVER_GRPC_PORT", str(external_grpc_port))),
             "server_http_port": int(os.getenv("NEURO_SAN_SERVER_HTTP_PORT", "8080")),
             "server_connection": str(os.getenv("NEURO_SAN_SERVER_CONNECTION", "grpc")),
             "manifest_update_period_seconds": int(os.getenv("AGENT_MANIFEST_UPDATE_PERIOD_SECONDS", "5")),
             "default_sly_data": str(os.getenv("DEFAULT_SLY_DATA", "")),
-            "nsflow_host": os.getenv("NSFLOW_HOST", "localhost"),
+            "nsflow_host": os.getenv("NSFLOW_HOST", "0.0.0.0"),
             "nsflow_port": int(os.getenv("NSFLOW_PORT", "5000")),
             "nsflow_log_level": os.getenv("NSFLOW_LOG_LEVEL", "info"),
             "vite_api_protocol": os.getenv("VITE_API_PROTOCOL", ""),
@@ -196,6 +207,7 @@ class NeuroSanRunner:
 
         # Server-only env variables
         if not self.args["client_only"]:
+            # Set external config for NSFlow frontend (what browser connects to)
             os.environ["NEURO_SAN_SERVER_HOST"] = self.args["server_host"]
             os.environ["NEURO_SAN_SERVER_GRPC_PORT"] = str(self.args["server_grpc_port"])
             os.environ["NEURO_SAN_SERVER_HTTP_PORT"] = str(self.args["server_http_port"])
@@ -272,13 +284,14 @@ class NeuroSanRunner:
             "-m",
             "neuro_san.service.main_loop.server_main_loop",
             "--port",
-            str(self.args["server_grpc_port"]),
+            str(self.bind_grpc_port),  # Use internal binding port
             "--http_port",
             str(self.args["server_http_port"]),
         ]
         self.server_process = self.start_process(command, "NeuroSan", "logs/server.log")
-        print("NeuroSan server grpc started on port: ", self.args["server_grpc_port"])
+        print("NeuroSan server grpc started on internal port: ", self.bind_grpc_port)
         print("NeuroSan server http started on port: ", self.args["server_http_port"])
+        print(f"Frontend will connect to: {self.args['server_host']}:{self.args['server_grpc_port']}")
 
     def start_nsflow(self):
         """Start nsflow client."""

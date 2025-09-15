@@ -4,6 +4,16 @@
 
 The Neuro SAN Studio is a comprehensive multi-agent AI development platform built on the Neuro SAN library. It serves as a playground and development environment for creating, deploying, and managing complex multi-agent networks across various industry verticals. The platform enables domain experts, researchers, and developers to rapidly prototype and build agent networks using data-driven configuration files (HOCON) without requiring code changes. The system supports both academic research and commercial applications through a dual licensing model.
 
+## Recent Changes
+
+### AWS Bedrock Integration (September 15, 2025)
+Successfully migrated from OpenAI to AWS Bedrock for key agent networks:
+- **Environment**: Configured AWS_BEDROCK_API_KEY for bearer token authentication
+- **Agent Networks**: Updated music_nerd, hello_world, music_nerd_pro, and agent_network_designer to use built-in Bedrock integration
+- **Model Mapping**: Uses "bedrock-us-claude-sonnet-4" which maps to "us.anthropic.claude-sonnet-4-20250514-v1:0"
+- **Server Configuration**: Updated for Replit environment with proper domain and port mapping
+- **Framework**: Uses Neuro SAN's native `class: "bedrock"` integration rather than custom implementation
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.

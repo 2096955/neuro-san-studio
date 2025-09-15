@@ -207,10 +207,25 @@ class NeuroSanRunner:
 
         # Server-only env variables
         if not self.args["client_only"]:
-            # Set external config for NSFlow frontend (what browser connects to)
+            # Set internal config for NSFlow backend (server-to-server connections)
+            os.environ["INTERNAL_NS_SERVER_HOST"] = "127.0.0.1"
+            os.environ["INTERNAL_NS_SERVER_PORT"] = "30011"
+            
+            # Set external config for NSFlow API (what browser connects to)
+            os.environ["EXTERNAL_NS_SERVER_HOST"] = self.args["server_host"]
+            os.environ["EXTERNAL_NS_SERVER_PORT"] = str(self.args["server_grpc_port"])
+            
+            # Legacy environment variables for compatibility
             os.environ["NEURO_SAN_SERVER_HOST"] = self.args["server_host"]
             os.environ["NEURO_SAN_SERVER_GRPC_PORT"] = str(self.args["server_grpc_port"])
             os.environ["NEURO_SAN_SERVER_HTTP_PORT"] = str(self.args["server_http_port"])
+            
+            # Quick fix: Force NSFlow to return external config in get_ns_config
+            if os.getenv("REPLIT_DEV_DOMAIN"):
+                # Override all port variables to external port for Replit
+                os.environ["NS_SERVER_PORT"] = str(self.args["server_grpc_port"])
+                os.environ["NS_SERVER_GRPC_PORT"] = str(self.args["server_grpc_port"])
+                os.environ["NEURO_SAN_SERVER_PORT"] = str(self.args["server_grpc_port"])
 
             print(f"NEURO_SAN_SERVER_HOST set to: {os.environ['NEURO_SAN_SERVER_HOST']}")
             print(f"NEURO_SAN_SERVER_GRPC_PORT set to: {os.environ['NEURO_SAN_SERVER_GRPC_PORT']}\n")
@@ -420,6 +435,9 @@ class NeuroSanRunner:
             print("=" * 50 + "\nExiting due to port conflicts.\n")
             sys.exit(1)
 
+        # Set environment variables right before starting services
+        self.set_environment_variables()
+        
         # Start services only if ports are free
         if not server_only:
             if use_flask:
@@ -439,9 +457,6 @@ class NeuroSanRunner:
     def run(self):
         """Run the Neuro SAN server and a client."""
         print("\nInitial Run Config:\n" + "\n".join(f"{key}: {value}" for key, value in self.args.items()) + "\n")
-
-        # Set environment variables
-        self.set_environment_variables()
 
         # Ensure logs directory exists
         os.makedirs("logs", exist_ok=True)

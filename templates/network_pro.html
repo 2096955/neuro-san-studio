@@ -189,6 +189,16 @@
             flex: 1;
             position: relative;
             overflow: hidden;
+            min-height: 600px;
+            background: #1e1e2e;
+            border-radius: 8px;
+            border: 1px solid #313244;
+        }
+        
+        .network-canvas svg {
+            display: block;
+            width: 100%;
+            height: 100%;
         }
 
         .sidebar-right {
@@ -379,12 +389,18 @@
         }
 
         .loading {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
             display: flex;
             align-items: center;
             justify-content: center;
-            height: 100%;
+            background: rgba(30, 30, 46, 0.9);
             font-size: 1.1rem;
             color: #6b7280;
+            z-index: 10;
         }
 
         .loading i {
@@ -491,6 +507,10 @@
 
     <script>
         // Global variables
+        // Test JavaScript execution
+        console.log('=== JAVASCRIPT LOADING TEST ===');
+        console.log('Script block executing...');
+        
         let networkTopology = null;
         let simulation = null;
         let svg = null;
@@ -498,9 +518,16 @@
 
         // Initialize the application
         document.addEventListener('DOMContentLoaded', function() {
-            initializeSocket();
-            loadNetworkTopology();
-            initializeChat();
+            console.log('DOM content loaded - starting initialization');
+            try {
+                initializeSocket();
+                console.log('Socket initialized, loading topology...');
+                loadNetworkTopology();
+                initializeChat();
+                console.log('Initialization complete');
+            } catch (error) {
+                console.error('Error during initialization:', error);
+            }
         });
 
         // Socket.IO initialization
@@ -535,17 +562,28 @@
                 }
                 
                 const data = await response.json();
+                console.log('Raw API response:', data);
                 
+                // Handle both wrapped and direct topology responses
                 if (data.status === 'success' && data.topology) {
                     networkTopology = data.topology;
-                    console.log('Network topology loaded:', networkTopology);
-                    
-                    populateAgentList();
-                    renderNetwork();
-                    document.getElementById('network-loading').style.display = 'none';
+                } else if (data.nodes && data.connections) {
+                    // Direct topology response (which is what we're getting)
+                    networkTopology = data;
                 } else {
-                    throw new Error('Invalid topology response');
+                    throw new Error('Invalid topology response format');
                 }
+                
+                console.log('Network topology loaded:', networkTopology);
+                
+                // Hide loading overlay
+                const loadingEl = document.getElementById('network-loading');
+                if (loadingEl) {
+                    loadingEl.style.display = 'none';
+                }
+                
+                populateAgentList();
+                renderNetwork();
             } catch (error) {
                 console.error('Error loading topology:', error);
                 addChatMessage('system', 'System', 'Error loading agent network: ' + error.message);
@@ -578,8 +616,16 @@
             if (!networkTopology) return;
 
             const container = document.getElementById('network-canvas');
-            const width = container.clientWidth;
-            const height = container.clientHeight;
+            const width = container.clientWidth || 800;
+            const height = container.clientHeight || 600;
+            
+            console.log('Container dimensions:', width, 'x', height);
+            
+            if (width === 0 || height === 0) {
+                console.warn('Container has no dimensions, retrying in 100ms');
+                setTimeout(renderNetwork, 100);
+                return;
+            }
 
             // Clear existing SVG
             d3.select('#network-canvas svg').remove();

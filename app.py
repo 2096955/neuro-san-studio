@@ -12,7 +12,7 @@ from datetime import datetime
 from typing import Dict, List, Any, Optional
 
 import grpc
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, make_response
 from flask_socketio import SocketIO, emit
 
 # Import NeuroSan gRPC client
@@ -216,7 +216,11 @@ neuro_interface = AgentNetworkInterface()
 @app.route('/')
 def index():
     """Main network visualization page"""
-    return render_template('network_pro.html')
+    response = make_response(render_template('network_pro.html'))
+    # Prevent iframe embedding to ensure JavaScript executes
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['Content-Security-Policy'] = "frame-ancestors 'none'"
+    return response
 
 @app.route('/api/topology')
 def get_topology():

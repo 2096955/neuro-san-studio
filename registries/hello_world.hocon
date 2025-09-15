@@ -15,7 +15,9 @@
 
 {
     "llm_config": {
-        "model_name": "gpt-4o",
+        "class": "bedrock",
+        "model_name": "bedrock-us-claude-sonnet-4",
+        "region_name": "us-east-2"
     },
     "tools": [
         # This first agent definition is regarded as the "Front Man", which

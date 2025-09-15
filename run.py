@@ -37,6 +37,11 @@ class NeuroSanRunner:
 
         # Load environment variables from .env file
         self.load_env_variables()
+        
+        # Ensure AWS Bedrock environment variables are set for bearer token authentication
+        if os.getenv("AWS_BEDROCK_API_KEY"):
+            os.environ["AWS_BEARER_TOKEN_BEDROCK"] = os.getenv("AWS_BEDROCK_API_KEY")
+            print("✓ AWS Bedrock Bearer Token configured")
 
         # Default Configuration
         self.args: Dict[str, Any] = {

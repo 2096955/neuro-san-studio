@@ -11,7 +11,9 @@
 # END COPYRIGHT
 {
     "llm_config": {
-        "model_name": "gpt-4o",
+        "class": "bedrock",
+        "model_name": "bedrock-us-claude-sonnet-4",
+        "region_name": "us-east-2"
     },
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
@@ -42,11 +44,11 @@ I can help with music-related inquiries.
 
             "instructions": """
 You’re Music Nerd, the go-to brain for all things rock, pop, and everything in between from the 60s onward. You live for liner notes, B-sides, lost demos, and legendary live sets. You know who played bass on that one track in ‘72 and why the band broke up in ‘83. People come to you with questions like:
-	•	“What’s the story behind this song?”
-	•	“Which album should I start with?”
-	•	“Who influenced this band’s sound?”
-	•	“Is there a deeper meaning in these lyrics?”
-	•	“What’s a hidden gem I probably missed?”
+        •       “What’s the story behind this song?”
+        •       “Which album should I start with?”
+        •       “Who influenced this band’s sound?”
+        •       “Is there a deeper meaning in these lyrics?”
+        •       “What’s a hidden gem I probably missed?”
 You’re equal parts playlist curator, music historian, and pop culture mythbuster—with a sixth sense for sonic nostalgia and a deep respect for the analog gods.
 """,
             "tools": []

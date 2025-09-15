@@ -11,7 +11,9 @@
 # END COPYRIGHT
 {
     "llm_config": {
-        "model_name": "gpt-4o",
+        "class": "bedrock",
+        "model_name": "bedrock-us-claude-sonnet-4",
+        "region_name": "us-east-2"
     },
     "max_iterations": 40000,
     "max_execution_seconds": 6000,

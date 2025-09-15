@@ -432,20 +432,30 @@
         
         async function loadNetworkTopology() {
             try {
+                console.log('Loading network topology...');
                 const response = await fetch('/api/topology');
-                const data = await response.json();
+                console.log('Response status:', response.status);
                 
-                if (data.status === 'success') {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('Topology data:', data);
+                
+                if (data.status === 'success' && data.topology) {
                     networkTopology = data.topology;
+                    console.log('Network topology loaded:', networkTopology);
                     populateNetworkSelect();
                     renderNetwork();
                     document.getElementById('network-loading').style.display = 'none';
                 } else {
-                    showError('Failed to load network topology');
+                    console.error('Invalid topology response:', data);
+                    showError('Failed to load network topology: ' + (data.message || 'Invalid response'));
                 }
             } catch (error) {
                 console.error('Error loading topology:', error);
-                showError('Failed to connect to agent networks');
+                showError('Failed to connect to agent networks: ' + error.message);
             }
         }
         
@@ -462,7 +472,13 @@
         }
         
         function renderNetwork() {
-            if (!networkTopology) return;
+            if (!networkTopology || !networkTopology.nodes || !networkTopology.connections) {
+                console.error('Invalid network topology data:', networkTopology);
+                showError('Invalid network topology data');
+                return;
+            }
+            
+            console.log('Rendering network with:', networkTopology.nodes.length, 'nodes and', networkTopology.connections.length, 'connections');
             
             const width = document.querySelector('.network-panel').clientWidth;
             const height = document.querySelector('.network-panel').clientHeight;
@@ -713,8 +729,10 @@
         }
         
         function showError(message) {
+            console.error('Network error:', message);
             document.getElementById('network-loading').innerHTML = 
-                `<p style="color: #e74c3c;">${message}</p>`;
+                `<p style="color: #e74c3c;">Error: ${message}</p>
+                 <button class="control-button" onclick="loadNetworkTopology()" style="margin-top: 10px;">Retry</button>`;
         }
         
         // Drag functions

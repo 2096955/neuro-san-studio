@@ -193,13 +193,19 @@ def index():
 @app.route('/api/topology')
 def get_topology():
     """API endpoint to get network topology"""
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
     try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         topology = loop.run_until_complete(neuro_interface.get_network_topology())
         return jsonify({"status": "success", "topology": topology})
+    except Exception as e:
+        logger.error(f"Error getting topology: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
     finally:
-        loop.close()
+        try:
+            loop.close()
+        except:
+            pass
 
 @app.route('/api/activity')
 def get_activity():

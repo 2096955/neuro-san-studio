@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neuro SAN Studio - Agent Network Visualization</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a1a;
+            color: white;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            z-index: 1000;
+        }
+        
+        .header h1 {
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            background: #2ecc71;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .header-info {
+            display: flex;
+            gap: 20px;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        .main-container {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+        
+        .network-panel {
+            flex: 1;
+            position: relative;
+            background: #0f1419;
+            border-right: 1px solid #333;
+        }
+        
+        .side-panel {
+            width: 400px;
+            background: #1e1e1e;
+            display: flex;
+            flex-direction: column;
+            border-left: 1px solid #333;
+        }
+        
+        .panel-header {
+            padding: 20px;
+            border-bottom: 1px solid #333;
+            background: #252525;
+        }
+        
+        .panel-header h3 {
+            font-size: 1.2rem;
+            margin-bottom: 5px;
+        }
+        
+        .panel-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        
+        .chat-section {
+            margin-bottom: 30px;
+        }
+        
+        .chat-input {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .network-select {
+            padding: 8px 12px;
+            background: #333;
+            border: 1px solid #555;
+            border-radius: 6px;
+            color: white;
+            font-size: 0.9rem;
+        }
+        
+        .message-input {
+            flex: 1;
+            padding: 8px 12px;
+            background: #333;
+            border: 1px solid #555;
+            border-radius: 6px;
+            color: white;
+            font-size: 0.9rem;
+        }
+        
+        .send-button {
+            padding: 8px 16px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s ease;
+        }
+        
+        .send-button:hover:not(:disabled) {
+            background: #2980b9;
+        }
+        
+        .send-button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        
+        .activity-section {
+            margin-top: 20px;
+        }
+        
+        .activity-item {
+            background: #2a2a2a;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .activity-item.processing {
+            border-left-color: #f39c12;
+            animation: processingGlow 2s infinite;
+        }
+        
+        .activity-item.completed {
+            border-left-color: #2ecc71;
+        }
+        
+        .activity-item.error {
+            border-left-color: #e74c3c;
+        }
+        
+        @keyframes processingGlow {
+            0% { box-shadow: inset 0 0 0 rgba(243, 156, 18, 0.1); }
+            50% { box-shadow: inset 0 0 10px rgba(243, 156, 18, 0.3); }
+            100% { box-shadow: inset 0 0 0 rgba(243, 156, 18, 0.1); }
+        }
+        
+        .activity-agent {
+            font-weight: bold;
+            color: #3498db;
+            margin-bottom: 5px;
+        }
+        
+        .activity-message {
+            font-size: 0.85rem;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+        
+        .activity-time {
+            font-size: 0.75rem;
+            opacity: 0.6;
+        }
+        
+        .response-section {
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .response-text {
+            color: #e8e8e8;
+            line-height: 1.4;
+            font-size: 0.9rem;
+        }
+        
+        /* Network visualization styles */
+        .network-svg {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .node {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .node circle {
+            stroke: #fff;
+            stroke-width: 2px;
+        }
+        
+        .node.active circle {
+            stroke: #2ecc71;
+            stroke-width: 3px;
+            filter: drop-shadow(0 0 5px #2ecc71);
+        }
+        
+        .node.processing circle {
+            stroke: #f39c12;
+            stroke-width: 3px;
+            filter: drop-shadow(0 0 8px #f39c12);
+            animation: nodeProcessing 2s infinite;
+        }
+        
+        @keyframes nodeProcessing {
+            0% { r: 30; }
+            50% { r: 35; }
+            100% { r: 30; }
+        }
+        
+        .node text {
+            font-size: 12px;
+            text-anchor: middle;
+            fill: white;
+            pointer-events: none;
+        }
+        
+        .link {
+            stroke: #555;
+            stroke-width: 2px;
+            marker-end: url(#arrowhead);
+        }
+        
+        .link.active {
+            stroke: #3498db;
+            stroke-width: 3px;
+            animation: linkFlow 2s infinite;
+        }
+        
+        @keyframes linkFlow {
+            0% { stroke-dasharray: 5, 5; stroke-dashoffset: 0; }
+            100% { stroke-dasharray: 5, 5; stroke-dashoffset: -10; }
+        }
+        
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            pointer-events: none;
+            z-index: 1000;
+            border: 1px solid #555;
+        }
+        
+        .network-controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 100;
+        }
+        
+        .control-button {
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            border: 1px solid #555;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: background 0.3s ease;
+        }
+        
+        .control-button:hover {
+            background: rgba(0, 0, 0, 0.9);
+        }
+        
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #888;
+        }
+        
+        .loading::after {
+            content: '';
+            width: 40px;
+            height: 40px;
+            border: 3px solid #333;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            display: inline-block;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>
+            🧠 Neuro SAN Studio
+            <span class="status-indicator"></span>
+        </h1>
+        <div class="header-info">
+            <span>AWS Bedrock Integration</span>
+            <span>Multi-Agent Networks</span>
+            <span>Real-time Visualization</span>
+        </div>
+    </div>
+    
+    <div class="main-container">
+        <div class="network-panel">
+            <div class="network-controls">
+                <button class="control-button" onclick="resetZoom()">Reset View</button>
+                <button class="control-button" onclick="toggleLayout()">Toggle Layout</button>
+                <button class="control-button" onclick="refreshTopology()">Refresh</button>
+            </div>
+            
+            <div id="network-loading" class="loading">
+                Loading agent networks...
+            </div>
+            
+            <svg class="network-svg" id="network-svg"></svg>
+            
+            <div class="tooltip" id="tooltip" style="display: none;"></div>
+        </div>
+        
+        <div class="side-panel">
+            <div class="panel-header">
+                <h3>Agent Network Control</h3>
+                <p>Send messages and monitor activity</p>
+            </div>
+            
+            <div class="panel-content">
+                <div class="chat-section">
+                    <h4>Send Message to Network</h4>
+                    <div class="chat-input">
+                        <select class="network-select" id="network-select">
+                            <option value="">Select Network...</option>
+                        </select>
+                        <input type="text" class="message-input" id="message-input" 
+                               placeholder="Enter your message..." />
+                        <button class="send-button" id="send-button" onclick="sendNetworkMessage()">Send</button>
+                    </div>
+                    
+                    <div class="response-section" id="response-section" style="display: none;">
+                        <h5>Network Response:</h5>
+                        <div class="response-text" id="response-text"></div>
+                    </div>
+                </div>
+                
+                <div class="activity-section">
+                    <h4>Live Agent Activity</h4>
+                    <div id="activity-container">
+                        <p style="color: #888; font-style: italic;">No recent activity</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        let networkTopology = null;
+        let svg, simulation, tooltip;
+        let currentLayout = 'force';
+        
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeNetwork();
+            setupSocketEvents();
+            setupControls();
+        });
+        
+        function initializeNetwork() {
+            svg = d3.select("#network-svg");
+            tooltip = d3.select("#tooltip");
+            
+            // Add arrow marker for links
+            svg.append("defs").append("marker")
+                .attr("id", "arrowhead")
+                .attr("viewBox", "0 -5 10 10")
+                .attr("refX", 20)
+                .attr("refY", 0)
+                .attr("markerWidth", 6)
+                .attr("markerHeight", 6)
+                .attr("orient", "auto")
+                .append("path")
+                .attr("d", "M0,-5L10,0L0,5")
+                .attr("fill", "#555");
+            
+            loadNetworkTopology();
+        }
+        
+        async function loadNetworkTopology() {
+            try {
+                const response = await fetch('/api/topology');
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    networkTopology = data.topology;
+                    populateNetworkSelect();
+                    renderNetwork();
+                    document.getElementById('network-loading').style.display = 'none';
+                } else {
+                    showError('Failed to load network topology');
+                }
+            } catch (error) {
+                console.error('Error loading topology:', error);
+                showError('Failed to connect to agent networks');
+            }
+        }
+        
+        function populateNetworkSelect() {
+            const select = document.getElementById('network-select');
+            select.innerHTML = '<option value="">Select Network...</option>';
+            
+            networkTopology.nodes.forEach(node => {
+                const option = document.createElement('option');
+                option.value = node.id;
+                option.textContent = node.label;
+                select.appendChild(option);
+            });
+        }
+        
+        function renderNetwork() {
+            if (!networkTopology) return;
+            
+            const width = document.querySelector('.network-panel').clientWidth;
+            const height = document.querySelector('.network-panel').clientHeight;
+            
+            svg.selectAll("*").remove();
+            
+            // Re-add arrow marker
+            svg.append("defs").append("marker")
+                .attr("id", "arrowhead")
+                .attr("viewBox", "0 -5 10 10")
+                .attr("refX", 20)
+                .attr("refY", 0)
+                .attr("markerWidth", 6)
+                .attr("markerHeight", 6)
+                .attr("orient", "auto")
+                .append("path")
+                .attr("d", "M0,-5L10,0L0,5")
+                .attr("fill", "#555");
+            
+            // Create simulation
+            simulation = d3.forceSimulation(networkTopology.nodes)
+                .force("link", d3.forceLink(networkTopology.connections).id(d => d.id).distance(150))
+                .force("charge", d3.forceManyBody().strength(-300))
+                .force("center", d3.forceCenter(width / 2, height / 2))
+                .force("collision", d3.forceCollide().radius(40));
+            
+            // Create links
+            const link = svg.append("g")
+                .selectAll("line")
+                .data(networkTopology.connections)
+                .enter().append("line")
+                .attr("class", "link")
+                .style("stroke", "#555")
+                .style("stroke-width", 2)
+                .attr("marker-end", "url(#arrowhead)");
+            
+            // Create nodes
+            const node = svg.append("g")
+                .selectAll("g")
+                .data(networkTopology.nodes)
+                .enter().append("g")
+                .attr("class", "node")
+                .call(d3.drag()
+                    .on("start", dragstarted)
+                    .on("drag", dragged)
+                    .on("end", dragended));
+            
+            // Add circles to nodes
+            node.append("circle")
+                .attr("r", 30)
+                .style("fill", d => getNodeColor(d.type))
+                .style("stroke", "#fff")
+                .style("stroke-width", 2);
+            
+            // Add labels to nodes
+            node.append("text")
+                .text(d => d.label)
+                .style("font-size", "10px")
+                .style("text-anchor", "middle")
+                .style("fill", "white")
+                .style("pointer-events", "none");
+            
+            // Add status indicator
+            node.append("circle")
+                .attr("r", 5)
+                .attr("cx", 20)
+                .attr("cy", -20)
+                .style("fill", d => d.status === 'active' ? '#2ecc71' : '#e74c3c');
+            
+            // Add tooltips and click handlers
+            node.on("mouseover", function(event, d) {
+                tooltip.style("display", "block")
+                    .style("left", (event.pageX + 10) + "px")
+                    .style("top", (event.pageY - 10) + "px")
+                    .html(`
+                        <strong>${d.label}</strong><br/>
+                        Type: ${d.type}<br/>
+                        Status: ${d.status}<br/>
+                        Model: ${d.model}
+                    `);
+            })
+            .on("mouseout", function() {
+                tooltip.style("display", "none");
+            })
+            .on("click", function(event, d) {
+                selectNetwork(d.id);
+            });
+            
+            // Update positions on simulation tick
+            simulation.on("tick", () => {
+                link
+                    .attr("x1", d => d.source.x)
+                    .attr("y1", d => d.source.y)
+                    .attr("x2", d => d.target.x)
+                    .attr("y2", d => d.target.y);
+                
+                node
+                    .attr("transform", d => `translate(${d.x},${d.y})`);
+            });
+        }
+        
+        function getNodeColor(type) {
+            const colors = {
+                'specialist': '#3498db',
+                'greeting': '#2ecc71', 
+                'advanced': '#9b59b6',
+                'orchestrator': '#e74c3c',
+                'decision': '#f39c12',
+                'tool': '#95a5a6',
+                'document': '#1abc9c',
+                'iot': '#e67e22',
+                'agent': '#34495e'
+            };
+            return colors[type] || '#34495e';
+        }
+        
+        function selectNetwork(networkId) {
+            document.getElementById('network-select').value = networkId;
+            document.getElementById('message-input').focus();
+        }
+        
+        function setupSocketEvents() {
+            socket.on('network_response', function(data) {
+                displayResponse(data);
+                updateSendButton(false);
+            });
+            
+            socket.on('agent_activity', function(data) {
+                updateAgentActivity(data);
+                highlightActiveAgent(data.agent, data.status);
+            });
+            
+            socket.on('error', function(data) {
+                alert('Error: ' + data.message);
+                updateSendButton(false);
+            });
+        }
+        
+        function setupControls() {
+            document.getElementById('message-input').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendNetworkMessage();
+                }
+            });
+        }
+        
+        function sendNetworkMessage() {
+            const networkSelect = document.getElementById('network-select');
+            const messageInput = document.getElementById('message-input');
+            
+            const networkName = networkSelect.value;
+            const message = messageInput.value.trim();
+            
+            if (!networkName || !message) {
+                alert('Please select a network and enter a message');
+                return;
+            }
+            
+            updateSendButton(true);
+            messageInput.value = '';
+            
+            socket.emit('send_network_message', {
+                network_name: networkName,
+                message: message,
+                session_id: 'session_' + Date.now()
+            });
+        }
+        
+        function updateSendButton(disabled) {
+            const button = document.getElementById('send-button');
+            button.disabled = disabled;
+            button.textContent = disabled ? 'Processing...' : 'Send';
+        }
+        
+        function displayResponse(data) {
+            const responseSection = document.getElementById('response-section');
+            const responseText = document.getElementById('response-text');
+            
+            responseText.textContent = data.response || data.error;
+            responseSection.style.display = 'block';
+        }
+        
+        function updateAgentActivity(activity) {
+            const container = document.getElementById('activity-container');
+            
+            // Remove existing activity for this agent
+            const existingItems = container.querySelectorAll(`[data-agent="${activity.agent}"]`);
+            existingItems.forEach(item => item.remove());
+            
+            // Add new activity
+            const item = document.createElement('div');
+            item.className = `activity-item ${activity.status}`;
+            item.setAttribute('data-agent', activity.agent);
+            
+            item.innerHTML = `
+                <div class="activity-agent">${activity.agent}</div>
+                <div class="activity-message">${activity.message || 'Processing...'}</div>
+                <div class="activity-time">${new Date(activity.timestamp).toLocaleTimeString()}</div>
+            `;
+            
+            container.insertBefore(item, container.firstChild);
+            
+            // Keep only last 10 activities
+            const items = container.querySelectorAll('.activity-item');
+            if (items.length > 10) {
+                for (let i = 10; i < items.length; i++) {
+                    items[i].remove();
+                }
+            }
+        }
+        
+        function highlightActiveAgent(agentId, status) {
+            if (!svg) return;
+            
+            svg.selectAll('.node')
+                .classed('active', false)
+                .classed('processing', false);
+            
+            const activeNode = svg.selectAll('.node')
+                .filter(d => d.id === agentId);
+            
+            if (status === 'processing') {
+                activeNode.classed('processing', true);
+            } else if (status === 'completed') {
+                activeNode.classed('active', true);
+                setTimeout(() => {
+                    activeNode.classed('active', false);
+                }, 3000);
+            }
+        }
+        
+        // Network control functions
+        function resetZoom() {
+            if (simulation) {
+                simulation.alpha(1).restart();
+            }
+        }
+        
+        function toggleLayout() {
+            // Toggle between force and circular layout
+            currentLayout = currentLayout === 'force' ? 'circular' : 'force';
+            renderNetwork();
+        }
+        
+        function refreshTopology() {
+            document.getElementById('network-loading').style.display = 'block';
+            loadNetworkTopology();
+        }
+        
+        function showError(message) {
+            document.getElementById('network-loading').innerHTML = 
+                `<p style="color: #e74c3c;">${message}</p>`;
+        }
+        
+        // Drag functions
+        function dragstarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+        
+        function dragged(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
+        
+        function dragended(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
+        
+        // Resize handler
+        window.addEventListener('resize', function() {
+            if (networkTopology) {
+                renderNetwork();
+            }
+        });
+    </script>
+</body>
+</html>

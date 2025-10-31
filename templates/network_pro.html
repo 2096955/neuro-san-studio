@@ -583,6 +583,7 @@
                 }
                 
                 populateAgentList();
+                updateUIFromTopology();
                 renderNetwork();
             } catch (error) {
                 console.error('Error loading topology:', error);
@@ -599,14 +600,16 @@
                 const agentCard = document.createElement('div');
                 agentCard.className = 'agent-card';
                 agentCard.dataset.agentId = agent.id;
+                agentCard.style.cursor = 'pointer';
                 agentCard.innerHTML = `
-                    <div class="agent-status"></div>
+                    <div class="agent-status">●</div>
                     <div class="agent-name">${agent.label}</div>
                     <div class="agent-type">${agent.type}</div>
                     <div class="agent-model">${agent.model}</div>
                 `;
                 
-                agentCard.addEventListener('click', () => selectAgent(agent.id));
+                // Make cards clickable to select agent for chat
+                agentCard.addEventListener('click', () => selectAgentForChat(agent.id, agent.label));
                 agentList.appendChild(agentCard);
             });
         }
@@ -884,44 +887,66 @@
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
 
+        // Track selected agent for chat
+        let selectedAgentForChat = 'insurance_agent';
+        
         function sendMessage() {
             const input = document.getElementById('message-input');
             const message = input.value.trim();
             
             if (message) {
-                addChatMessage('agent', 'You', message);
+                addChatMessage('user', 'You', message);
                 input.value = '';
                 
-                // Get selected agent or default to first active
-                const selectedAgent = document.querySelector('.agent-card.active')?.dataset.agentId || 'music_nerd';
+                // Show typing indicator
+                const typingId = `typing-${Date.now()}`;
+                addChatMessage('agent', 'Agent', '● ● ● Thinking...', typingId);
                 
-                // Send to real backend
+                // Send to real AI backend (AWS Bedrock Claude Sonnet 4)
                 fetch('/api/chat', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        network_name: selectedAgent,
+                        network_name: selectedAgentForChat,
                         message: message,
                         session_id: `session_${Date.now()}`
                     })
                 })
                 .then(response => response.json())
                 .then(data => {
+                    // Remove typing indicator
+                    const typingMsg = document.getElementById(typingId);
+                    if (typingMsg) typingMsg.remove();
+                    
                     if (data.status === 'success') {
-                        const agent = networkTopology.nodes.find(n => n.id === selectedAgent);
-                        addChatMessage('agent', agent?.label || 'Agent', data.data.response);
-                        highlightAgentActivity(selectedAgent);
+                        const agentName = data.data.agent || selectedAgentForChat;
+                        addChatMessage('agent', agentName, data.data.response);
+                        highlightAgentActivity(selectedAgentForChat);
                     } else {
                         addChatMessage('system', 'System', 'Error: ' + (data.message || 'Unknown error'));
                     }
                 })
                 .catch(error => {
+                    // Remove typing indicator
+                    const typingMsg = document.getElementById(typingId);
+                    if (typingMsg) typingMsg.remove();
+                    
                     console.error('Chat error:', error);
-                    addChatMessage('system', 'System', 'Connection error: ' + error.message);
+                    addChatMessage('system', 'System', 'Connection error. Please try again.');
                 });
             }
+        }
+        
+        // Function to select which agent to chat with (called when clicking agent cards)
+        function selectAgentForChat(agentId, agentName) {
+            selectedAgentForChat = agentId;
+            const connectedAgent = document.getElementById('connected-agent');
+            if (connectedAgent) {
+                connectedAgent.textContent = `Connected: ${agentName}`;
+            }
+            addChatMessage('system', 'System', `Now chatting with ${agentName}`);
         }
 
         // Window resize handler
@@ -932,8 +957,10 @@
         });
         
         // Update UI with loaded topology data
-        function updateUIFromTopology(topology) {
-            const agentCount = topology.nodes.length;
+        function updateUIFromTopology() {
+            if (!networkTopology || !networkTopology.nodes) return;
+            
+            const agentCount = networkTopology.nodes.length;
             
             // Update agent counts
             const agentCountStatus = document.getElementById('agent-count-status');
@@ -948,17 +975,10 @@
             
             // Update selected agent
             const connectedAgent = document.getElementById('connected-agent');
-            if (connectedAgent && topology.nodes.length > 0) {
-                connectedAgent.textContent = `Connected: ${topology.nodes[0].label}`;
+            if (connectedAgent && networkTopology.nodes.length > 0) {
+                connectedAgent.textContent = `Connected: ${networkTopology.nodes[0].label}`;
             }
         }
-
-        // Call after topology loads
-        const originalRenderNetwork = renderNetwork;
-        renderNetwork = function(topology) {
-            updateUIFromTopology(topology);
-            return originalRenderNetwork(topology);
-        };
         
     </script>
 </body>

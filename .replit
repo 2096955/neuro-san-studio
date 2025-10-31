@@ -4,7 +4,7 @@ expertMode = true
 
 [nix]
 channel = "stable-25_05"
-packages = ["freetype", "gumbo", "harfbuzz", "jbig2dec", "libjpeg_turbo", "mupdf", "openjpeg", "swig", "xcbuild"]
+packages = ["c-ares", "freetype", "grpc", "gumbo", "harfbuzz", "jbig2dec", "libjpeg_turbo", "mupdf", "openjpeg", "openssl", "pkg-config", "swig", "xcbuild", "zlib"]
 
 [workflows]
 runButton = "Project"
@@ -41,6 +41,10 @@ externalPort = 80
 [[ports]]
 localPort = 30011
 externalPort = 3000
+
+[[ports]]
+localPort = 40057
+externalPort = 3001
 
 [deployment]
 deploymentTarget = "vm"

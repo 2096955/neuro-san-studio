@@ -19,3 +19,4 @@ flask
 flask-socketio
 grpcio
 python-socketio
+aiohttp

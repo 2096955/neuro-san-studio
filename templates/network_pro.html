@@ -867,10 +867,13 @@
             });
         }
 
-        function addChatMessage(type, agent, message) {
+        function addChatMessage(type, agent, message, messageId = null) {
             const chatMessages = document.getElementById('chat-messages');
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${type}`;
+            if (messageId) {
+                messageDiv.id = messageId;
+            }
             
             const now = new Date();
             const timeStr = now.toLocaleTimeString();

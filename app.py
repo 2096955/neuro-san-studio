@@ -42,15 +42,16 @@ class AgentNetworkInterface:
         self.http_port = 8080
         self.active_sessions = {}
         self.agent_activity = {}
-        self.bedrock_api_key = os.environ.get('AWS_BEDROCK_API_KEY', '')
+        # AWS_BEDROCK_API_KEY should contain an Anthropic API key for Claude access
+        self.anthropic_api_key = os.environ.get('AWS_BEDROCK_API_KEY', '')
+        self.openai_api_key = os.environ.get('OPENAI_API_KEY', '')
         
-    async def _call_bedrock(self, agent_info: Dict[str, Any], message: str) -> str:
-        """Call AWS Bedrock Claude Sonnet 4 for intelligent responses"""
+    async def _call_ai_model(self, agent_info: Dict[str, Any], message: str) -> str:
+        """Call AI model (Anthropic Claude or OpenAI) for intelligent responses"""
         import aiohttp
         
         agent_role = agent_info.get("label", "Insurance Agent")
         agent_description = agent_info.get("description", "")
-        agent_type = agent_info.get("type", "specialist")
         
         # Build context-aware system prompt based on agent role
         system_prompt = f"""You are {agent_role}, a professional insurance specialist at Hartford.
@@ -62,34 +63,66 @@ If the question is outside your expertise, acknowledge that and suggest who else
 
 Respond as {agent_role} would in a real insurance company setting."""
 
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                    'https://api.anthropic.com/v1/messages',
-                    headers={
-                        'x-api-key': self.bedrock_api_key,
-                        'anthropic-version': '2023-06-01',
-                        'content-type': 'application/json'
-                    },
-                    json={
-                        'model': 'claude-sonnet-4-20250514',
-                        'max_tokens': 1024,
-                        'system': system_prompt,
-                        'messages': [
-                            {'role': 'user', 'content': message}
-                        ]
-                    },
-                    timeout=aiohttp.ClientTimeout(total=30)
-                ) as response:
-                    if response.status == 200:
-                        result = await response.json()
-                        return result['content'][0]['text']
-                    else:
-                        logger.error(f"Bedrock API error: {response.status}")
-                        return f"As {agent_role}, I'm currently experiencing technical difficulties. Please try again in a moment."
-        except Exception as e:
-            logger.error(f"Error calling Bedrock: {e}")
-            return f"Hello, I'm {agent_role}. {agent_description} How can I assist you with your insurance needs today?"
+        # Try Anthropic Claude first (if AWS_BEDROCK_API_KEY is set)
+        if self.anthropic_api_key:
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(
+                        'https://api.anthropic.com/v1/messages',
+                        headers={
+                            'x-api-key': self.anthropic_api_key,
+                            'anthropic-version': '2023-06-01',
+                            'content-type': 'application/json'
+                        },
+                        json={
+                            'model': 'claude-sonnet-4-20250514',
+                            'max_tokens': 1024,
+                            'system': system_prompt,
+                            'messages': [
+                                {'role': 'user', 'content': message}
+                            ]
+                        },
+                        timeout=aiohttp.ClientTimeout(total=30)
+                    ) as response:
+                        if response.status == 200:
+                            result = await response.json()
+                            return result['content'][0]['text']
+                        else:
+                            error_text = await response.text()
+                            logger.error(f"Anthropic API error {response.status}: {error_text[:200]}")
+            except Exception as e:
+                logger.error(f"Error calling Anthropic Claude: {e}")
+        
+        # Fallback to OpenAI
+        if self.openai_api_key:
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(
+                        'https://api.openai.com/v1/chat/completions',
+                        headers={
+                            'Authorization': f'Bearer {self.openai_api_key}',
+                            'Content-Type': 'application/json'
+                        },
+                        json={
+                            'model': 'gpt-4-turbo-preview',
+                            'messages': [
+                                {'role': 'system', 'content': system_prompt},
+                                {'role': 'user', 'content': message}
+                            ],
+                            'max_tokens': 1024
+                        },
+                        timeout=aiohttp.ClientTimeout(total=30)
+                    ) as response:
+                        if response.status == 200:
+                            result = await response.json()
+                            return result['choices'][0]['message']['content']
+                        else:
+                            logger.error(f"OpenAI API error: {response.status}")
+            except Exception as e:
+                logger.error(f"Error calling OpenAI: {e}")
+        
+        # Fallback response if no API is available
+        return f"Hello, I'm {agent_role}. {agent_description} How can I assist you with your insurance needs today?"
         
     async def get_network_topology(self) -> Dict[str, Any]:
         """Get the full agent network topology with connections"""
@@ -195,7 +228,7 @@ Respond as {agent_role} would in a real insurance company setting."""
             agent_info = next((node for node in topology["nodes"] if node["id"] == network_name), None)
             
             if agent_info:
-                ai_response = await self._call_bedrock(agent_info, message)
+                ai_response = await self._call_ai_model(agent_info, message)
             else:
                 ai_response = f"Agent {network_name} is processing your request."
             
@@ -301,6 +334,8 @@ def chat():
     message = data.get('message')
     session_id = data.get('session_id')
     
+    logger.info(f"Chat request: network={network_name}, message={message[:50]}...")
+    
     if not network_name or not message:
         return jsonify({"status": "error", "message": "Missing network_name or message"}), 400
     
@@ -308,7 +343,11 @@ def chat():
     asyncio.set_event_loop(loop)
     try:
         response = loop.run_until_complete(neuro_interface.send_message_to_network(network_name, message, session_id))
+        logger.info(f"Chat response generated for {network_name}")
         return jsonify({"status": "success", "data": response})
+    except Exception as e:
+        logger.error(f"Chat endpoint error: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
     finally:
         loop.close()
 

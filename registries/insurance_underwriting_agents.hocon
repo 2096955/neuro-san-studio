@@ -496,6 +496,9 @@ The Benchmarking Handler is responsible for comparing new underwriting cases aga
         {
             "name": "claims_processing_agent",
             "function": ${aaosa_call},
+            "llm_config": {
+                "model_name": "gemini-2.0-flash"
+            },
             "instructions": ${instructions_prefix} ${demo_mode} """
 You manage all claims-related workflows, from initial intake to resolution.
 You coordinate with adjusters, investigators, and analysts to process claims efficiently.

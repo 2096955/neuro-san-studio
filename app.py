@@ -45,15 +45,17 @@ class AgentNetworkInterface:
         # AWS_BEDROCK_API_KEY should contain an Anthropic API key for Claude access
         self.anthropic_api_key = os.environ.get('AWS_BEDROCK_API_KEY', '')
         self.openai_api_key = os.environ.get('OPENAI_API_KEY', '')
+        self.google_api_key = os.environ.get('GOOGLE_API_KEY', '')
         
     async def _call_ai_model(self, agent_info: Dict[str, Any], message: str, conversation_history: Optional[List[Dict[str, str]]] = None) -> str:
-        """Call AI model (Anthropic Claude or OpenAI) for intelligent responses"""
+        """Call AI model (Anthropic Claude, Google Gemini, or OpenAI) for intelligent responses"""
         import aiohttp
         
         agent_id = agent_info.get("id", "")
         agent_role = agent_info.get("label", "Insurance Agent")
         agent_description = agent_info.get("description", "")
         agent_persona = agent_info.get("persona", "")
+        agent_model = agent_info.get("model", "")
         
         # Build rich context-aware system prompt based on agent role
         system_prompt = f"""You are {agent_role} at Hartford, a business insurance company.
@@ -72,7 +74,39 @@ IMPORTANT GUIDELINES:
 
 Respond naturally as {agent_role} would in a real Hartford insurance setting."""
 
-        # Try Anthropic Claude first (if AWS_BEDROCK_API_KEY is set)
+        # Route to appropriate API based on agent's model
+        # Google Gemini for Claims Processing agent
+        if "Gemini" in agent_model and self.google_api_key:
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(
+                        f'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key={self.google_api_key}',
+                        headers={
+                            'Content-Type': 'application/json'
+                        },
+                        json={
+                            'contents': [{
+                                'parts': [{
+                                    'text': f"{system_prompt}\n\nUser: {message}"
+                                }]
+                            }],
+                            'generationConfig': {
+                                'temperature': 0.7,
+                                'maxOutputTokens': 1024
+                            }
+                        },
+                        timeout=aiohttp.ClientTimeout(total=30)
+                    ) as response:
+                        if response.status == 200:
+                            result = await response.json()
+                            return result['candidates'][0]['content']['parts'][0]['text']
+                        else:
+                            error_text = await response.text()
+                            logger.error(f"Google Gemini API error {response.status}: {error_text[:200]}")
+            except Exception as e:
+                logger.error(f"Error calling Google Gemini: {e}")
+        
+        # Try Anthropic Claude for Bedrock agents
         if self.anthropic_api_key:
             try:
                 async with aiohttp.ClientSession() as session:
@@ -148,7 +182,7 @@ Respond naturally as {agent_role} would in a real Hartford insurance setting."""
                     {"id": "underwriting_decision_agent", "label": "Underwriting Decision", "type": "domain", "status": "active", "model": "AWS Bedrock Claude Sonnet 4", 
                      "description": "Manages underwriting operations and risk analysis",
                      "persona": "I handle all underwriting inquiries for Hartford's business insurance. I gather information from brokers, third-party sources, and other agents, analyze the data, and make underwriting decisions. I coordinate with Insurance Broker Agent for submissions, Third Party Data Review for external risk data, and Underwriter Analysis for exposure assessment. I am thorough, analytical, and ensure proper risk evaluation."},
-                    {"id": "claims_processing_agent", "label": "Claims Processing", "type": "domain", "status": "active", "model": "AWS Bedrock Claude Sonnet 4", 
+                    {"id": "claims_processing_agent", "label": "Claims Processing", "type": "domain", "status": "active", "model": "Google Gemini 2.0 Flash", 
                      "description": "Manages complete claims lifecycle",
                      "persona": "I manage all claims-related workflows from initial intake to resolution. When you report a claim, I collect all required details (policy number, date and nature of loss, documentation), verify coverage, and coordinate the entire claims process. I work with Claims Intake to log details, Claims Investigation to verify validity, and Claims Adjustment to finalize settlements. I keep you informed throughout and ensure efficient, accurate claim processing according to Hartford's policies."},
                     

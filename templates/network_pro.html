@@ -16,20 +16,20 @@
         
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #0c1117;
-            color: #ffffff;
+            background: #f5f7fa;
+            color: #1e293b;
             height: 100vh;
             overflow: hidden;
         }
 
         .top-nav {
-            background: #1a1f2e;
+            background: #ffffff;
             height: 60px;
             display: flex;
             align-items: center;
             justify-content: space-between;
             padding: 0 20px;
-            border-bottom: 1px solid #2a3f5f;
+            border-bottom: 1px solid #e2e8f0;
         }
 
         .top-nav .logo {
@@ -67,21 +67,21 @@
 
         .sidebar-left {
             width: 280px;
-            background: #151b26;
-            border-right: 1px solid #2a3f5f;
+            background: #ffffff;
+            border-right: 1px solid #e2e8f0;
             display: flex;
             flex-direction: column;
         }
 
         .sidebar-header {
             padding: 20px;
-            border-bottom: 1px solid #2a3f5f;
+            border-bottom: 1px solid #e2e8f0;
         }
 
         .sidebar-header h3 {
             font-size: 1.1rem;
             margin-bottom: 10px;
-            color: #e5e7eb;
+            color: #1e293b;
         }
 
         .agent-networks {
@@ -91,8 +91,8 @@
         }
 
         .agent-card {
-            background: #1f2937;
-            border: 1px solid #374151;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
             border-radius: 8px;
             padding: 15px;
             margin-bottom: 10px;
@@ -102,13 +102,13 @@
         }
 
         .agent-card:hover {
-            background: #252f3f;
-            border-color: #4f46e5;
+            background: #e0f2fe;
+            border-color: #38bdf8;
         }
 
         .agent-card.active {
-            background: #252f3f;
-            border-color: #3b82f6;
+            background: #e0f2fe;
+            border-color: #0ea5e9;
         }
 
         .agent-status {
@@ -130,14 +130,14 @@
 
         .agent-type {
             font-size: 0.8rem;
-            color: #9ca3af;
+            color: #64748b;
             margin-bottom: 8px;
         }
 
         .agent-model {
             font-size: 0.75rem;
-            color: #6b7280;
-            background: #374151;
+            color: #475569;
+            background: #e2e8f0;
             padding: 2px 6px;
             border-radius: 4px;
             display: inline-block;
@@ -145,16 +145,16 @@
 
         .network-center {
             flex: 1;
-            background: #0f1419;
+            background: #f8fafc;
             position: relative;
             display: flex;
             flex-direction: column;
         }
 
         .network-header {
-            background: #1a1f2e;
+            background: #ffffff;
             padding: 15px 20px;
-            border-bottom: 1px solid #2a3f5f;
+            border-bottom: 1px solid #e2e8f0;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -171,9 +171,9 @@
         }
 
         .control-btn {
-            background: #374151;
+            background: #e2e8f0;
             border: none;
-            color: white;
+            color: #1e293b;
             padding: 6px 12px;
             border-radius: 4px;
             font-size: 0.8rem;
@@ -182,7 +182,7 @@
         }
 
         .control-btn:hover {
-            background: #4b5563;
+            background: #cbd5e1;
         }
 
         .network-canvas {
@@ -190,9 +190,9 @@
             position: relative;
             overflow: hidden;
             min-height: 600px;
-            background: #1e1e2e;
+            background: #ffffff;
             border-radius: 8px;
-            border: 1px solid #313244;
+            border: 1px solid #e2e8f0;
         }
         
         .network-canvas svg {
@@ -203,17 +203,17 @@
 
         .sidebar-right {
             width: 320px;
-            background: #151b26;
-            border-left: 1px solid #2a3f5f;
+            background: #ffffff;
+            border-left: 1px solid #e2e8f0;
             display: flex;
             flex-direction: column;
             min-height: 0;
         }
 
         .chat-header {
-            background: #1a1f2e;
+            background: #f8fafc;
             padding: 15px 20px;
-            border-bottom: 1px solid #2a3f5f;
+            border-bottom: 1px solid #e2e8f0;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -239,7 +239,7 @@
 
         .system-status {
             padding: 15px 20px;
-            border-bottom: 1px solid #2a3f5f;
+            border-bottom: 1px solid #e2e8f0;
         }
 
         .status-row {
@@ -250,7 +250,7 @@
         }
 
         .status-label {
-            color: #9ca3af;
+            color: #64748b;
         }
 
         .status-value {
@@ -280,17 +280,17 @@
         }
 
         .message.agent {
-            background: #1f2937;
-            border-left: 3px solid #3b82f6;
+            background: #f8fafc;
+            border-left: 3px solid #38bdf8;
         }
 
         .message.user {
-            background: #1e3a5f;
-            border-left: 3px solid #60a5fa;
+            background: #dbeafe;
+            border-left: 3px solid #0ea5e9;
         }
 
         .message.system {
-            background: #065f46;
+            background: #ecfdf5;
             border-left: 3px solid #10b981;
         }
 
@@ -302,26 +302,26 @@
 
         .message-agent {
             font-weight: 600;
-            color: #3b82f6;
+            color: #0ea5e9;
         }
 
         .message-time {
             font-size: 0.75rem;
-            color: #6b7280;
+            color: #64748b;
         }
 
         .message-content {
-            color: #e5e7eb;
+            color: #1e293b;
             white-space: pre-wrap;
             word-wrap: break-word;
             overflow-wrap: break-word;
         }
 
         .chat-input {
-            border-top: 1px solid #2a3f5f;
+            border-top: 1px solid #e2e8f0;
             padding: 15px;
             flex-shrink: 0;
-            background: #151b26;
+            background: #ffffff;
         }
 
         .input-row {
@@ -331,9 +331,9 @@
 
         .chat-input input {
             flex: 1;
-            background: #1f2937;
-            border: 1px solid #374151;
-            color: white;
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            color: #1e293b;
             padding: 10px;
             border-radius: 6px;
             font-size: 0.9rem;
@@ -341,7 +341,7 @@
 
         .chat-input input:focus {
             outline: none;
-            border-color: #3b82f6;
+            border-color: #0ea5e9;
         }
 
         .send-btn {
@@ -364,7 +364,7 @@
         }
 
         .node circle {
-            stroke: #fff;
+            stroke: #0ea5e9;
             stroke-width: 2px;
         }
 
@@ -372,12 +372,12 @@
             font-size: 10px;
             font-weight: 500;
             text-anchor: middle;
-            fill: white;
+            fill: #1e293b;
             pointer-events: none;
         }
 
         .link {
-            stroke: #4f46e5;
+            stroke: #cbd5e1;
             stroke-width: 2px;
             stroke-opacity: 0.6;
         }
@@ -403,14 +403,16 @@
 
         .tooltip {
             position: absolute;
-            background: #1f2937;
-            border: 1px solid #374151;
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
             border-radius: 6px;
             padding: 10px;
             font-size: 0.8rem;
             pointer-events: none;
             z-index: 1000;
             display: none;
+            color: #1e293b;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
         .loading {
@@ -422,9 +424,9 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: rgba(30, 30, 46, 0.9);
+            background: rgba(255, 255, 255, 0.9);
             font-size: 1.1rem;
-            color: #6b7280;
+            color: #475569;
             z-index: 10;
         }
 
@@ -727,7 +729,7 @@
                 .attr('x', d => d.x)
                 .attr('y', 20)
                 .attr('text-anchor', 'middle')
-                .style('fill', '#6b7280')
+                .style('fill', '#475569')
                 .style('font-size', '12px')
                 .style('font-weight', 'bold')
                 .text(d => d.name);
@@ -740,7 +742,7 @@
                 .attr('x', d => d.x)
                 .attr('y', 35)
                 .attr('text-anchor', 'middle')
-                .style('fill', '#4b5563')
+                .style('fill', '#64748b')
                 .style('font-size', '10px')
                 .text(d => d.label);
 
@@ -797,7 +799,7 @@
                 .attr('rx', 8)
                 .attr('ry', 8)
                 .style('fill', d => getNodeColor(d.type))
-                .style('stroke', '#1e293b')
+                .style('stroke', '#0ea5e9')
                 .style('stroke-width', 2);
 
             // Add labels to nodes
@@ -806,7 +808,7 @@
                 .style('font-size', '11px')
                 .style('font-weight', '600')
                 .style('text-anchor', 'middle')
-                .style('fill', 'white')
+                .style('fill', '#1e293b')
                 .attr('dy', '0.35em')
                 .each(function(d) {
                     // Wrap text if too long
@@ -860,18 +862,18 @@
         // Get node color based on type
         function getNodeColor(type) {
             const colors = {
-                'frontman': '#f59e0b',
-                'domain': '#8b5cf6',
-                'specialist': '#3b82f6',
-                'greeting': '#10b981',
-                'advanced': '#8b5cf6',
-                'orchestrator': '#f59e0b',
-                'decision': '#ef4444',
-                'tool': '#06b6d4',
-                'document': '#84cc16',
-                'iot': '#f97316'
+                'frontman': '#7dd3fc',
+                'domain': '#67e8f9',
+                'specialist': '#a5f3fc',
+                'greeting': '#7dd3fc',
+                'advanced': '#67e8f9',
+                'orchestrator': '#7dd3fc',
+                'decision': '#a5f3fc',
+                'tool': '#7dd3fc',
+                'document': '#67e8f9',
+                'iot': '#a5f3fc'
             };
-            return colors[type] || '#6b7280';
+            return colors[type] || '#bae6fd';
         }
 
         // Drag functions

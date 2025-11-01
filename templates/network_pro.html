@@ -208,7 +208,6 @@
             display: flex;
             flex-direction: column;
             min-height: 0;
-            height: 100vh;
         }
 
         .chat-header {
@@ -676,18 +675,78 @@
                 .attr('d', 'M0,-5L10,0L0,5')
                 .attr('fill', '#4f46e5');
 
+            // Define zones for organizing agents
+            const zones = {
+                'front_office': { x: width * 0.2, color: '#1e3a5f' },    // Customer-facing
+                'middle_office': { x: width * 0.5, color: '#2d1b4e' },   // Coordination
+                'back_office': { x: width * 0.8, color: '#1e2d3f' }      // Processing
+            };
+
+            // Assign zones to agents based on their role
+            function getAgentZone(agentId) {
+                // Front Office: Customer-facing agents
+                if (['insurance_agent', 'insurance_broker_agent'].includes(agentId)) {
+                    return 'front_office';
+                }
+                // Middle Office: Domain coordinators
+                if (['underwriting_decision_agent', 'claims_processing_agent'].includes(agentId)) {
+                    return 'middle_office';
+                }
+                // Back Office: All specialists
+                return 'back_office';
+            }
+
             // Prepare data - fix API data mapping
-            const nodes = networkTopology.nodes.map(d => Object.assign({}, d));
+            const nodes = networkTopology.nodes.map(d => {
+                const node = Object.assign({}, d);
+                node.zone = getAgentZone(d.id);
+                node.targetX = zones[node.zone].x;
+                return node;
+            });
+            
             const links = networkTopology.connections.map(d => Object.assign({
                 source: d.from,
                 target: d.to,
                 type: d.type
             }, d));
 
-            // Create simulation with proper error handling
+            // Draw zone backgrounds
+            const zoneLabels = [
+                { name: 'Front Office', x: width * 0.2, label: '(Customer)' },
+                { name: 'Middle Office', x: width * 0.5, label: '(Coordination)' },
+                { name: 'Back Office', x: width * 0.8, label: '(Processing)' }
+            ];
+
+            svg.append('g')
+                .selectAll('text')
+                .data(zoneLabels)
+                .enter()
+                .append('text')
+                .attr('x', d => d.x)
+                .attr('y', 20)
+                .attr('text-anchor', 'middle')
+                .style('fill', '#6b7280')
+                .style('font-size', '12px')
+                .style('font-weight', 'bold')
+                .text(d => d.name);
+
+            svg.append('g')
+                .selectAll('text')
+                .data(zoneLabels)
+                .enter()
+                .append('text')
+                .attr('x', d => d.x)
+                .attr('y', 35)
+                .attr('text-anchor', 'middle')
+                .style('fill', '#4b5563')
+                .style('font-size', '10px')
+                .text(d => d.label);
+
+            // Create simulation with zone positioning
             simulation = d3.forceSimulation(nodes)
-                .force('charge', d3.forceManyBody().strength(-600))
-                .force('center', d3.forceCenter(width / 2, height / 2))
+                .force('charge', d3.forceManyBody().strength(-400))
+                .force('y', d3.forceY(height / 2).strength(0.1))
+                .force('x', d3.forceX(d => d.targetX).strength(0.8))
                 .force('collision', d3.forceCollide().radius(80));
             
             // Add links with validation

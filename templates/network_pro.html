@@ -449,10 +449,10 @@
             Neuro AI - Multi Agent Accelerator Client
         </div>
         <div class="nav-buttons">
-            <button class="nav-btn">Deploy</button>
-            <button class="nav-btn">Analytics</button>
-            <button class="nav-btn">Explicate</button>
-            <button class="nav-btn">Expert</button>
+            <button class="nav-btn" onclick="handleDeploy()">Deploy</button>
+            <button class="nav-btn" onclick="handleAnalytics()">Analytics</button>
+            <button class="nav-btn" onclick="handleExplicate()">Explicate</button>
+            <button class="nav-btn" onclick="handleExpert()">Expert</button>
         </div>
     </div>
 
@@ -477,9 +477,9 @@
             <div class="network-header">
                 <div class="network-title">Multi-Agent Network Topology</div>
                 <div class="network-controls">
-                    <button class="control-btn">Reset</button>
-                    <button class="control-btn">Export</button>
-                    <button class="control-btn">Settings</button>
+                    <button class="control-btn" onclick="resetNetwork()">Reset</button>
+                    <button class="control-btn" onclick="exportNetwork()">Export</button>
+                    <button class="control-btn" onclick="showSettings()">Settings</button>
                 </div>
             </div>
             <div class="network-canvas" id="network-canvas">
@@ -1122,6 +1122,62 @@
             if (connectedAgent && networkTopology.nodes.length > 0) {
                 connectedAgent.textContent = `Connected: ${networkTopology.nodes[0].label}`;
             }
+        }
+        
+        // Top Navigation Button Handlers
+        function handleDeploy() {
+            addChatMessage('system', 'System', 'Deploy feature coming soon - this will allow you to deploy agent networks to production.');
+            console.log('Deploy button clicked');
+        }
+        
+        function handleAnalytics() {
+            addChatMessage('system', 'System', 'Analytics feature coming soon - this will show agent performance metrics and usage statistics.');
+            console.log('Analytics button clicked');
+        }
+        
+        function handleExplicate() {
+            addChatMessage('system', 'System', 'Explicate feature coming soon - this will explain agent decisions and reasoning chains.');
+            console.log('Explicate button clicked');
+        }
+        
+        function handleExpert() {
+            addChatMessage('system', 'System', 'Expert mode coming soon - this will provide advanced agent configuration options.');
+            console.log('Expert button clicked');
+        }
+        
+        // Network Control Button Handlers
+        function resetNetwork() {
+            console.log('Resetting network visualization...');
+            if (simulation) {
+                simulation.alpha(1).restart();
+                addChatMessage('system', 'System', 'Network visualization reset.');
+            }
+        }
+        
+        function exportNetwork() {
+            if (!networkTopology) {
+                addChatMessage('system', 'System', 'No network data to export.');
+                return;
+            }
+            
+            const dataStr = JSON.stringify(networkTopology, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'agent_network_topology.json';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            
+            addChatMessage('system', 'System', 'Network topology exported as JSON file.');
+            console.log('Network exported');
+        }
+        
+        function showSettings() {
+            addChatMessage('system', 'System', 'Settings panel coming soon - this will allow you to configure visualization options, model parameters, and agent behaviors.');
+            console.log('Settings button clicked');
         }
         
     </script>

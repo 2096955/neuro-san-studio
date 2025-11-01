@@ -320,6 +320,8 @@
         .chat-input {
             border-top: 1px solid #2a3f5f;
             padding: 15px;
+            flex-shrink: 0;
+            background: #151b26;
         }
 
         .input-row {
@@ -992,8 +994,30 @@
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
 
-        // Track selected agent for chat
+        // Track selected agent for chat and maintain separate chat histories
         let selectedAgentForChat = 'insurance_agent';
+        let chatHistories = {}; // Store chat history per agent
+        
+        // Save current chat history before switching agents
+        function saveChatHistory() {
+            const chatMessages = document.getElementById('chat-messages');
+            chatHistories[selectedAgentForChat] = chatMessages.innerHTML;
+        }
+        
+        // Load chat history for selected agent
+        function loadChatHistory(agentId) {
+            const chatMessages = document.getElementById('chat-messages');
+            if (chatHistories[agentId]) {
+                chatMessages.innerHTML = chatHistories[agentId];
+            } else {
+                // Start fresh chat for this agent
+                chatMessages.innerHTML = '';
+                const agent = networkTopology.nodes.find(n => n.id === agentId);
+                const agentName = agent ? agent.label : agentId;
+                addChatMessage('system', 'System', `Connected to ${agentName}. Ask me anything about my role in the insurance process.`);
+            }
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
         
         function sendMessage() {
             const input = document.getElementById('message-input');
@@ -1046,12 +1070,25 @@
         
         // Function to select which agent to chat with (called when clicking agent cards)
         function selectAgentForChat(agentId, agentName) {
+            // Save current chat before switching
+            if (selectedAgentForChat) {
+                saveChatHistory();
+            }
+            
+            // Switch to new agent
             selectedAgentForChat = agentId;
+            
+            // Update UI
             const connectedAgent = document.getElementById('connected-agent');
             if (connectedAgent) {
                 connectedAgent.textContent = `Connected: ${agentName}`;
             }
-            addChatMessage('system', 'System', `Now chatting with ${agentName}`);
+            
+            // Update chat title
+            document.querySelector('.chat-title').textContent = `Chat - ${agentName}`;
+            
+            // Load this agent's chat history (or start fresh)
+            loadChatHistory(agentId);
         }
 
         // Window resize handler

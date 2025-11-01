@@ -46,9 +46,11 @@ class AgentNetworkInterface:
         self.anthropic_api_key = os.environ.get('AWS_BEDROCK_API_KEY', '')
         self.openai_api_key = os.environ.get('OPENAI_API_KEY', '')
         self.google_api_key = os.environ.get('GOOGLE_API_KEY', '')
+        self.azure_openai_api_key = os.environ.get('AZURE_OPENAI_API_KEY', '')
+        self.azure_openai_endpoint = os.environ.get('AZURE_OPENAI_ENDPOINT', '')
         
     async def _call_ai_model(self, agent_info: Dict[str, Any], message: str, conversation_history: Optional[List[Dict[str, str]]] = None) -> str:
-        """Call AI model (Anthropic Claude, Google Gemini, or OpenAI) for intelligent responses"""
+        """Call AI model (Anthropic Claude, Google Gemini, Azure OpenAI, or OpenAI) for intelligent responses"""
         import aiohttp
         
         agent_id = agent_info.get("id", "")
@@ -75,6 +77,37 @@ IMPORTANT GUIDELINES:
 Respond naturally as {agent_role} would in a real Hartford insurance setting."""
 
         # Route to appropriate API based on agent's model
+        # Azure OpenAI for Claims Adjustment agent
+        if "Azure OpenAI" in agent_model and self.azure_openai_api_key and self.azure_openai_endpoint:
+            try:
+                # Extract deployment name from endpoint or use default
+                deployment_name = "gpt-4"  # Default deployment name
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(
+                        f'{self.azure_openai_endpoint}/openai/deployments/{deployment_name}/chat/completions?api-version=2024-02-15-preview',
+                        headers={
+                            'api-key': self.azure_openai_api_key,
+                            'Content-Type': 'application/json'
+                        },
+                        json={
+                            'messages': [
+                                {'role': 'system', 'content': system_prompt},
+                                {'role': 'user', 'content': message}
+                            ],
+                            'max_tokens': 1024,
+                            'temperature': 0.7
+                        },
+                        timeout=aiohttp.ClientTimeout(total=30)
+                    ) as response:
+                        if response.status == 200:
+                            result = await response.json()
+                            return result['choices'][0]['message']['content']
+                        else:
+                            error_text = await response.text()
+                            logger.error(f"Azure OpenAI API error {response.status}: {error_text[:200]}")
+            except Exception as e:
+                logger.error(f"Error calling Azure OpenAI: {e}")
+        
         # Google Gemini for Claims Processing agent
         if "Gemini" in agent_model and self.google_api_key:
             try:
@@ -204,7 +237,7 @@ Respond naturally as {agent_role} would in a real Hartford insurance setting."""
                     {"id": "claims_investigation_agent", "label": "Claims Investigation", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4", 
                      "description": "Investigates claim validity",
                      "persona": "I investigate claims to confirm their validity using third-party reports, inspections, and interviews. I verify claim documentation, gather supporting evidence, review policy coverage, coordinate site inspections when needed, screen for fraud indicators, and compile comprehensive investigative reports. I escalate complex issues and ensure all findings are documented for claims adjustment."},
-                    {"id": "claims_adjustment_agent", "label": "Claims Adjustment", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4", 
+                    {"id": "claims_adjustment_agent", "label": "Claims Adjustment", "type": "specialist", "status": "active", "model": "Azure OpenAI GPT-4", 
                      "description": "Finalizes settlements and payouts",
                      "persona": "I finalize claim settlements and payouts based on investigation findings. I review damage assessments, calculate settlement amounts according to policy terms and coverage limits, prepare settlement offers, coordinate payments, and ensure all adjustments comply with Hartford's policies and regulatory requirements. I communicate final decisions clearly to policyholders."},
                     

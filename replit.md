@@ -36,13 +36,16 @@ Successfully implemented complete insurance underwriting specialist network from
 - **Authentic Agent Relationships**: Realistic connections showing delegation, consultation, and collaboration patterns between insurance underwriting specialists
 - **Production-Ready Experience**: AWS Bedrock Claude Sonnet 4 integration with specialist descriptions and proper error handling
 
-### AWS Bedrock Integration (September 15, 2025)
-Successfully migrated from OpenAI to AWS Bedrock for key agent networks:
-- **Environment**: Configured AWS_BEDROCK_API_KEY for bearer token authentication
-- **Agent Networks**: Updated music_nerd, hello_world, music_nerd_pro, and agent_network_designer to use built-in Bedrock integration
-- **Model Mapping**: Uses "bedrock-us-claude-sonnet-4" which maps to "us.anthropic.claude-sonnet-4-20250514-v1:0"
-- **Server Configuration**: Updated for Replit environment with proper domain and port mapping
-- **Framework**: Uses Neuro SAN's native `class: "bedrock"` integration rather than custom implementation
+### Multi-LLM Provider Architecture (November 1, 2025)
+Successfully implemented simultaneous multi-provider LLM support with three different providers running in the same agent network:
+- **AWS Bedrock (Claude Sonnet 4)**: 9 agents use Anthropic's Claude Sonnet 4 via AWS Bedrock API
+  - Insurance Agent (frontman), Underwriting Decision, Insurance Broker, Third Party Data Review, Underwriter Analysis, Claims Intake, Claims Investigation, ACORD Handler, Risk Exposure, Building Review
+- **Google Gemini (2.0 Flash)**: Claims Processing agent uses Google's Gemini 2.0 Flash for claims workflows
+- **Azure OpenAI (GPT-4)**: Claims Adjustment agent uses Azure OpenAI's GPT-4 for settlement processing
+- **Intelligent Routing**: System detects agent's model field and routes API calls to appropriate LLM provider
+- **Environment**: Configured AWS_BEDROCK_API_KEY, GOOGLE_API_KEY, AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT
+- **API Integration**: Direct REST API calls to Anthropic, Google Generative AI, and Azure OpenAI endpoints
+- **Model Detection**: "Gemini" keyword routes to Google, "Azure OpenAI" routes to Azure, default routes to Bedrock/Anthropic
 
 ## User Preferences
 

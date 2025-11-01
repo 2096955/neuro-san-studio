@@ -6,6 +6,14 @@ The Neuro SAN Studio is a comprehensive multi-agent AI development platform buil
 
 ## Recent Changes
 
+### Enhanced Agent Persona System (November 1, 2025)
+Significantly improved agent self-awareness and conversation quality:
+- **Rich Agent Personas**: Each agent now has detailed persona descriptions from HOCON configuration, including specific responsibilities and delegation hierarchies
+- **Independent Chat Streams**: Each agent maintains a separate, siloed conversation history - switching agents creates fresh contexts
+- **Role-Aware Responses**: Agents now understand their specific role (e.g., Insurance Agent knows to delegate claims to Claims Processing)
+- **Professional Communication**: Agents speak in first person with confidence about their expertise ("I manage all claims workflows...")
+- **Delegation Awareness**: Frontman and domain agents know which specialists to involve for different scenarios
+
 ### Professional Specialist Agent Network (September 15, 2025)
 Successfully implemented complete insurance underwriting specialist network from Neuro SAN Studio architecture:
 - **Real Domain Specialists**: 12 actual insurance agents including Insurance Agent (frontman), Underwriting Decision, Claims Processing, Risk Exposure Analyzer, ACORD Handler, Building Review, and other domain experts

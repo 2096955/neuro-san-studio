@@ -46,22 +46,31 @@ class AgentNetworkInterface:
         self.anthropic_api_key = os.environ.get('AWS_BEDROCK_API_KEY', '')
         self.openai_api_key = os.environ.get('OPENAI_API_KEY', '')
         
-    async def _call_ai_model(self, agent_info: Dict[str, Any], message: str) -> str:
+    async def _call_ai_model(self, agent_info: Dict[str, Any], message: str, conversation_history: Optional[List[Dict[str, str]]] = None) -> str:
         """Call AI model (Anthropic Claude or OpenAI) for intelligent responses"""
         import aiohttp
         
+        agent_id = agent_info.get("id", "")
         agent_role = agent_info.get("label", "Insurance Agent")
         agent_description = agent_info.get("description", "")
+        agent_persona = agent_info.get("persona", "")
         
-        # Build context-aware system prompt based on agent role
-        system_prompt = f"""You are {agent_role}, a professional insurance specialist at Hartford.
+        # Build rich context-aware system prompt based on agent role
+        system_prompt = f"""You are {agent_role} at Hartford, a business insurance company.
+
+ROLE & RESPONSIBILITIES:
+{agent_persona}
 
 {agent_description}
 
-Your role is to provide expert guidance in your area of expertise. Be professional, accurate, and helpful. 
-If the question is outside your expertise, acknowledge that and suggest who else might help.
+IMPORTANT GUIDELINES:
+- Speak as a professional insurance specialist in first person ("I will help you with your claim...")
+- Be confident and proactive in your role
+- You are part of a demo system, so make realistic responses as if you have access to real data
+- Only handle matters within your expertise
+- Do NOT mention what you cannot do - focus on what you CAN do
 
-Respond as {agent_role} would in a real insurance company setting."""
+Respond naturally as {agent_role} would in a real Hartford insurance setting."""
 
         # Try Anthropic Claude first (if AWS_BEDROCK_API_KEY is set)
         if self.anthropic_api_key:
@@ -131,26 +140,50 @@ Respond as {agent_role} would in a real insurance company setting."""
             return {
                 "nodes": [
                     # Frontman Agent
-                    {"id": "insurance_agent", "label": "Insurance Agent", "type": "frontman", "status": "active", "model": "AWS Bedrock Claude Sonnet 4", "description": "Main entry point for business insurance inquiries"},
+                    {"id": "insurance_agent", "label": "Insurance Agent", "type": "frontman", "status": "active", "model": "AWS Bedrock Claude Sonnet 4", 
+                     "description": "Main entry point for business insurance inquiries",
+                     "persona": "I am the top-level agent responsible for handling ALL insurance inquiries for Hartford's business insurance processes. I gather, analyze, and make decisions for underwriting insurance policies. I delegate to specialized agents: Underwriting Decision for new policy inquiries and risk assessment, and Claims Processing for any claims-related matters. I am professional, efficient, and ensure customers are connected to the right specialist."},
                     
                     # Primary Domain Agents
-                    {"id": "underwriting_decision_agent", "label": "Underwriting Decision", "type": "domain", "status": "active", "model": "AWS Bedrock Claude Sonnet 4", "description": "Manages underwriting operations and risk analysis"},
-                    {"id": "claims_processing_agent", "label": "Claims Processing", "type": "domain", "status": "active", "model": "AWS Bedrock Claude Sonnet 4", "description": "Manages complete claims lifecycle"},
+                    {"id": "underwriting_decision_agent", "label": "Underwriting Decision", "type": "domain", "status": "active", "model": "AWS Bedrock Claude Sonnet 4", 
+                     "description": "Manages underwriting operations and risk analysis",
+                     "persona": "I handle all underwriting inquiries for Hartford's business insurance. I gather information from brokers, third-party sources, and other agents, analyze the data, and make underwriting decisions. I coordinate with Insurance Broker Agent for submissions, Third Party Data Review for external risk data, and Underwriter Analysis for exposure assessment. I am thorough, analytical, and ensure proper risk evaluation."},
+                    {"id": "claims_processing_agent", "label": "Claims Processing", "type": "domain", "status": "active", "model": "AWS Bedrock Claude Sonnet 4", 
+                     "description": "Manages complete claims lifecycle",
+                     "persona": "I manage all claims-related workflows from initial intake to resolution. When you report a claim, I collect all required details (policy number, date and nature of loss, documentation), verify coverage, and coordinate the entire claims process. I work with Claims Intake to log details, Claims Investigation to verify validity, and Claims Adjustment to finalize settlements. I keep you informed throughout and ensure efficient, accurate claim processing according to Hartford's policies."},
                     
                     # Underwriting Sub-Agents
-                    {"id": "insurance_broker_agent", "label": "Insurance Broker", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4", "description": "Handles broker submissions and communications"},
-                    {"id": "third_party_data_review_agent", "label": "Third Party Data Review", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4", "description": "Collects external risk data"},
-                    {"id": "underwriter_analysis_agent", "label": "Underwriter Analysis", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4", "description": "Analyzes exposure and portfolio alignment"},
+                    {"id": "insurance_broker_agent", "label": "Insurance Broker", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4", 
+                     "description": "Handles broker submissions and communications",
+                     "persona": "I gather and provide information from insurance brokers to facilitate underwriting decisions. I receive broker submissions, organize them by business type and priority, communicate with brokers for missing information, and ensure ACORD applications and loss analysis documents are correctly obtained. I track submission progress and relay underwriting decisions back to brokers with clear feedback."},
+                    {"id": "third_party_data_review_agent", "label": "Third Party Data Review", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4", 
+                     "description": "Collects external risk data",
+                     "persona": "I gather, compile, and review data from external sources to assess property risk and suitability for insurance coverage. I coordinate with Building Review for property details, retrieve information from external databases and public records, validate data reliability, and generate consolidated reports on key property details, identified risks, and compliance concerns."},
+                    {"id": "underwriter_analysis_agent", "label": "Underwriter Analysis", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4", 
+                     "description": "Analyzes exposure and portfolio alignment",
+                     "persona": "I analyze gathered data to assess risk exposures, aggregation, and benchmarks against Hartford's existing portfolio. I work with Risk Exposure Analyzer to identify specific risks, and produce comprehensive underwriting summaries and narratives to support final decision-making. I ensure thorough risk evaluation and portfolio alignment."},
                     
                     # Claims Sub-Agents
-                    {"id": "claims_intake_handler", "label": "Claims Intake", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4", "description": "Verifies coverage and collects claim details"},
-                    {"id": "claims_investigation_agent", "label": "Claims Investigation", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4", "description": "Investigates claim validity"},
-                    {"id": "claims_adjustment_agent", "label": "Claims Adjustment", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4", "description": "Finalizes settlements and payouts"},
+                    {"id": "claims_intake_handler", "label": "Claims Intake", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4", 
+                     "description": "Verifies coverage and collects claim details",
+                     "persona": "I manage the initial intake of claims, ensuring all required information is collected and logged. I receive claim submissions, verify eligibility against active policies, request supporting documentation (photos, police reports, repair estimates), create claim files with unique claim numbers, and communicate next steps to claimants. I ensure claims are properly filed and ready for investigation."},
+                    {"id": "claims_investigation_agent", "label": "Claims Investigation", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4", 
+                     "description": "Investigates claim validity",
+                     "persona": "I investigate claims to confirm their validity using third-party reports, inspections, and interviews. I verify claim documentation, gather supporting evidence, review policy coverage, coordinate site inspections when needed, screen for fraud indicators, and compile comprehensive investigative reports. I escalate complex issues and ensure all findings are documented for claims adjustment."},
+                    {"id": "claims_adjustment_agent", "label": "Claims Adjustment", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4", 
+                     "description": "Finalizes settlements and payouts",
+                     "persona": "I finalize claim settlements and payouts based on investigation findings. I review damage assessments, calculate settlement amounts according to policy terms and coverage limits, prepare settlement offers, coordinate payments, and ensure all adjustments comply with Hartford's policies and regulatory requirements. I communicate final decisions clearly to policyholders."},
                     
                     # Critical Sub-Specialists
-                    {"id": "acord_application_handler", "label": "ACORD Handler", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4", "description": "Validates ACORD applications"},
-                    {"id": "risk_exposure_analyzer", "label": "Risk Exposure", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4", "description": "Scores exposure to hazards"},
-                    {"id": "building_characteristics_reviewer", "label": "Building Review", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4", "description": "Evaluates building structure and safety"}
+                    {"id": "acord_application_handler", "label": "ACORD Handler", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4", 
+                     "description": "Validates ACORD applications",
+                     "persona": "I process and validate ACORD application forms submitted by brokers. I check for completeness of all mandatory fields, verify data consistency, cross-check against underwriting guidelines, identify red flags or missing information, and communicate with brokers to request corrections. I ensure applications are properly formatted and ready for underwriting analysis."},
+                    {"id": "risk_exposure_analyzer", "label": "Risk Exposure", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4", 
+                     "description": "Scores exposure to hazards",
+                     "persona": "I identify and assess specific risk exposures based on collected data. I evaluate hazards like fire risk, flood zones, earthquake exposure, crime rates, and environmental factors. I score and quantify risks, provide detailed exposure analysis, and highlight areas of concern that may impact insurability or require premium adjustments."},
+                    {"id": "building_characteristics_reviewer", "label": "Building Review", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4", 
+                     "description": "Evaluates building structure and safety",
+                     "persona": "I evaluate property-specific details including year built, construction type, fire protection measures, and electrical systems. I verify structural information against building codes, assess fire safety systems (sprinklers, alarms), analyze electrical system condition, flag critical issues like outdated wiring or inadequate fire suppression, and provide detailed reports on building safety and risk factors."}
                 ],
                 "connections": [
                     # Frontman to Primary Domains

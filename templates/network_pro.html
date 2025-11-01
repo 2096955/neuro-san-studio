@@ -377,7 +377,7 @@
         }
 
         .link {
-            stroke: #cbd5e1;
+            stroke: #1e293b;
             stroke-width: 2px;
             stroke-opacity: 0.6;
         }
@@ -808,7 +808,7 @@
                 .style('font-size', '11px')
                 .style('font-weight', '600')
                 .style('text-anchor', 'middle')
-                .style('fill', '#1e293b')
+                .style('fill', 'white')
                 .attr('dy', '0.35em')
                 .each(function(d) {
                     // Wrap text if too long
@@ -862,18 +862,18 @@
         // Get node color based on type
         function getNodeColor(type) {
             const colors = {
-                'frontman': '#7dd3fc',
-                'domain': '#67e8f9',
-                'specialist': '#a5f3fc',
-                'greeting': '#7dd3fc',
-                'advanced': '#67e8f9',
-                'orchestrator': '#7dd3fc',
-                'decision': '#a5f3fc',
-                'tool': '#7dd3fc',
-                'document': '#67e8f9',
-                'iot': '#a5f3fc'
+                'frontman': '#f59e0b',
+                'domain': '#8b5cf6',
+                'specialist': '#3b82f6',
+                'greeting': '#10b981',
+                'advanced': '#8b5cf6',
+                'orchestrator': '#f59e0b',
+                'decision': '#ef4444',
+                'tool': '#06b6d4',
+                'document': '#84cc16',
+                'iot': '#f97316'
             };
-            return colors[type] || '#bae6fd';
+            return colors[type] || '#6b7280';
         }
 
         // Drag functions

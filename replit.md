@@ -6,13 +6,27 @@ The Neuro SAN Studio is a comprehensive multi-agent AI development platform buil
 
 ## Recent Changes
 
+### Professional Light Theme UI (November 1, 2025)
+Transformed the interface to a modern, professional light theme matching enterprise design standards:
+- **Light Color Palette**: Clean white backgrounds (#ffffff), light gray panels (#f5f7fa), and professional borders (#e2e8f0)
+- **Vibrant Node Colors**: Original purple/orange scheme restored - Orange (#f59e0b) for frontman agents, Purple (#8b5cf6) for domain agents, Blue (#3b82f6) for specialists
+- **High Contrast Links**: Dark connection lines (#1e293b) for excellent visibility against white background
+- **Functional Top Navigation**: Seven working buttons providing system feedback and functionality
+  - Deploy, Analytics, Explicate, Expert buttons show feature descriptions
+  - Reset button restarts network visualization physics
+  - Export button downloads network topology as JSON
+  - Settings button shows configuration preview
+- **Professional Typography**: Dark text (#1e293b) throughout with cyan accents (#0ea5e9) for interactive elements
+- **Three-Zone Architecture**: Clearly visible Front Office, Middle Office, and Back Office zones with zone labels
+
 ### Enhanced Agent Persona System (November 1, 2025)
 Significantly improved agent self-awareness and conversation quality:
 - **Rich Agent Personas**: Each agent now has detailed persona descriptions from HOCON configuration, including specific responsibilities and delegation hierarchies
-- **Independent Chat Streams**: Each agent maintains a separate, siloed conversation history - switching agents creates fresh contexts
-- **Role-Aware Responses**: Agents now understand their specific role (e.g., Insurance Agent knows to delegate claims to Claims Processing)
+- **Independent Chat Streams**: Each agent maintains separate, siloed conversation history via `chatHistories` object - switching agents loads/saves unique histories
+- **Role-Aware Responses**: Agents understand their specific role (e.g., Insurance Agent knows to delegate claims to Claims Processing)
 - **Professional Communication**: Agents speak in first person with confidence about their expertise ("I manage all claims workflows...")
 - **Delegation Awareness**: Frontman and domain agents know which specialists to involve for different scenarios
+- **Enhanced System Prompts**: Each agent receives full persona context, role description, and delegation hierarchy in system prompt
 
 ### Professional Specialist Agent Network (September 15, 2025)
 Successfully implemented complete insurance underwriting specialist network from Neuro SAN Studio architecture:
@@ -49,7 +63,31 @@ The platform provides a unified interface for multiple LLM providers including O
 The system implements a dual-tool architecture: CodedTools (custom Python implementations) and Toolbox tools (pre-built integrations). CodedTools inherit from a base interface and provide custom business logic, while Toolbox tools offer ready-to-use integrations with services like search engines, document processing, and external APIs. Tools can access both public arguments and private sly_data for secure information handling.
 
 ### Web Interface and Client Architecture
-The platform includes a Flask-based web client (neuro-san-web-client) that provides a visual interface for agent network management and interaction. The web client communicates with the core Neuro SAN server through both gRPC and HTTP protocols, supporting real-time chat interfaces and network visualization.
+The platform includes a Flask-based web client that provides a professional three-panel interface for agent network management and interaction:
+
+**Three-Panel Layout:**
+- **Left Panel**: Agent network browser showing all 12 insurance specialists with model information and active status indicators
+- **Center Panel**: D3.js force-directed network visualization with zone-based positioning (Front/Middle/Back Office), draggable nodes, and connection arrows
+- **Right Panel**: Real-time chat interface with per-agent conversation history, system status display, and AWS Bedrock Claude Sonnet 4 integration
+
+**Visual Design:**
+- Professional light theme with white panels and light gray backgrounds
+- Purple/orange node color scheme: Orange (#f59e0b) frontman, Purple (#8b5cf6) domain agents, Blue (#3b82f6) specialists
+- Dark connection lines (#1e293b) with directional arrows showing agent delegation patterns
+- Cyan interactive elements (#0ea5e9) for buttons, borders, and status indicators
+
+**Interactive Features:**
+- Click agent cards to switch chat context and load independent conversation history
+- Drag nodes to reorganize network visualization
+- Export network topology as JSON file
+- Reset network physics simulation
+- Real-time message streaming from AWS Bedrock with typing indicators
+
+**Technical Stack:**
+- Flask backend with Socket.IO for real-time communication
+- D3.js v7 for force-directed graph visualization with zone constraints
+- Responsive CSS Grid layout with proper overflow handling
+- RESTful API endpoints for topology (/api/topology) and chat (/api/chat)
 
 ### Document Processing and RAG Integration
 The system provides comprehensive Retrieval-Augmented Generation (RAG) capabilities through multiple document loaders including PDF (PyMuPDF), Confluence, arXiv, Wikipedia, and generic document formats via Docling. The RAG system supports both in-memory and PostgreSQL-backed vector stores with configurable embedding models and text splitting strategies.

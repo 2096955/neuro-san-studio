@@ -36,16 +36,25 @@ Successfully implemented complete insurance underwriting specialist network from
 - **Authentic Agent Relationships**: Realistic connections showing delegation, consultation, and collaboration patterns between insurance underwriting specialists
 - **Production-Ready Experience**: AWS Bedrock Claude Sonnet 4 integration with specialist descriptions and proper error handling
 
-### Multi-LLM Provider Architecture (November 1, 2025)
-Successfully implemented simultaneous multi-provider LLM support with three different providers running in the same agent network:
-- **AWS Bedrock (Claude Sonnet 4)**: 9 agents use Anthropic's Claude Sonnet 4 via AWS Bedrock API
-  - Insurance Agent (frontman), Underwriting Decision, Insurance Broker, Third Party Data Review, Underwriter Analysis, Claims Intake, Claims Investigation, ACORD Handler, Risk Exposure, Building Review
-- **Google Gemini (2.0 Flash)**: Claims Processing agent uses Google's Gemini 2.0 Flash for claims workflows
-- **Azure OpenAI (GPT-4)**: Claims Adjustment agent uses Azure OpenAI's GPT-4 for settlement processing
-- **Intelligent Routing**: System detects agent's model field and routes API calls to appropriate LLM provider
-- **Environment**: Configured AWS_BEDROCK_API_KEY, GOOGLE_API_KEY, AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT
-- **API Integration**: Direct REST API calls to Anthropic, Google Generative AI, and Azure OpenAI endpoints
-- **Model Detection**: "Gemini" keyword routes to Google, "Azure OpenAI" routes to Azure, default routes to Bedrock/Anthropic
+### Multi-LLM Provider Architecture (November 2, 2025)
+Successfully implemented simultaneous multi-provider LLM support with intelligent routing and accurate model tracking:
+- **Azure GPT-5 (gpt-5-chat)**: Claims Adjustment agent using Azure's latest GPT-5 deployment
+  - Endpoint: `https://20969-mgp7xyl6-eastus2.cognitiveservices.azure.com/`
+  - Deployment: `gpt-5-chat`, API Version: `2024-12-01-preview`
+  - Authentication: `AZURE_GPT5_KEY` environment variable
+  - Status: ✅ Working - Successfully tested and responding
+- **Google Gemini (2.0 Flash Thinking)**: Claims Processing agent using Google's advanced thinking model
+  - Model: `gemini-2.0-flash-thinking-exp-01-21`
+  - Primary Key: `GOOGLE_API_KEY` (blocked by 403 error)
+  - Backup Key: `GEMINI_API_KEY_BACKUP_2` (working with automatic fallback)
+  - Status: ✅ Working - Automatic failover to backup key successful
+- **AWS Bedrock (Claude Sonnet 4)**: 10 insurance underwriting agents using Anthropic's Claude
+  - Agents: Insurance Agent (frontman), Underwriting Decision, Insurance Broker, Third Party Data Review, Underwriter Analysis, Claims Intake, Claims Investigation, ACORD Handler, Risk Exposure, Building Review
+  - Authentication: `AWS_BEDROCK_API_KEY` (Anthropic API key)
+  - Status: ✅ Working - Default provider for most agents
+- **Intelligent Routing**: System detects "Azure", "Gemini", or default in agent's model field and routes to appropriate API
+- **Response Tracking**: API responses now include actual model used (e.g., "Azure GPT-5", "Google Gemini 2.0 Flash Thinking") for transparency
+- **Automatic Fallback**: Google Gemini implementation tries primary key first, then backup key if 403 error occurs
 
 ## User Preferences
 

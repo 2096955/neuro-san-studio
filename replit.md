@@ -6,6 +6,15 @@ The Neuro SAN Studio is a comprehensive multi-agent AI development platform buil
 
 ## Recent Changes
 
+### Dynamic Industry Vertical Switching (November 2, 2025)
+Successfully implemented dynamic network switching between industry verticals without server restart:
+- **UI Dropdown Selector**: Added "Industry Vertical" dropdown in sidebar header with Insurance Underwriting and Banking Operations options
+- **Backend Support**: Updated `/api/topology` endpoint to accept `network=insurance|banking` query parameter
+- **Client-Side Switching**: JavaScript `switchNetwork()` function reloads network topology and clears visualization/chat state
+- **Dual Network Support**: Embedded both insurance (12 agents) and banking (14 agents) topologies directly in main app.py
+- **Seamless Experience**: Network switching happens instantly without page reload or server restart
+- **Examples Directory**: Complete standalone implementations saved to `examples/insurance/` and `examples/banking/`
+
 ### Professional Light Theme UI (November 1, 2025)
 Transformed the interface to a modern, professional light theme matching enterprise design standards:
 - **Light Color Palette**: Clean white backgrounds (#ffffff), light gray panels (#f5f7fa), and professional borders (#e2e8f0)

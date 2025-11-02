@@ -84,6 +84,39 @@
             color: #1e293b;
         }
 
+        .network-selector {
+            margin-top: 10px;
+        }
+
+        .network-selector label {
+            font-size: 0.9rem;
+            color: #64748b;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .network-selector select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            background: #ffffff;
+            color: #1e293b;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .network-selector select:hover {
+            border-color: #2563eb;
+        }
+
+        .network-selector select:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
         .agent-networks {
             flex: 1;
             overflow-y: auto;
@@ -462,7 +495,14 @@
         <div class="sidebar-left">
             <div class="sidebar-header">
                 <h3>Agent Networks</h3>
-                <div style="font-size: 0.8rem; color: #6b7280;">
+                <div class="network-selector">
+                    <label for="network-type">Industry Vertical</label>
+                    <select id="network-type" onchange="switchNetwork()">
+                        <option value="insurance">Insurance Underwriting</option>
+                        <option value="banking">Banking Operations</option>
+                    </select>
+                </div>
+                <div style="font-size: 0.8rem; color: #6b7280; margin-top: 10px;">
                     <i class="fas fa-circle" style="color: #10b981; font-size: 6px;"></i>
                     <span id="agent-count-status">0 active agents</span>
                 </div>
@@ -578,11 +618,35 @@
             });
         }
 
+        // Switch between different industry networks
+        async function switchNetwork() {
+            const selector = document.getElementById('network-type');
+            const selectedNetwork = selector.value;
+            
+            console.log('Switching to network:', selectedNetwork);
+            
+            // Clear current visualization
+            const canvas = document.getElementById('network-canvas');
+            canvas.innerHTML = '<div class="loading" id="network-loading"><i class="fas fa-spinner"></i>Loading agent network...</div>';
+            
+            // Clear chat and reset state
+            chatMessages = document.getElementById('chat-messages');
+            chatMessages.innerHTML = '';
+            selectedAgent = null;
+            currentSessionId = null;
+            chatHistories = {};
+            
+            // Reload topology for selected network
+            await loadNetworkTopology(selectedNetwork);
+            
+            addChatMessage('system', 'System', `Switched to ${selectedNetwork === 'insurance' ? 'Insurance Underwriting' : 'Banking Operations'} network`);
+        }
+
         // Load network topology from server
-        async function loadNetworkTopology() {
+        async function loadNetworkTopology(networkType = 'insurance') {
             try {
-                console.log('Loading network topology...');
-                const response = await fetch('/api/topology');
+                console.log('Loading network topology for:', networkType);
+                const response = await fetch(`/api/topology?network=${networkType}`);
                 
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);

@@ -217,10 +217,116 @@ Respond naturally as {agent_role} would in a real Hartford insurance setting."""
         # Fallback response if no API is available
         return (f"Hello, I'm {agent_role}. {agent_description} How can I assist you with your insurance needs today?", "Demo Mode")
         
-    async def get_network_topology(self) -> Dict[str, Any]:
-        """Get the full agent network topology with connections"""
+    def _get_banking_topology(self) -> Dict[str, Any]:
+        """Get banking operations network topology"""
+        return {
+            "nodes": [
+                # Frontman Agent
+                {"id": "customer_service_representative", "label": "Customer Service", "type": "frontman", "status": "active", "model": "AWS Bedrock Claude Sonnet 4",
+                 "description": "Handles customer inquiries and support",
+                 "persona": "I am the top-level agent responsible for handling all incoming customer service requests for banking products and services. I coordinate with specialized departments when needed - Account Management for relationship and wealth services, Fraud Prevention for security concerns, and Loan Services for lending inquiries. I ensure customers receive professional, efficient banking support."},
+                
+                # Primary Domain Agents
+                {"id": "account_manager", "label": "Account Manager", "type": "domain", "status": "active", "model": "AWS Bedrock Claude Sonnet 4",
+                 "description": "Manages customer relationships and accounts",
+                 "persona": "I manage ongoing customer relationships and handle account-related needs. I coordinate with Relationship Manager for VIP clients, Wealth Management Advisor for high-net-worth individuals, and Investment Specialist for investment services. I ensure customer satisfaction and long-term banking relationships."},
+                {"id": "fraud_prevention_specialist", "label": "Fraud Prevention", "type": "domain", "status": "active", "model": "AWS Bedrock Claude Sonnet 4",
+                 "description": "Identifies and investigates fraud",
+                 "persona": "I am responsible for identifying and investigating potential fraudulent activities on customer accounts. I work with our Fraud Investigation Team on complex cases and Security Analyst for cybersecurity threats. I protect customers and the bank from financial crimes while minimizing false positives."},
+                {"id": "loan_officer", "label": "Loan Officer", "type": "domain", "status": "active", "model": "AWS Bedrock Claude Sonnet 4",
+                 "description": "Assesses and approves loan applications",
+                 "persona": "I assess and approve loan applications based on customers' financial profiles and banking history. I coordinate with Underwriter for risk analysis, Mortgage Specialist for home loans, and Business Banking Officer for commercial lending. I ensure responsible lending while meeting customer needs."},
+                
+                # Account Management Sub-Agents
+                {"id": "relationship_manager", "label": "Relationship Manager", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4",
+                 "description": "Manages VIP client relationships",
+                 "persona": "I manage relationships with the bank's most important clients, ensuring personalized service and addressing high-level banking needs. I coordinate with Wealth Management and Investment specialists to provide comprehensive financial solutions for our premium customers."},
+                {"id": "wealth_management_advisor", "label": "Wealth Management", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4",
+                 "description": "Advises high-net-worth clients",
+                 "persona": "I handle high-net-worth clients by advising them on investment strategies, financial planning, and asset management. I work with Investment Specialist and Portfolio Manager to create customized wealth management solutions that align with clients' financial goals and risk tolerance."},
+                {"id": "investment_specialist", "label": "Investment Specialist", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4",
+                 "description": "Recommends investment products",
+                 "persona": "I recommend and manage investment products for clients, ensuring alignment with their financial goals. I coordinate with Portfolio Manager for ongoing management and Trading Desk for execution. I provide expert guidance on stocks, bonds, mutual funds, and other investment vehicles."},
+                
+                # Fraud Prevention Sub-Agents
+                {"id": "fraud_investigation_team", "label": "Fraud Investigation", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4",
+                 "description": "Investigates complex fraud cases",
+                 "persona": "I investigate and manage complex or high-value fraud cases, coordinating with internal teams and external agencies as needed. I work with Security Analyst on cybersecurity aspects and gather evidence to protect customer accounts and bank assets."},
+                {"id": "security_analyst", "label": "Security Analyst", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4",
+                 "description": "Oversees cybersecurity systems",
+                 "persona": "I oversee the bank's cybersecurity systems, tracking and preventing breaches or threats. I monitor suspicious activities, analyze security patterns, and implement protective measures to safeguard customer data and banking infrastructure."},
+                
+                # Loan Services Sub-Agents
+                {"id": "underwriter", "label": "Underwriter", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4",
+                 "description": "Reviews loan risk factors",
+                 "persona": "I review and analyze the risk factors in loan applications, ensuring they meet the bank's lending criteria. I assess creditworthiness, debt-to-income ratios, collateral value, and other risk indicators to make informed lending decisions."},
+                {"id": "mortgage_specialist", "label": "Mortgage Specialist", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4",
+                 "description": "Manages mortgage applications",
+                 "persona": "I manage the process of mortgage applications, from initial consultation to final approval. I guide customers through home financing options, explain terms and rates, coordinate property appraisals, and ensure smooth closing processes."},
+                {"id": "business_banking_officer", "label": "Business Banking", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4",
+                 "description": "Handles business financial needs",
+                 "persona": "I handle the financial needs of small to medium-sized businesses, including business loans, lines of credit, and banking solutions. I understand business operations and provide tailored financial products to support growth and cash flow management."},
+                
+                # Investment Management Sub-Agents
+                {"id": "portfolio_manager", "label": "Portfolio Manager", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4",
+                 "description": "Oversees investment portfolio performance",
+                 "persona": "I oversee the performance of investment portfolios, ensuring they meet the financial goals and risk profiles of clients. I monitor market conditions, rebalance allocations, and coordinate with Trading Desk for execution. I provide regular performance reports to clients."},
+                {"id": "trading_desk", "label": "Trading Desk", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4",
+                 "description": "Executes financial transactions",
+                 "persona": "I handle the execution of financial transactions, ensuring timely and accurate trades in markets. I monitor market conditions, execute buy and sell orders, and ensure best execution for client transactions across various asset classes."},
+            ],
+            "connections": [
+                # Frontman to Primary Domains
+                {"from": "customer_service_representative", "to": "account_manager", "type": "delegates"},
+                {"from": "customer_service_representative", "to": "fraud_prevention_specialist", "type": "delegates"},
+                {"from": "customer_service_representative", "to": "loan_officer", "type": "delegates"},
+                
+                # Account Manager to Specialists
+                {"from": "account_manager", "to": "relationship_manager", "type": "delegates"},
+                {"from": "account_manager", "to": "wealth_management_advisor", "type": "delegates"},
+                {"from": "account_manager", "to": "investment_specialist", "type": "delegates"},
+                
+                # Fraud Prevention to Specialists
+                {"from": "fraud_prevention_specialist", "to": "fraud_investigation_team", "type": "delegates"},
+                {"from": "fraud_prevention_specialist", "to": "security_analyst", "type": "delegates"},
+                
+                # Loan Officer to Specialists
+                {"from": "loan_officer", "to": "underwriter", "type": "delegates"},
+                {"from": "loan_officer", "to": "mortgage_specialist", "type": "delegates"},
+                {"from": "loan_officer", "to": "business_banking_officer", "type": "delegates"},
+                
+                # Wealth Management Delegation
+                {"from": "wealth_management_advisor", "to": "investment_specialist", "type": "delegates"},
+                {"from": "wealth_management_advisor", "to": "portfolio_manager", "type": "delegates"},
+                
+                # Relationship Manager Delegation
+                {"from": "relationship_manager", "to": "wealth_management_advisor", "type": "delegates"},
+                {"from": "relationship_manager", "to": "investment_specialist", "type": "delegates"},
+                
+                # Investment Chain
+                {"from": "investment_specialist", "to": "portfolio_manager", "type": "delegates"},
+                {"from": "investment_specialist", "to": "trading_desk", "type": "delegates"},
+                
+                # Portfolio Management
+                {"from": "portfolio_manager", "to": "trading_desk", "type": "delegates"},
+                
+                # Fraud Investigation
+                {"from": "fraud_investigation_team", "to": "security_analyst", "type": "delegates"},
+            ]
+        }
+    
+    async def get_network_topology(self, network_type: str = "insurance") -> Dict[str, Any]:
+        """Get the full agent network topology with connections
+        
+        Args:
+            network_type: Type of network ("insurance" or "banking")
+        """
         if not NEURO_SAN_AVAILABLE:
-            # Return real insurance underwriting specialist network from Neuro SAN Studio
+            # Return banking topology if requested
+            if network_type == "banking":
+                return self._get_banking_topology()
+            
+            # Return insurance underwriting specialist network (default)
             return {
                 "nodes": [
                     # Frontman Agent
@@ -341,7 +447,9 @@ Respond naturally as {agent_role} would in a real Hartford insurance setting."""
         
         if not NEURO_SAN_AVAILABLE:
             # Use Multi-LLM provider support with intelligent routing
-            topology = await self.get_network_topology()
+            # Try to detect network type from agent_id (insurance vs banking)
+            network_type = "banking" if any(x in network_name for x in ["customer_service", "account_manager", "loan_officer"]) else "insurance"
+            topology = await self.get_network_topology(network_type)
             agent_info = next((node for node in topology["nodes"] if node["id"] == network_name), None)
             
             if agent_info:
@@ -425,9 +533,12 @@ def index():
 def get_topology():
     """API endpoint to get network topology"""
     try:
+        # Get network type from query parameter (default: insurance)
+        network_type = request.args.get('network', 'insurance')
+        
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        topology = loop.run_until_complete(neuro_interface.get_network_topology())
+        topology = loop.run_until_complete(neuro_interface.get_network_topology(network_type))
         return jsonify({"status": "success", "topology": topology})
     except Exception as e:
         logger.error(f"Error getting topology: {e}")

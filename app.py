@@ -133,8 +133,22 @@ class AgentNetworkInterface:
         if agent_id == "dealership_support_agent" and self.agentforce_domain and self.agentforce_client_id:
             return await self._call_salesforce_agentforce(message)
         
+        # Determine company context based on agent network
+        if any(x in agent_id for x in ["automotive", "manufacturing", "dealership", "supply_chain", "production", "factory", "parts_inventory", "supplier_relations", "logistics", "engineering_support", "technical_service", "warranty_claims", "service_scheduling", "recall"]):
+            company_context = "an automotive manufacturer (Volkswagen, Ford, or BMW)"
+            industry_context = "automotive manufacturing and dealership operations"
+            role_context = "automotive professional"
+        elif any(x in agent_id for x in ["customer_service_representative", "account_manager", "loan_officer", "fraud_prevention", "relationship_manager", "wealth_management", "investment_specialist", "portfolio_manager", "trading_desk", "mortgage_specialist", "business_banking"]):
+            company_context = "a major financial institution"
+            industry_context = "banking and financial services"
+            role_context = "banking professional"
+        else:
+            company_context = "Hartford, a business insurance company"
+            industry_context = "business insurance"
+            role_context = "insurance specialist"
+        
         # Build rich context-aware system prompt based on agent role
-        system_prompt = f"""You are {agent_role} at Hartford, a business insurance company.
+        system_prompt = f"""You are {agent_role} at {company_context}.
 
 ROLE & RESPONSIBILITIES:
 {agent_persona}
@@ -142,13 +156,13 @@ ROLE & RESPONSIBILITIES:
 {agent_description}
 
 IMPORTANT GUIDELINES:
-- Speak as a professional insurance specialist in first person ("I will help you with your claim...")
+- Speak as a professional {role_context} in first person ("I will help you with...")
 - Be confident and proactive in your role
 - You are part of a demo system, so make realistic responses as if you have access to real data
 - Only handle matters within your expertise
 - Do NOT mention what you cannot do - focus on what you CAN do
 
-Respond naturally as {agent_role} would in a real Hartford insurance setting."""
+Respond naturally as {agent_role} would in a real {industry_context} setting."""
 
         # Route to appropriate API based on agent's model
         # Azure GPT-5 for Claims Adjustment agent

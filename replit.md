@@ -12,6 +12,9 @@ Successfully implemented dynamic network switching between industry verticals wi
 - **Backend Support**: Updated `/api/topology` endpoint to accept `network=insurance|banking` query parameter
 - **Client-Side Switching**: JavaScript `switchNetwork()` function reloads network topology and clears visualization/chat state
 - **Dual Network Support**: Embedded both insurance (12 agents) and banking (14 agents) topologies directly in main app.py
+- **Zone Organization**: Both networks organized into Front Office (Customer), Middle Office (Coordination), Back Office (Processing)
+  - Banking: Front (Customer Service, Relationship Manager, Trading Desk, Business Banking, Wealth Management), Middle (Account Manager, Loan Officer, Portfolio Manager, Underwriter), Back (Fraud Prevention, Investigation, Security Analyst, Investment Specialist, Mortgage)
+  - Insurance: Front (Insurance Agent, Broker), Middle (Underwriting Decision, Claims Processing), Back (all specialists)
 - **Seamless Experience**: Network switching happens instantly without page reload or server restart
 - **Examples Directory**: Complete standalone implementations saved to `examples/insurance/` and `examples/banking/`
 

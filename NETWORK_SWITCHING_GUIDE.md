@@ -13,10 +13,29 @@ The Neuro SAN Studio now supports seamless switching between different industry 
 - **LLM Providers**: AWS Bedrock Claude Sonnet 4, Google Gemini 2.0 Flash Thinking, Azure GPT-5
 
 ### Banking Operations (14 Agents)
-- **Frontman**: Customer Service Representative
-- **Domain Agents**: Account Manager, Fraud Prevention Specialist, Loan Officer
-- **Specialists**: Relationship Manager, Wealth Management Advisor, Investment Specialist, Fraud Investigation Team, Security Analyst, Underwriter, Mortgage Specialist, Business Banking Officer, Portfolio Manager, Trading Desk
-- **LLM Providers**: AWS Bedrock Claude Sonnet 4 (all agents)
+Organized into three functional zones:
+
+**Front Office (Customer-facing):**
+- Customer Service Representative (frontman)
+- Relationship Manager
+- Trading Desk
+- Business Banking Officer
+- Wealth Management Advisor
+
+**Middle Office (Coordination):**
+- Account Manager
+- Loan Officer
+- Portfolio Manager
+- Underwriter
+
+**Back Office (Processing):**
+- Fraud Prevention Specialist
+- Fraud Investigation Team
+- Security Analyst
+- Investment Specialist
+- Mortgage Specialist
+
+**LLM Providers**: AWS Bedrock Claude Sonnet 4 (all agents)
 
 ## How to Switch Networks
 

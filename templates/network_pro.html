@@ -752,6 +752,7 @@
 
             // Assign zones to agents based on their role
             function getAgentZone(agentId) {
+                // INSURANCE NETWORK ZONES
                 // Front Office: Customer-facing agents
                 if (['insurance_agent', 'insurance_broker_agent'].includes(agentId)) {
                     return 'front_office';
@@ -760,7 +761,24 @@
                 if (['underwriting_decision_agent', 'claims_processing_agent'].includes(agentId)) {
                     return 'middle_office';
                 }
-                // Back Office: All specialists
+                
+                // BANKING NETWORK ZONES
+                // Front Office: Customer-facing agents
+                if (['customer_service_representative', 'relationship_manager', 'trading_desk', 
+                     'business_banking_officer', 'wealth_management_advisor'].includes(agentId)) {
+                    return 'front_office';
+                }
+                // Middle Office: Coordination and risk assessment
+                if (['account_manager', 'loan_officer', 'portfolio_manager', 'underwriter'].includes(agentId)) {
+                    return 'middle_office';
+                }
+                // Back Office: Processing, security, and specialists
+                if (['fraud_prevention_specialist', 'fraud_investigation_team', 'security_analyst',
+                     'investment_specialist', 'mortgage_specialist'].includes(agentId)) {
+                    return 'back_office';
+                }
+                
+                // Default: Back Office for all other specialists
                 return 'back_office';
             }
 

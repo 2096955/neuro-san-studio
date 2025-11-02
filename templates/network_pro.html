@@ -634,6 +634,7 @@
             chatMessages = document.getElementById('chat-messages');
             chatMessages.innerHTML = '';
             selectedAgent = null;
+            selectedAgentForChat = null;  // Reset chat routing
             currentSessionId = null;
             chatHistories = {};
             
@@ -1018,6 +1019,9 @@
             if (agent) {
                 document.querySelector('.chat-title').textContent = `Chat - ${agent.label}`;
                 addChatMessage('system', 'System', `Connected to ${agent.label}`);
+                
+                // CRITICAL: Update the agent for chat routing
+                selectAgentForChat(agent.id, agent.label);
             }
         }
 
@@ -1223,10 +1227,10 @@
                 agentCountValue.textContent = `${agentCount} active`;
             }
             
-            // Update selected agent
-            const connectedAgent = document.getElementById('connected-agent');
-            if (connectedAgent && networkTopology.nodes.length > 0) {
-                connectedAgent.textContent = `Connected: ${networkTopology.nodes[0].label}`;
+            // Auto-select first agent in the network
+            if (networkTopology.nodes.length > 0) {
+                const firstAgent = networkTopology.nodes[0];
+                selectAgent(firstAgent.id);  // This will also call selectAgentForChat
             }
         }
         

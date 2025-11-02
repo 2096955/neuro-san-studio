@@ -6,13 +6,13 @@ The Neuro SAN Studio now supports seamless switching between different industry 
 
 ## Available Networks
 
-### Insurance Underwriting (12 Agents)
+### 1. Insurance Underwriting (12 Agents)
 - **Frontman**: Insurance Agent
 - **Domain Agents**: Underwriting Decision, Claims Processing  
 - **Specialists**: Insurance Broker, Third Party Data Review, Underwriter Analysis, Claims Intake, Claims Investigation, Claims Adjustment, ACORD Handler, Risk Exposure Analyzer, Building Review
 - **LLM Providers**: AWS Bedrock Claude Sonnet 4, Google Gemini 2.0 Flash Thinking, Azure GPT-5
 
-### Banking Operations (14 Agents)
+### 2. Banking Operations (14 Agents)
 Organized into three functional zones:
 
 **Front Office (Customer-facing):**
@@ -37,6 +37,33 @@ Organized into three functional zones:
 
 **LLM Providers**: AWS Bedrock Claude Sonnet 4 (all agents)
 
+### 3. Automotive Manufacturing (16 Agents)
+Organized into three functional zones:
+
+**Front Office (Customer-facing):**
+- Operations Coordinator (frontman)
+- Customer Service Agent
+- Dealership Support Agent
+- Service Scheduling Specialist
+- Recall Information Agent
+- Technical Service Advisor
+- Warranty Claims Processor
+
+**Middle Office (Manufacturing):**
+- Manufacturing Operations Agent
+- Production Planning Specialist
+- Quality Control Agent
+- Factory Efficiency Optimizer
+
+**Back Office (Supply Chain/Engineering):**
+- Supply Chain Management Agent
+- Parts Inventory Specialist
+- Supplier Relations Agent
+- Logistics Coordinator
+- Engineering Support Agent
+
+**LLM Providers**: AWS Bedrock Claude Sonnet 4 (all agents)
+
 ## How to Switch Networks
 
 ### Via UI (Recommended)
@@ -44,6 +71,7 @@ Organized into three functional zones:
 2. Click the dropdown to see available options:
    - Insurance Underwriting
    - Banking Operations
+   - Automotive Manufacturing
 3. Select your desired network
 4. The system will automatically:
    - Clear the current visualization
@@ -53,11 +81,14 @@ Organized into three functional zones:
 
 ### Via API (For Development)
 ```bash
-# Get Insurance network
+# Get Insurance network (12 agents)
 curl http://localhost:5000/api/topology?network=insurance
 
-# Get Banking network  
+# Get Banking network (14 agents)
 curl http://localhost:5000/api/topology?network=banking
+
+# Get Automotive network (16 agents)
+curl http://localhost:5000/api/topology?network=automotive
 ```
 
 ## Technical Implementation

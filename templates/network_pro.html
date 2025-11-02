@@ -500,6 +500,7 @@
                     <select id="network-type" onchange="switchNetwork()">
                         <option value="insurance">Insurance Underwriting</option>
                         <option value="banking">Banking Operations</option>
+                        <option value="automotive">Automotive Manufacturing</option>
                     </select>
                 </div>
                 <div style="font-size: 0.8rem; color: #6b7280; margin-top: 10px;">
@@ -639,7 +640,12 @@
             // Reload topology for selected network
             await loadNetworkTopology(selectedNetwork);
             
-            addChatMessage('system', 'System', `Switched to ${selectedNetwork === 'insurance' ? 'Insurance Underwriting' : 'Banking Operations'} network`);
+            const networkNames = {
+                'insurance': 'Insurance Underwriting',
+                'banking': 'Banking Operations',
+                'automotive': 'Automotive Manufacturing'
+            };
+            addChatMessage('system', 'System', `Switched to ${networkNames[selectedNetwork] || selectedNetwork} network`);
         }
 
         // Load network topology from server
@@ -775,6 +781,24 @@
                 // Back Office: Processing, security, and specialists
                 if (['fraud_prevention_specialist', 'fraud_investigation_team', 'security_analyst',
                      'investment_specialist', 'mortgage_specialist'].includes(agentId)) {
+                    return 'back_office';
+                }
+                
+                // AUTOMOTIVE NETWORK ZONES
+                // Front Office: Customer-facing agents
+                if (['automotive_operations_coordinator', 'customer_service_agent', 'dealership_support_agent',
+                     'service_scheduling_specialist', 'recall_information_agent', 'technical_service_advisor',
+                     'warranty_claims_processor'].includes(agentId)) {
+                    return 'front_office';
+                }
+                // Middle Office: Manufacturing and coordination
+                if (['manufacturing_operations_agent', 'production_planning_specialist', 'quality_control_agent',
+                     'factory_efficiency_optimizer'].includes(agentId)) {
+                    return 'middle_office';
+                }
+                // Back Office: Supply chain and engineering support
+                if (['supply_chain_management_agent', 'parts_inventory_specialist', 'supplier_relations_agent',
+                     'logistics_coordinator', 'engineering_support_agent'].includes(agentId)) {
                     return 'back_office';
                 }
                 

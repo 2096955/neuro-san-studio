@@ -217,6 +217,103 @@ Respond naturally as {agent_role} would in a real Hartford insurance setting."""
         # Fallback response if no API is available
         return (f"Hello, I'm {agent_role}. {agent_description} How can I assist you with your insurance needs today?", "Demo Mode")
         
+    def _get_automotive_topology(self) -> Dict[str, Any]:
+        """Get automotive manufacturing network topology"""
+        return {
+            "nodes": [
+                # Frontman Agent
+                {"id": "automotive_operations_coordinator", "label": "Operations Coordinator", "type": "frontman", "status": "active", "model": "AWS Bedrock Claude Sonnet 4",
+                 "description": "Main orchestrator for automotive operations",
+                 "persona": "I am the Automotive Operations Coordinator responsible for routing all requests to specialized agents. I handle manufacturing operations, supply chain management, dealership support, customer service, and engineering support. I ensure safety-critical issues get immediate attention and production stoppages are high priority."},
+                
+                # Domain Agents
+                {"id": "manufacturing_operations_agent", "label": "Manufacturing Operations", "type": "domain", "status": "active", "model": "AWS Bedrock Claude Sonnet 4",
+                 "description": "Manages automotive production operations",
+                 "persona": "I oversee manufacturing operations across all production facilities. I coordinate production planning, quality control, and factory efficiency optimization. I work with plants globally and track key metrics like JPH, FTT, and OEE."},
+                {"id": "supply_chain_management_agent", "label": "Supply Chain Management", "type": "domain", "status": "active", "model": "AWS Bedrock Claude Sonnet 4",
+                 "description": "Manages supplier network and logistics",
+                 "persona": "I manage the complex supply chain supporting automotive manufacturing. I handle just-in-time inventory, supplier relationships, and global logistics. I ensure production continuity and manage critical parts shortages."},
+                {"id": "dealership_support_agent", "label": "Dealership Support", "type": "domain", "status": "active", "model": "AWS Bedrock Claude Sonnet 4",
+                 "description": "Supports dealer network operations",
+                 "persona": "I support our authorized dealership network with technical service guidance, sales operations support, and warranty claim processing. I help dealerships serve customers effectively while maintaining quality standards."},
+                {"id": "customer_service_agent", "label": "Customer Service", "type": "domain", "status": "active", "model": "AWS Bedrock Claude Sonnet 4",
+                 "description": "Direct customer service for vehicle owners",
+                 "persona": "I am the voice of the company to customers. I handle service scheduling, recall information, product inquiries, and connected services. I provide empathetic, clear, and solution-focused support."},
+                {"id": "engineering_support_agent", "label": "Engineering Support", "type": "domain", "status": "active", "model": "AWS Bedrock Claude Sonnet 4",
+                 "description": "Deep technical expertise and diagnostics",
+                 "persona": "I provide deep technical expertise for complex engineering issues. I handle vehicle diagnostics, technical documentation, and recall engineering coordination. I work on root cause analysis and regulatory compliance."},
+                
+                # Manufacturing Specialists
+                {"id": "production_planning_specialist", "label": "Production Planning", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4",
+                 "description": "Creates and optimizes production schedules",
+                 "persona": "I create and optimize production schedules across multiple facilities. I balance capacity, manage model changeovers, and handle production line rebalancing to maximize efficiency."},
+                {"id": "quality_control_agent", "label": "Quality Control", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4",
+                 "description": "Monitors quality metrics and defects",
+                 "persona": "I monitor quality metrics across production lines, investigate defect patterns, coordinate corrective actions, and track quality KPIs like First Time Through rate and defects per million."},
+                {"id": "factory_efficiency_optimizer", "label": "Factory Efficiency", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4",
+                 "description": "Analyzes and improves factory efficiency",
+                 "persona": "I analyze Overall Equipment Effectiveness, identify bottlenecks, recommend efficiency improvements, and monitor downtime and maintenance schedules to optimize factory performance."},
+                
+                # Supply Chain Specialists
+                {"id": "parts_inventory_specialist", "label": "Parts Inventory", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4",
+                 "description": "Tracks inventory and JIT delivery",
+                 "persona": "I track inventory levels across warehouses, manage just-in-time delivery schedules, identify potential shortages before they impact production, and coordinate emergency parts procurement."},
+                {"id": "supplier_relations_agent", "label": "Supplier Relations", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4",
+                 "description": "Manages supplier quality and performance",
+                 "persona": "I maintain supplier quality ratings, handle communications and escalations, manage supplier onboarding and qualification, and track delivery performance."},
+                {"id": "logistics_coordinator", "label": "Logistics Coordinator", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4",
+                 "description": "Optimizes logistics and distribution",
+                 "persona": "I optimize inbound and outbound logistics, coordinate vehicle distribution to dealerships, manage cross-border shipping and customs, and resolve delivery delays."},
+                
+                # Dealership Support Specialists
+                {"id": "technical_service_advisor", "label": "Technical Service Advisor", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4",
+                 "description": "Provides technical repair guidance",
+                 "persona": "I provide technical guidance for complex repairs, interpret diagnostic codes, recommend repair procedures and parts, and assist with Technical Service Bulletins."},
+                {"id": "warranty_claims_processor", "label": "Warranty Claims", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4",
+                 "description": "Processes warranty claims",
+                 "persona": "I review and approve warranty claims, identify fraud patterns, provide guidance on warranty coverage, and track warranty cost trends."},
+                
+                # Customer Service Specialists
+                {"id": "service_scheduling_specialist", "label": "Service Scheduling", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4",
+                 "description": "Books service appointments",
+                 "persona": "I book service appointments, find nearest authorized service centers, provide estimated service times, and manage recall appointment scheduling."},
+                {"id": "recall_information_agent", "label": "Recall Information", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4",
+                 "description": "Provides recall information",
+                 "persona": "I check if vehicles are affected by recalls, explain recall procedures and timelines, schedule recall service appointments, and provide recall remedy information."},
+            ],
+            "connections": [
+                # Frontman to Domain Agents
+                {"from": "automotive_operations_coordinator", "to": "manufacturing_operations_agent", "type": "delegates"},
+                {"from": "automotive_operations_coordinator", "to": "supply_chain_management_agent", "type": "delegates"},
+                {"from": "automotive_operations_coordinator", "to": "dealership_support_agent", "type": "delegates"},
+                {"from": "automotive_operations_coordinator", "to": "customer_service_agent", "type": "delegates"},
+                {"from": "automotive_operations_coordinator", "to": "engineering_support_agent", "type": "delegates"},
+                
+                # Manufacturing Operations to Specialists
+                {"from": "manufacturing_operations_agent", "to": "production_planning_specialist", "type": "delegates"},
+                {"from": "manufacturing_operations_agent", "to": "quality_control_agent", "type": "delegates"},
+                {"from": "manufacturing_operations_agent", "to": "factory_efficiency_optimizer", "type": "delegates"},
+                
+                # Supply Chain to Specialists
+                {"from": "supply_chain_management_agent", "to": "parts_inventory_specialist", "type": "delegates"},
+                {"from": "supply_chain_management_agent", "to": "supplier_relations_agent", "type": "delegates"},
+                {"from": "supply_chain_management_agent", "to": "logistics_coordinator", "type": "delegates"},
+                
+                # Dealership Support to Specialists
+                {"from": "dealership_support_agent", "to": "technical_service_advisor", "type": "delegates"},
+                {"from": "dealership_support_agent", "to": "warranty_claims_processor", "type": "delegates"},
+                
+                # Customer Service to Specialists
+                {"from": "customer_service_agent", "to": "service_scheduling_specialist", "type": "delegates"},
+                {"from": "customer_service_agent", "to": "recall_information_agent", "type": "delegates"},
+                
+                # Cross-domain collaborations
+                {"from": "supply_chain_management_agent", "to": "manufacturing_operations_agent", "type": "collaborates"},
+                {"from": "quality_control_agent", "to": "supplier_relations_agent", "type": "consults"},
+                {"from": "technical_service_advisor", "to": "engineering_support_agent", "type": "consults"},
+            ]
+        }
+    
     def _get_banking_topology(self) -> Dict[str, Any]:
         """Get banking operations network topology"""
         return {
@@ -325,6 +422,8 @@ Respond naturally as {agent_role} would in a real Hartford insurance setting."""
             # Return banking topology if requested
             if network_type == "banking":
                 return self._get_banking_topology()
+            elif network_type == "automotive":
+                return self._get_automotive_topology()
             
             # Return insurance underwriting specialist network (default)
             return {
@@ -447,8 +546,14 @@ Respond naturally as {agent_role} would in a real Hartford insurance setting."""
         
         if not NEURO_SAN_AVAILABLE:
             # Use Multi-LLM provider support with intelligent routing
-            # Try to detect network type from agent_id (insurance vs banking)
-            network_type = "banking" if any(x in network_name for x in ["customer_service", "account_manager", "loan_officer"]) else "insurance"
+            # Try to detect network type from agent_id
+            if any(x in network_name for x in ["customer_service_representative", "account_manager", "loan_officer", "fraud_prevention"]):
+                network_type = "banking"
+            elif any(x in network_name for x in ["automotive", "manufacturing", "dealership", "supply_chain"]):
+                network_type = "automotive"
+            else:
+                network_type = "insurance"
+            
             topology = await self.get_network_topology(network_type)
             agent_info = next((node for node in topology["nodes"] if node["id"] == network_name), None)
             

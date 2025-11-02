@@ -52,9 +52,71 @@ class AgentNetworkInterface:
         self.azure_gpt5_endpoint = 'https://20969-mgp7xyl6-eastus2.cognitiveservices.azure.com'
         self.azure_gpt5_model = 'gpt-5-chat'
         self.azure_gpt5_api_version = '2024-12-01-preview'
+        # Salesforce Agentforce Configuration
+        self.agentforce_domain = os.environ.get('AGENTFORCE_MY_DOMAIN_URL', '')
+        self.agentforce_service_agent_id = os.environ.get('AGENTFORCE_SERVICE_AGENT_ID', '')
+        self.agentforce_vwi_service_agent_id = os.environ.get('VWI_AGENTFORCE_SERVICE_AGENT_ID', '')
+        self.agentforce_client_id = os.environ.get('AGENTFORCE_CLIENT_ID', '')
+        self.agentforce_client_secret = os.environ.get('AGENTFORCE_CLIENT_SECRET', '')
         
+    async def _call_salesforce_agentforce(self, message: str, session_id: str = None) -> tuple[str, str]:
+        """Call Salesforce Agentforce API for dealership support
+        
+        Returns:
+            tuple: (response_text, actual_model_used)
+        """
+        import aiohttp
+        
+        try:
+            # Get OAuth token
+            async with aiohttp.ClientSession() as session:
+                # Request access token
+                async with session.post(
+                    f'{self.agentforce_domain}/services/oauth2/token',
+                    data={
+                        'grant_type': 'client_credentials',
+                        'client_id': self.agentforce_client_id,
+                        'client_secret': self.agentforce_client_secret
+                    },
+                    timeout=aiohttp.ClientTimeout(total=10)
+                ) as token_response:
+                    if token_response.status == 200:
+                        token_data = await token_response.json()
+                        access_token = token_data['access_token']
+                    else:
+                        error_text = await token_response.text()
+                        logger.error(f"Agentforce OAuth error {token_response.status}: {error_text[:200]}")
+                        return (f"I'm currently unavailable. Please try again later.", "Salesforce Agentforce (Error)")
+                
+                # Call Agentforce API
+                async with session.post(
+                    f'{self.agentforce_domain}/services/data/v62.0/agent/runtime',
+                    headers={
+                        'Authorization': f'Bearer {access_token}',
+                        'Content-Type': 'application/json'
+                    },
+                    json={
+                        'agentId': self.agentforce_vwi_service_agent_id or self.agentforce_service_agent_id,
+                        'sessionId': session_id or f"session_{datetime.now().timestamp()}",
+                        'message': message
+                    },
+                    timeout=aiohttp.ClientTimeout(total=30)
+                ) as response:
+                    if response.status == 200:
+                        result = await response.json()
+                        agent_response = result.get('response', result.get('message', 'I can help you with dealership support.'))
+                        logger.info(f"Salesforce Agentforce API success")
+                        return (agent_response, "Salesforce Agentforce")
+                    else:
+                        error_text = await response.text()
+                        logger.error(f"Agentforce API error {response.status}: {error_text[:200]}")
+                        return (f"I'm currently unavailable. Please try again later.", "Salesforce Agentforce (Error)")
+        except Exception as e:
+            logger.error(f"Error calling Salesforce Agentforce: {e}")
+            return (f"I'm currently unavailable. Please try again later.", "Salesforce Agentforce (Error)")
+    
     async def _call_ai_model(self, agent_info: Dict[str, Any], message: str, conversation_history: Optional[List[Dict[str, str]]] = None) -> tuple[str, str]:
-        """Call AI model (Anthropic Claude, Google Gemini, Azure GPT-5, or OpenAI) for intelligent responses
+        """Call AI model (Anthropic Claude, Google Gemini, Azure GPT-5, Salesforce Agentforce, or OpenAI) for intelligent responses
         
         Returns:
             tuple: (response_text, actual_model_used)
@@ -66,6 +128,10 @@ class AgentNetworkInterface:
         agent_description = agent_info.get("description", "")
         agent_persona = agent_info.get("persona", "")
         agent_model = agent_info.get("model", "")
+        
+        # Route to Salesforce Agentforce for dealership_support_agent
+        if agent_id == "dealership_support_agent" and self.agentforce_domain and self.agentforce_client_id:
+            return await self._call_salesforce_agentforce(message)
         
         # Build rich context-aware system prompt based on agent role
         system_prompt = f"""You are {agent_role} at Hartford, a business insurance company.
@@ -233,9 +299,9 @@ Respond naturally as {agent_role} would in a real Hartford insurance setting."""
                 {"id": "supply_chain_management_agent", "label": "Supply Chain Management", "type": "domain", "status": "active", "model": "AWS Bedrock Claude Sonnet 4",
                  "description": "Manages supplier network and logistics",
                  "persona": "I manage the complex supply chain supporting automotive manufacturing. I handle just-in-time inventory, supplier relationships, and global logistics. I ensure production continuity and manage critical parts shortages."},
-                {"id": "dealership_support_agent", "label": "Dealership Support", "type": "domain", "status": "active", "model": "AWS Bedrock Claude Sonnet 4",
-                 "description": "Supports dealer network operations",
-                 "persona": "I support our authorized dealership network with technical service guidance, sales operations support, and warranty claim processing. I help dealerships serve customers effectively while maintaining quality standards."},
+                {"id": "dealership_support_agent", "label": "Dealership Support", "type": "domain", "status": "active", "model": "Salesforce Agentforce",
+                 "description": "Supports dealer network operations via Salesforce",
+                 "persona": "I support our authorized dealership network with technical service guidance, sales operations support, and warranty claim processing through Salesforce Agentforce. I help dealerships serve customers effectively while maintaining quality standards."},
                 {"id": "customer_service_agent", "label": "Customer Service", "type": "domain", "status": "active", "model": "AWS Bedrock Claude Sonnet 4",
                  "description": "Direct customer service for vehicle owners",
                  "persona": "I am the voice of the company to customers. I handle service scheduling, recall information, product inquiries, and connected services. I provide empathetic, clear, and solution-focused support."},

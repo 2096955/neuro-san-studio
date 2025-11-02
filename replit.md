@@ -6,6 +6,15 @@ The Neuro SAN Studio is a comprehensive multi-agent AI development platform buil
 
 ## Recent Changes
 
+### Salesforce Agentforce Integration (November 2, 2025)
+Successfully integrated Salesforce Agentforce for dealership support in automotive network:
+- **Dealership Support Agent**: Now powered by Salesforce Agentforce instead of generic LLM
+- **OAuth 2.0 Authentication**: Implemented client credentials flow for secure API access
+- **Session Management**: Maintains conversation continuity across multiple interactions
+- **VWI Support**: Automatic failover to VWI-specific Service Agent ID when configured
+- **Environment Variables**: AGENTFORCE_MY_DOMAIN_URL, AGENTFORCE_SERVICE_AGENT_ID, AGENTFORCE_CLIENT_ID, AGENTFORCE_CLIENT_SECRET, VWI_AGENTFORCE_SERVICE_AGENT_ID
+- **Real Salesforce Integration**: Connects to actual Salesforce Agentforce instance for automotive dealership support
+
 ### Dynamic Industry Vertical Switching (November 2, 2025)
 Successfully implemented dynamic network switching between three industry verticals without server restart:
 - **UI Dropdown Selector**: Added "Industry Vertical" dropdown in sidebar header with Insurance Underwriting, Banking Operations, and Automotive Manufacturing options
@@ -15,7 +24,7 @@ Successfully implemented dynamic network switching between three industry vertic
 - **Zone Organization**: All three networks organized into Front Office (Customer), Middle Office (Coordination), Back Office (Processing)
   - Insurance: Front (Insurance Agent, Broker), Middle (Underwriting Decision, Claims Processing), Back (all specialists)
   - Banking: Front (Customer Service, Relationship Manager, Trading Desk, Business Banking, Wealth Management), Middle (Account Manager, Loan Officer, Portfolio Manager, Underwriter), Back (Fraud Prevention, Investigation, Security, Investment, Mortgage)
-  - Automotive: Front (Operations Coordinator, Customer Service, Dealership Support, Service Scheduling, Recall Info, Technical Advisor, Warranty Claims), Middle (Manufacturing Operations, Production Planning, Quality Control, Factory Efficiency), Back (Supply Chain, Parts Inventory, Supplier Relations, Logistics, Engineering Support)
+  - Automotive: Front (Operations Coordinator, Customer Service, Dealership Support [Salesforce Agentforce], Service Scheduling, Recall Info, Technical Advisor, Warranty Claims), Middle (Manufacturing Operations, Production Planning, Quality Control, Factory Efficiency), Back (Supply Chain, Parts Inventory, Supplier Relations, Logistics, Engineering Support)
 - **Seamless Experience**: Network switching happens instantly without page reload or server restart
 - **Examples Directory**: Complete standalone implementations saved to `examples/insurance/` and `examples/banking/`
 

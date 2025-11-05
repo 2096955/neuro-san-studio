@@ -1,0 +1,321 @@
+# Salesforce Agentforce Agents - Complete Reference Guide
+
+## Service URL
+
+**Base URL**: `https://salesforce-agentforce-534348290993.us-central1.run.app`
+
+**Health Check**: `https://salesforce-agentforce-534348290993.us-central1.run.app/health`
+
+**Execute Endpoint**: `https://salesforce-agentforce-534348290993.us-central1.run.app/execute`
+
+---
+
+## Available Agents
+
+### 1. Default Service Agent (General Support)
+**Agent ID**: `0XxfI0000003MjxSAE`  
+**Use Case**: General customer support inquiries  
+**Best For**: Initial contact, basic questions, routing to specialists
+
+**Test Command**:
+```bash
+curl -X POST "https://salesforce-agentforce-534348290993.us-central1.run.app/execute" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "task_id": "test-001",
+    "prompt": "Hello, I need help",
+    "context": {
+      "agent_id": "0XxfI0000003MjxSAE"
+    }
+  }'
+```
+
+**Response Example**:
+- "Hi there! How can I assist you today with any questions or support you need?"
+
+**Direct Link**: [Test Default Agent](https://salesforce-agentforce-534348290993.us-central1.run.app/execute)
+
+---
+
+### 2. Sales Agent (VW Sales)
+**Agent ID**: `0XxfI0000003N1hSAE`  
+**Use Case**: Vehicle sales inquiries  
+**Best For**: New car purchases, vehicle information, pricing
+
+**Test Command**:
+```bash
+curl -X POST "https://salesforce-agentforce-534348290993.us-central1.run.app/execute" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "task_id": "sales-001",
+    "prompt": "I want to buy a new VW Tiguan",
+    "context": {
+      "agent_id": "0XxfI0000003N1hSAE"
+    }
+  }'
+```
+
+**Response Example**:
+- "I specialize in assisting with customer support-related questions. How can I help you today?"
+
+**Direct Link**: [Test Sales Agent](https://salesforce-agentforce-534348290993.us-central1.run.app/execute)
+
+---
+
+### 3. VWI Sales Agent (Recommended for Sales) ⭐
+**Agent ID**: `0XxfI0000003NEbSAM`  
+**Use Case**: VW-specific sales, electric vehicles, models  
+**Best For**: Detailed vehicle information, EV questions, model comparisons  
+**Status**: 🌟 **BEST CHOICE for sales inquiries**
+
+**Test Command**:
+```bash
+curl -X POST "https://salesforce-agentforce-534348290993.us-central1.run.app/execute" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "task_id": "vwi-sales-001",
+    "prompt": "Tell me about VW electric vehicles",
+    "context": {
+      "agent_id": "0XxfI0000003NEbSAM"
+    }
+  }'
+```
+
+**Response Example**:
+- "Could you please specify what you'd like to know about Volkswagen electric vehicles? For example, are you interested in specific models, features, pricing, or financing options?"
+
+**Direct Link**: [Test VWI Sales Agent](https://salesforce-agentforce-534348290993.us-central1.run.app/execute)
+
+**Why This Agent**:
+✅ Understands VW-specific models  
+✅ Knows about electric vehicles  
+✅ Can discuss pricing and financing  
+✅ More specialized than general sales agent
+
+---
+
+### 4. VWI Service Agent (Recommended for Service) ⭐
+**Agent ID**: `0XxfI0000003NCzSAM`  
+**Use Case**: Vehicle service, maintenance, warranty  
+**Best For**: Service appointments, warranty checks, maintenance questions  
+**Status**: 🌟 **BEST CHOICE for service inquiries**
+
+**Test Command**:
+```bash
+curl -X POST "https://salesforce-agentforce-534348290993.us-central1.run.app/execute" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "task_id": "vwi-service-001",
+    "prompt": "I need service for my VW Golf",
+    "context": {
+      "agent_id": "0XxfI0000003NCzSAM"
+    }
+  }'
+```
+
+**Response Example**:
+- "Could you please provide your contact details, such as your name, email, or phone number? This will help me check your vehicle's warranty status and guide you to the appropriate service options."
+
+**Direct Link**: [Test VWI Service Agent](https://salesforce-agentforce-534348290993.us-central1.run.app/execute)
+
+**Why This Agent**:
+✅ Understands warranty processes  
+✅ Can check vehicle status  
+✅ Guides to appropriate service options  
+✅ More specialized than general service agent
+
+---
+
+## Quick Test Script
+
+Save this as `test-all-agents.sh`:
+
+```bash
+#!/bin/bash
+
+SERVICE_URL="https://salesforce-agentforce-534348290993.us-central1.run.app"
+
+echo "Testing Default Service Agent..."
+curl -s -X POST "$SERVICE_URL/execute" \
+  -H "Content-Type: application/json" \
+  -d '{"task_id":"test-1","prompt":"Hello","context":{"agent_id":"0XxfI0000003MjxSAE"}}' | python3 -m json.tool
+
+echo -e "\n\nTesting Sales Agent..."
+curl -s -X POST "$SERVICE_URL/execute" \
+  -H "Content-Type: application/json" \
+  -d '{"task_id":"test-2","prompt":"I want to buy a VW","context":{"agent_id":"0XxfI0000003N1hSAE"}}' | python3 -m json.tool
+
+echo -e "\n\nTesting VWI Sales Agent..."
+curl -s -X POST "$SERVICE_URL/execute" \
+  -H "Content-Type: application/json" \
+  -d '{"task_id":"test-3","prompt":"Tell me about VW electric vehicles","context":{"agent_id":"0XxfI0000003NEbSAM"}}' | python3 -m json.tool
+
+echo -e "\n\nTesting VWI Service Agent..."
+curl -s -X POST "$SERVICE_URL/execute" \
+  -H "Content-Type: application/json" \
+  -d '{"task_id":"test-4","prompt":"I need service for my car","context":{"agent_id":"0XxfI0000003NCzSAM"}}' | python3 -m json.tool
+```
+
+---
+
+## Agent Selection Guide
+
+### For Sales Inquiries:
+**Use**: `0XxfI0000003NEbSAM` (VWI Sales Agent)
+- New vehicle purchases
+- Model information
+- Electric vehicle questions
+- Pricing and financing
+
+### For Service Inquiries:
+**Use**: `0XxfI0000003NCzSAM` (VWI Service Agent)
+- Service appointments
+- Warranty questions
+- Maintenance needs
+- Vehicle service history
+
+### For General Support:
+**Use**: `0XxfI0000003MjxSAE` (Default Service Agent)
+- Initial contact
+- General questions
+- Routing to specialists
+- Basic inquiries
+
+---
+
+## Conversation Continuity
+
+All agents support multi-turn conversations using the `session_id`:
+
+```bash
+# Start conversation
+RESPONSE=$(curl -s -X POST "$SERVICE_URL/execute" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "task_id": "conv-001",
+    "prompt": "Hello, I need help with my VW",
+    "context": {
+      "agent_id": "0XxfI0000003NCzSAM"
+    }
+  }')
+
+# Extract session_id from response
+SESSION_ID=$(echo $RESPONSE | python3 -c "import sys, json; print(json.load(sys.stdin)['context']['session_id'])")
+
+# Continue conversation
+curl -s -X POST "$SERVICE_URL/execute" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"task_id\": \"conv-002\",
+    \"prompt\": \"My car makes a noise when braking\",
+    \"context\": {
+      \"session_id\": \"$SESSION_ID\",
+      \"agent_id\": \"0XxfI0000003NCzSAM\"
+    }
+  }" | python3 -m json.tool
+```
+
+---
+
+## Python Integration Example
+
+```python
+import requests
+
+SERVICE_URL = "https://salesforce-agentforce-534348290993.us-central1.run.app"
+
+# VWI Sales Agent
+def query_vwi_sales(prompt, session_id=None):
+    context = {"agent_id": "0XxfI0000003NEbSAM"}
+    if session_id:
+        context["session_id"] = session_id
+    
+    response = requests.post(
+        f"{SERVICE_URL}/execute",
+        json={
+            "task_id": "python-sales-001",
+            "prompt": prompt,
+            "context": context
+        }
+    )
+    return response.json()
+
+# VWI Service Agent
+def query_vwi_service(prompt, session_id=None):
+    context = {"agent_id": "0XxfI0000003NCzSAM"}
+    if session_id:
+        context["session_id"] = session_id
+    
+    response = requests.post(
+        f"{SERVICE_URL}/execute",
+        json={
+            "task_id": "python-service-001",
+            "prompt": prompt,
+            "context": context
+        }
+    )
+    return response.json()
+
+# Example usage
+result = query_vwi_sales("Tell me about the VW ID.4")
+print(result["result"])
+
+# Continue conversation
+session_id = result["context"]["session_id"]
+result2 = query_vwi_sales("What about financing options?", session_id)
+print(result2["result"])
+```
+
+---
+
+## Health Check
+
+```bash
+curl https://salesforce-agentforce-534348290993.us-central1.run.app/health | python3 -m json.tool
+```
+
+Expected response:
+```json
+{
+    "status": "healthy",
+    "agent_id": "salesforce-agentforce-agent",
+    "salesforce_configured": true,
+    "message": "OAuth connection successful."
+}
+```
+
+---
+
+## Agent Comparison Matrix
+
+| Agent | ID | Best For | Specialization |
+|-------|----|----------|----------------|
+| **Default Service** | `0XxfI0000003MjxSAE` | General support | General inquiries |
+| **Sales** | `0XxfI0000003N1hSAE` | Sales inquiries | Vehicle sales |
+| **VWI Sales** ⭐ | `0XxfI0000003NEbSAM` | VW sales, EVs | **Highly specialized** |
+| **VWI Service** ⭐ | `0XxfI0000003NCzSAM` | Service, warranty | **Highly specialized** |
+
+---
+
+## Service Information
+
+- **Deployment**: Cloud Run (us-central1)
+- **Status**: ✅ Operational
+- **Response Time**: ~6-18 seconds
+- **Authentication**: OAuth 2.0 (Client Credentials)
+- **Max Instances**: 10
+- **Timeout**: 300 seconds
+
+---
+
+## Support
+
+For deployment issues, see:
+- `DEPLOYMENT_SUCCESS.md` - Deployment details
+- `DEPLOY_TO_CLOUD_RUN.md` - Deployment guide
+- `HOW_TO_ACCESS_CLOUD_RUN.md` - Access guide
+
+---
+
+**Last Updated**: November 5, 2025  
+**Service Status**: ✅ Production Ready

@@ -1,0 +1,304 @@
+# How to Access Cloud Run Services
+
+This guide explains how to check, access, and interact with your Cloud Run services.
+
+## Quick Commands
+
+### List All Services
+```bash
+gcloud run services list
+```
+
+### Get Service URL
+```bash
+gcloud run services describe SERVICE_NAME \
+  --region REGION \
+  --format 'value(status.url)'
+```
+
+### View Service Details
+```bash
+gcloud run services describe SERVICE_NAME --region REGION
+```
+
+## Accessing Cloud Run Services
+
+### 1. Via Command Line (gcloud CLI)
+
+**List all services:**
+```bash
+gcloud run services list --format="table(SERVICE,REGION,URL,STATUS)"
+```
+
+**Get a specific service URL:**
+```bash
+# XML-to-SPSS Streamlit
+gcloud run services describe xml-to-spss-streamlit \
+  --region us-central1 \
+  --format 'value(status.url)'
+
+# Salesforce Agentforce
+gcloud run services describe salesforce-agentforce \
+  --region us-central1 \
+  --format 'value(status.url)'
+```
+
+**View service configuration:**
+```bash
+gcloud run services describe SERVICE_NAME --region REGION
+```
+
+### 2. Via Google Cloud Console (Web UI)
+
+1. Go to [Cloud Run Console](https://console.cloud.google.com/run)
+2. Select your project (top dropdown)
+3. Click on any service to view details
+4. The **URL** is displayed at the top of the service details page
+
+### 3. Via Helper Script
+
+Use the included helper script:
+```bash
+cd /Users/anthonylui/SubAgents/gemini-salesforce-agent
+./check-cloudrun-services.sh
+```
+
+This script will:
+- List all Cloud Run services
+- Show URLs for XML2SPS and Salesforce services
+- Display test commands
+
+## Testing Services
+
+### Health Check
+```bash
+# Get service URL first
+SERVICE_URL=$(gcloud run services describe SERVICE_NAME \
+  --region us-central1 \
+  --format 'value(status.url)')
+
+# Test health endpoint
+curl $SERVICE_URL/health
+```
+
+### XML-to-SPSS Streamlit Service
+```bash
+# Get URL
+XML_URL=$(gcloud run services describe xml-to-spss-streamlit \
+  --region us-central1 \
+  --format 'value(status.url)')
+
+# Open in browser
+open $XML_URL
+
+# Or test with curl
+curl $XML_URL
+```
+
+### Salesforce Agentforce Service
+```bash
+# Get URL
+SF_URL=$(gcloud run services describe salesforce-agentforce \
+  --region us-central1 \
+  --format 'value(status.url)')
+
+# Test health
+curl $SF_URL/health | python3 -m json.tool
+
+# Test root endpoint
+curl $SF_URL/ | python3 -m json.tool
+
+# Test execution
+curl -X POST $SF_URL/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "task_id": "test-123",
+    "prompt": "Hello from Cloud Run",
+    "context": {}
+  }' | python3 -m json.tool
+```
+
+## Viewing Logs
+
+### Recent Logs
+```bash
+gcloud run services logs read SERVICE_NAME --region REGION
+```
+
+### Follow Logs (Real-time)
+```bash
+gcloud run services logs tail SERVICE_NAME --region REGION
+```
+
+### Last 50 Lines
+```bash
+gcloud run services logs read SERVICE_NAME --region REGION --limit 50
+```
+
+## Monitoring
+
+### View Metrics
+1. Go to [Cloud Run Console](https://console.cloud.google.com/run)
+2. Click on your service
+3. View metrics: Requests, Latency, Errors, Instances
+
+### Check Service Status
+```bash
+gcloud run services describe SERVICE_NAME \
+  --region REGION \
+  --format 'value(status.conditions[0].status)'
+```
+
+## Common Access Patterns
+
+### 1. Get All Service URLs
+```bash
+gcloud run services list --format="value(SERVICE,REGION)" | \
+  while read service region; do
+    echo "$service ($region):"
+    gcloud run services describe $service \
+      --region $region \
+      --format 'value(status.url)' 2>/dev/null
+    echo ""
+  done
+```
+
+### 2. Test All Services
+```bash
+# Get all service URLs and test health endpoints
+gcloud run services list --format="value(SERVICE,REGION)" | \
+  while read service region; do
+    url=$(gcloud run services describe $service \
+      --region $region \
+      --format 'value(status.url)' 2>/dev/null)
+    if [ -n "$url" ]; then
+      echo "Testing $service..."
+      curl -s "$url/health" || curl -s "$url/" || echo "No health endpoint"
+      echo ""
+    fi
+  done
+```
+
+### 3. Open All Services in Browser
+```bash
+gcloud run services list --format="value(SERVICE,REGION)" | \
+  while read service region; do
+    url=$(gcloud run services describe $service \
+      --region $region \
+      --format 'value(status.url)' 2>/dev/null)
+    if [ -n "$url" ]; then
+      open $url
+    fi
+  done
+```
+
+## Troubleshooting Access
+
+### Service Not Found
+```bash
+# Check if service exists
+gcloud run services describe SERVICE_NAME --region REGION
+
+# List all services to find correct name
+gcloud run services list
+```
+
+### Authentication Issues
+```bash
+# Check current authentication
+gcloud auth list
+
+# Login if needed
+gcloud auth login
+
+# Set project
+gcloud config set project PROJECT_ID
+```
+
+### Service Not Responding
+```bash
+# Check service status
+gcloud run services describe SERVICE_NAME --region REGION
+
+# View logs for errors
+gcloud run services logs read SERVICE_NAME --region REGION --limit 50
+
+# Check if service is ready
+gcloud run services describe SERVICE_NAME \
+  --region REGION \
+  --format 'value(status.conditions[?type==`Ready`].status)'
+```
+
+## Project Configuration
+
+### Current Project
+```bash
+gcloud config get-value project
+```
+
+### Set Project
+```bash
+gcloud config set project PROJECT_ID
+```
+
+### List All Projects
+```bash
+gcloud projects list
+```
+
+## Useful Aliases
+
+Add these to your `~/.zshrc` or `~/.bashrc`:
+
+```bash
+# Cloud Run shortcuts
+alias cr-list='gcloud run services list'
+alias cr-url='gcloud run services describe'
+alias cr-logs='gcloud run services logs read'
+alias cr-tail='gcloud run services logs tail'
+
+# Get XML2SPS URL
+alias xml-url='gcloud run services describe xml-to-spss-streamlit --region us-central1 --format "value(status.url)"'
+
+# Get Salesforce URL
+alias sf-url='gcloud run services describe salesforce-agentforce --region us-central1 --format "value(status.url)"'
+```
+
+Then reload your shell:
+```bash
+source ~/.zshrc  # or source ~/.bashrc
+```
+
+## Examples
+
+### Example 1: Get XML2SPS URL and Open
+```bash
+XML_URL=$(gcloud run services describe xml-to-spss-streamlit \
+  --region us-central1 \
+  --format 'value(status.url)')
+echo "XML2SPS URL: $XML_URL"
+open $XML_URL
+```
+
+### Example 2: Test Salesforce Agent
+```bash
+SF_URL=$(gcloud run services describe salesforce-agentforce \
+  --region us-central1 \
+  --format 'value(status.url)')
+curl -X POST $SF_URL/execute \
+  -H "Content-Type: application/json" \
+  -d '{"task_id":"test","prompt":"Test message","context":{}}'
+```
+
+### Example 3: Monitor Service Health
+```bash
+watch -n 5 'gcloud run services describe salesforce-agentforce \
+  --region us-central1 \
+  --format "value(status.conditions[?type==\`Ready\`].status)"'
+```
+
+## References
+
+- [Cloud Run Documentation](https://cloud.google.com/run/docs)
+- [gcloud run commands](https://cloud.google.com/sdk/gcloud/reference/run)
+- [Cloud Run Console](https://console.cloud.google.com/run)

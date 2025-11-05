@@ -108,14 +108,14 @@ class AgentNetworkInterface:
                         result = await response.json()
                         agent_response = result.get('result', result.get('response', 'I can help you with your inquiry.'))
                         
-                        # Determine which Salesforce agent was used
+                        # Determine which Salesforce agent was used with explicit IDs
                         agent_names = {
-                            '0XxfI0000003MjxSAE': 'Salesforce Agentforce (General Support)',
-                            '0XxfI0000003N1hSAE': 'Salesforce Agentforce (Sales)',
-                            '0XxfI0000003NEbSAM': 'Salesforce Agentforce (VWI Sales)',
-                            '0XxfI0000003NCzSAM': 'Salesforce Agentforce (VWI Service)'
+                            '0XxfI0000003MjxSAE': 'Default Service Agent (0XxfI0000003MjxSAE)',
+                            '0XxfI0000003N1hSAE': 'VWI Sales Agent (0XxfI0000003N1hSAE)',
+                            '0XxfI0000003NEbSAM': 'VWI Sales Agent (0XxfI0000003NEbSAM)',
+                            '0XxfI0000003NCzSAM': 'VWI Service Agent (0XxfI0000003NCzSAM)'
                         }
-                        model_name = agent_names.get(salesforce_agent_id, 'Salesforce Agentforce')
+                        model_name = agent_names.get(salesforce_agent_id, f'Salesforce Agentforce ({salesforce_agent_id})')
                         
                         logger.info(f"Cloud Run Agentforce success: {model_name}")
                         return (agent_response, model_name)
@@ -325,10 +325,10 @@ Respond naturally as {agent_role} would in a real {industry_context} setting."""
                 {"id": "supply_chain_management_agent", "label": "Supply Chain Management", "type": "domain", "status": "active", "model": "AWS Bedrock Claude Sonnet 4",
                  "description": "Manages supplier network and logistics",
                  "persona": "I manage the complex supply chain supporting automotive manufacturing. I handle just-in-time inventory, supplier relationships, and global logistics. I ensure production continuity and manage critical parts shortages."},
-                {"id": "dealership_support_agent", "label": "Dealership Support", "type": "domain", "status": "active", "model": "Salesforce Agentforce (VWI Sales)",
+                {"id": "dealership_support_agent", "label": "Dealership Support", "type": "domain", "status": "active", "model": "VWI Sales Agent (0XxfI0000003NEbSAM)",
                  "description": "Supports dealer network operations via Salesforce",
                  "persona": "I support our authorized dealership network with technical service guidance, sales operations support, and warranty claim processing through Salesforce Agentforce. I help dealerships serve customers effectively while maintaining quality standards."},
-                {"id": "customer_service_agent", "label": "Customer Service", "type": "domain", "status": "active", "model": "Salesforce Agentforce (General Support)",
+                {"id": "customer_service_agent", "label": "Customer Service", "type": "domain", "status": "active", "model": "Default Service Agent (0XxfI0000003MjxSAE)",
                  "description": "Direct customer service for vehicle owners",
                  "persona": "I am the voice of the company to customers. I handle service scheduling, recall information, product inquiries, and connected services. I provide empathetic, clear, and solution-focused support."},
                 {"id": "engineering_support_agent", "label": "Engineering Support", "type": "domain", "status": "active", "model": "AWS Bedrock Claude Sonnet 4",
@@ -358,10 +358,10 @@ Respond naturally as {agent_role} would in a real {industry_context} setting."""
                  "persona": "I optimize inbound and outbound logistics, coordinate vehicle distribution to dealerships, manage cross-border shipping and customs, and resolve delivery delays."},
                 
                 # Dealership Support Specialists
-                {"id": "technical_service_advisor", "label": "Technical Service Advisor", "type": "specialist", "status": "active", "model": "Salesforce Agentforce (VWI Service)",
+                {"id": "technical_service_advisor", "label": "Technical Service Advisor", "type": "specialist", "status": "active", "model": "VWI Service Agent (0XxfI0000003NCzSAM)",
                  "description": "Provides technical repair guidance",
                  "persona": "I provide technical guidance for complex repairs, interpret diagnostic codes, recommend repair procedures and parts, and assist with Technical Service Bulletins."},
-                {"id": "warranty_claims_processor", "label": "Warranty Claims", "type": "specialist", "status": "active", "model": "Salesforce Agentforce (VWI Service)",
+                {"id": "warranty_claims_processor", "label": "Warranty Claims", "type": "specialist", "status": "active", "model": "VWI Service Agent (0XxfI0000003NCzSAM)",
                  "description": "Processes warranty claims",
                  "persona": "I review and approve warranty claims, identify fraud patterns, provide guidance on warranty coverage, and track warranty cost trends."},
                 

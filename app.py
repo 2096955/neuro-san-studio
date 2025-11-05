@@ -106,12 +106,41 @@ class AgentNetworkInterface:
                 ) as response:
                     if response.status == 200:
                         result = await response.json()
+                        logger.info(f"Cloud Run response structure: {type(result)}, keys: {list(result.keys()) if isinstance(result, dict) else 'not dict'}")
                         
                         # Extract message from Salesforce response structure
-                        if 'messages' in result and len(result['messages']) > 0:
-                            agent_response = result['messages'][0].get('message', 'I can help you with your inquiry.')
-                        else:
-                            agent_response = result.get('result', result.get('response', 'I can help you with your inquiry.'))
+                        agent_response = None
+                        
+                        # Handle Cloud Run returning Salesforce response in 'response' or 'result' field
+                        raw_response = result.get('response') or result.get('result')
+                        
+                        if raw_response:
+                            # Check if it's a string starting with "Agentforce Response:"
+                            if isinstance(raw_response, str) and raw_response.startswith('Agentforce Response:'):
+                                # Parse the Python dict string representation
+                                import ast
+                                try:
+                                    # Remove "Agentforce Response:\n" prefix and parse
+                                    dict_str = raw_response.replace('Agentforce Response:\n', '').strip()
+                                    parsed_dict = ast.literal_eval(dict_str)
+                                    if isinstance(parsed_dict, dict) and 'messages' in parsed_dict:
+                                        agent_response = parsed_dict['messages'][0].get('message', 'I can help you with your inquiry.')
+                                except Exception as e:
+                                    logger.error(f"Failed to parse Agentforce response string: {e}")
+                                    agent_response = None
+                            # Check if it's already a dict with messages
+                            elif isinstance(raw_response, dict) and 'messages' in raw_response:
+                                agent_response = raw_response['messages'][0].get('message', 'I can help you with your inquiry.')
+                            # It's a plain string response
+                            elif isinstance(raw_response, str):
+                                agent_response = raw_response
+                        
+                        # Fallback if we couldn't extract a clean response
+                        if not agent_response:
+                            if 'messages' in result and len(result['messages']) > 0:
+                                agent_response = result['messages'][0].get('message', 'I can help you with your inquiry.')
+                            else:
+                                agent_response = "I'm here to help! Please let me know how I can assist you."
                         
                         # Determine which Salesforce agent was used
                         agent_names = {

@@ -1126,7 +1126,7 @@
                 chatMessages.innerHTML = '';
                 const agent = networkTopology.nodes.find(n => n.id === agentId);
                 const agentName = agent ? agent.label : agentId;
-                addChatMessage('system', 'System', `Connected to ${agentName}. Ask me anything about my role in the insurance process.`);
+                addChatMessage('system', 'System', `Connected to ${agentName}. How can I help you today?`);
             }
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
@@ -1163,7 +1163,17 @@
                     
                     if (data.status === 'success') {
                         const agentName = data.data.agent || selectedAgentForChat;
-                        addChatMessage('agent', agentName, data.data.response);
+                        const responseText = data.data.response;
+                        
+                        // Update model if available
+                        if (data.data.model) {
+                            const modelElement = document.querySelector('.chat-info .info-row:nth-child(3) .info-value');
+                            if (modelElement) {
+                                modelElement.textContent = data.data.model;
+                            }
+                        }
+                        
+                        addChatMessage('agent', agentName, responseText);
                         highlightAgentActivity(selectedAgentForChat);
                     } else {
                         addChatMessage('system', 'System', 'Error: ' + (data.message || 'Unknown error'));

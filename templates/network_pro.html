@@ -1354,44 +1354,56 @@
                     currentSessionId = `session_${Date.now()}`;
                 }
                 
-                // Build BRAND-AWARE enriched message to prevent cross-contamination
-                let enrichedMessage = '';
+                // Build BRAND-AWARE system override to prevent cross-contamination
+                let systemOverride = '';
                 
                 // Add brand context (CRITICAL: prevents mentioning wrong brands)
                 const brandName = detectedBrand === 'VWI' ? 'Volkswagen (VW)' : 
                                   detectedBrand === 'FORD' ? 'Ford' : 'BMW';
-                enrichedMessage += `You are a ${brandName} customer service agent. `;
+                systemOverride += `You are a ${brandName} customer service agent. `;
                 
                 if (detectedBrand === 'VWI') {
-                    enrichedMessage += `You specialize in Volkswagen vehicles including Tiguan, Golf, ID.4, Passat, and other VW models. `;
-                    enrichedMessage += `IMPORTANT: Never mention Ford or BMW brands. Only discuss Volkswagen products and services. `;
+                    systemOverride += `You specialize in Volkswagen vehicles including Tiguan, Golf, ID.4, Passat, and other VW models. `;
+                    systemOverride += `IMPORTANT: Never mention Ford or BMW brands. Only discuss Volkswagen products and services. `;
                 } else if (detectedBrand === 'FORD') {
-                    enrichedMessage += `You specialize in Ford vehicles including Mustang, F-150, Ranger, and other Ford models. `;
-                    enrichedMessage += `IMPORTANT: Never mention Volkswagen or BMW brands. Only discuss Ford products and services. `;
+                    systemOverride += `You specialize in Ford vehicles including Mustang, F-150, Ranger, and other Ford models. `;
+                    systemOverride += `IMPORTANT: Never mention Volkswagen or BMW brands. Only discuss Ford products and services. `;
                 } else if (detectedBrand === 'BMW') {
-                    enrichedMessage += `You specialize in BMW vehicles including 3 Series, 5 Series, X Series, and other BMW models. `;
-                    enrichedMessage += `IMPORTANT: Never mention Volkswagen or Ford brands. Only discuss BMW products and services. `;
+                    systemOverride += `You specialize in BMW vehicles including 3 Series, 5 Series, X Series, and other BMW models. `;
+                    systemOverride += `IMPORTANT: Never mention Volkswagen or Ford brands. Only discuss BMW products and services. `;
                 }
                 
-                // Add customer information if available
+                systemOverride += `Be warm and welcoming. Greet users positively and handle all appropriate customer service requests including simple greetings.`;
+                
+                // Build enriched message with customer information
+                let enrichedMessage = message;
+                
                 if (Object.keys(conversationContext).length > 1) { // More than just 'brand'
-                    enrichedMessage += "\n\nCustomer information: ";
-                    if (conversationContext.name) enrichedMessage += `Name: ${conversationContext.name}. `;
-                    if (conversationContext.email) enrichedMessage += `Email: ${conversationContext.email}. `;
-                    if (conversationContext.phone) enrichedMessage += `Phone: ${conversationContext.phone}. `;
+                    let contextInfo = "Customer information: ";
+                    if (conversationContext.name) contextInfo += `Name: ${conversationContext.name}. `;
+                    if (conversationContext.email) contextInfo += `Email: ${conversationContext.email}. `;
+                    if (conversationContext.phone) contextInfo += `Phone: ${conversationContext.phone}. `;
                     if (conversationContext.rego || conversationContext.registration) {
-                        enrichedMessage += `Registration: ${conversationContext.rego || conversationContext.registration}. `;
+                        contextInfo += `Registration: ${conversationContext.rego || conversationContext.registration}. `;
                     }
                     if (conversationContext.vehicle || conversationContext.model) {
-                        enrichedMessage += `Vehicle: ${conversationContext.vehicle || conversationContext.model}. `;
+                        contextInfo += `Vehicle: ${conversationContext.vehicle || conversationContext.model}. `;
                     }
+                    
+                    enrichedMessage = `${contextInfo}\n\n${message}`;
                 }
                 
-                enrichedMessage += `\n\nCustomer request: ${message}`;
+                console.log('System override:', systemOverride);
+                console.log('Enriched message:', enrichedMessage);
                 
-                console.log('Brand-aware prompt:', enrichedMessage);
+                // Prepare context with system override and brand
+                const requestContext = {
+                    ...conversationContext,
+                    system_override: systemOverride,
+                    brand: detectedBrand
+                };
                 
-                // Send to real AI backend
+                // Send to real AI backend with conversation history support
                 fetch('/api/chat', {
                     method: 'POST',
                     headers: {
@@ -1401,7 +1413,7 @@
                         network_name: selectedAgentForChat,
                         message: enrichedMessage,
                         session_id: currentSessionId,
-                        context: conversationContext
+                        context: requestContext
                     })
                 })
                 .then(response => response.json())

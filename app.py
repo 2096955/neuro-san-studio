@@ -161,8 +161,16 @@ class AgentNetworkInterface:
             logger.error(f"Error calling Cloud Run Agentforce: {e}")
             return (f"I'm currently unavailable. Please try again later.", "Salesforce Agentforce (Error)")
     
-    async def _call_ai_model(self, agent_info: Dict[str, Any], message: str, conversation_history: Optional[List[Dict[str, str]]] = None) -> tuple[str, str]:
+    async def _call_ai_model(self, agent_info: Dict[str, Any], message: str, conversation_history: Optional[List[Dict[str, str]]] = None, session_id: str = None, system_override: str = None, brand: str = None) -> tuple[str, str]:
         """Call AI model (Anthropic Claude, Google Gemini, Azure GPT-5, Salesforce Agentforce, or OpenAI) for intelligent responses
+        
+        Args:
+            agent_info: Agent configuration dict
+            message: Current user message
+            conversation_history: List of {"role": "user"/"assistant", "content": "..."} conversation turns
+            session_id: Session ID for Salesforce continuity
+            system_override: Brand-aware system instructions from frontend
+            brand: Brand context (VWI/Ford/BMW) for additional guardrails
         
         Returns:
             tuple: (response_text, actual_model_used)
@@ -174,10 +182,11 @@ class AgentNetworkInterface:
         agent_description = agent_info.get("description", "")
         agent_persona = agent_info.get("persona", "")
         agent_model = agent_info.get("model", "")
+        conversation_history = conversation_history or []
         
         # Route to Cloud Run Salesforce Agentforce for mapped automotive agents
         if agent_id in self.agentforce_agent_mapping:
-            return await self._call_cloud_run_agentforce(agent_id, message)
+            return await self._call_cloud_run_agentforce(agent_id, message, session_id=session_id)
         
         # Determine company context based on agent network
         if any(x in agent_id for x in ["automotive", "manufacturing", "dealership", "supply_chain", "production", "factory", "parts_inventory", "supplier_relations", "logistics", "engineering_support", "technical_service", "warranty_claims", "service_scheduling", "recall"]):
@@ -193,8 +202,13 @@ class AgentNetworkInterface:
             industry_context = "business insurance"
             role_context = "insurance specialist"
         
-        # Build rich context-aware system prompt based on agent role
-        system_prompt = f"""You are {agent_role} at {company_context}.
+        # Build rich context-aware system prompt with brand guardrails
+        if system_override:
+            # Use brand-aware system override from frontend (includes brand isolation)
+            system_prompt = system_override
+        else:
+            # Default system prompt
+            system_prompt = f"""You are {agent_role} at {company_context}.
 
 ROLE & RESPONSIBILITIES:
 {agent_persona}
@@ -207,14 +221,28 @@ IMPORTANT GUIDELINES:
 - You are part of a demo system, so make realistic responses as if you have access to real data
 - Only handle matters within your expertise
 - Do NOT mention what you cannot do - focus on what you CAN do
+- Greet users warmly and be helpful with simple queries like "hello"
 
 Respond naturally as {agent_role} would in a real {industry_context} setting."""
+        
+        # Prepare conversation messages excluding current turn (we'll add it per provider)
+        # Get history excluding the very last message (which is the current user message)
+        # Use index-based exclusion to avoid dropping prior messages with identical content
+        if conversation_history and len(conversation_history) > 0 and conversation_history[-1].get('role') == 'user':
+            history_messages = conversation_history[:-1][-11:]  # Exclude last user message, keep last 11 turns
+        else:
+            history_messages = conversation_history[-11:]  # Keep last 11 messages if last isn't user
 
         # Route to appropriate API based on agent's model
-        # Azure GPT-5 for Claims Adjustment agent
+        # Azure GPT-5 with conversation history
         if "Azure" in agent_model and self.azure_gpt5_key:
             try:
                 async with aiohttp.ClientSession() as session:
+                    # Build messages with conversation history
+                    messages = [{'role': 'system', 'content': system_prompt}]
+                    messages.extend(history_messages)
+                    messages.append({'role': 'user', 'content': message})
+                    
                     async with session.post(
                         f'{self.azure_gpt5_endpoint}/openai/deployments/{self.azure_gpt5_model}/chat/completions?api-version={self.azure_gpt5_api_version}',
                         headers={
@@ -222,10 +250,7 @@ Respond naturally as {agent_role} would in a real {industry_context} setting."""
                             'Content-Type': 'application/json'
                         },
                         json={
-                            'messages': [
-                                {'role': 'system', 'content': system_prompt},
-                                {'role': 'user', 'content': message}
-                            ],
+                            'messages': messages,
                             'max_tokens': 2048,
                             'temperature': 0.7
                         },
@@ -233,7 +258,7 @@ Respond naturally as {agent_role} would in a real {industry_context} setting."""
                     ) as response:
                         if response.status == 200:
                             result = await response.json()
-                            logger.info(f"Azure GPT-5 API success")
+                            logger.info(f"Azure GPT-5 API success with {len(history_messages)} history messages")
                             return (result['choices'][0]['message']['content'], "Azure GPT-5")
                         else:
                             error_text = await response.text()
@@ -241,7 +266,7 @@ Respond naturally as {agent_role} would in a real {industry_context} setting."""
             except Exception as e:
                 logger.error(f"Error calling Azure GPT-5: {e}")
         
-        # Google Gemini for Claims Processing agent - try primary then backup key
+        # Google Gemini with conversation history - try primary then backup key
         if "Gemini" in agent_model:
             # Try primary key first
             api_keys_to_try = []
@@ -253,17 +278,40 @@ Respond naturally as {agent_role} would in a real {industry_context} setting."""
             for key_name, api_key in api_keys_to_try:
                 try:
                     async with aiohttp.ClientSession() as session:
+                        # Build Gemini contents with conversation history
+                        contents = []
+                        
+                        # Add system prompt as first user message (Gemini doesn't have system role)
+                        contents.append({
+                            'role': 'user',
+                            'parts': [{'text': system_prompt}]
+                        })
+                        contents.append({
+                            'role': 'model',
+                            'parts': [{'text': 'I understand. I will respond according to these guidelines.'}]
+                        })
+                        
+                        # Add conversation history
+                        for msg in history_messages:
+                            role = 'user' if msg['role'] == 'user' else 'model'
+                            contents.append({
+                                'role': role,
+                                'parts': [{'text': msg['content']}]
+                            })
+                        
+                        # Add current message
+                        contents.append({
+                            'role': 'user',
+                            'parts': [{'text': message}]
+                        })
+                        
                         async with session.post(
                             f'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-thinking-exp-01-21:generateContent?key={api_key}',
                             headers={
                                 'Content-Type': 'application/json'
                             },
                             json={
-                                'contents': [{
-                                    'parts': [{
-                                        'text': f"{system_prompt}\n\nUser: {message}"
-                                    }]
-                                }],
+                                'contents': contents,
                                 'generationConfig': {
                                     'temperature': 0.7,
                                     'maxOutputTokens': 2048
@@ -273,7 +321,7 @@ Respond naturally as {agent_role} would in a real {industry_context} setting."""
                         ) as response:
                             if response.status == 200:
                                 result = await response.json()
-                                logger.info(f"Google Gemini API success using {key_name} key")
+                                logger.info(f"Google Gemini API success using {key_name} key with {len(history_messages)} history messages")
                                 return (result['candidates'][0]['content']['parts'][0]['text'], "Google Gemini 2.0 Flash Thinking")
                             else:
                                 error_text = await response.text()
@@ -282,10 +330,15 @@ Respond naturally as {agent_role} would in a real {industry_context} setting."""
                     logger.error(f"Error calling Google Gemini with {key_name} key: {e}")
                     # Continue to next key if available
         
-        # Try Anthropic Claude for Bedrock agents
+        # Try Anthropic Claude with conversation history
         if self.anthropic_api_key:
             try:
                 async with aiohttp.ClientSession() as session:
+                    # Build messages with conversation history
+                    messages = []
+                    messages.extend(history_messages)
+                    messages.append({'role': 'user', 'content': message})
+                    
                     async with session.post(
                         'https://api.anthropic.com/v1/messages',
                         headers={
@@ -297,14 +350,13 @@ Respond naturally as {agent_role} would in a real {industry_context} setting."""
                             'model': 'claude-sonnet-4-20250514',
                             'max_tokens': 1024,
                             'system': system_prompt,
-                            'messages': [
-                                {'role': 'user', 'content': message}
-                            ]
+                            'messages': messages
                         },
                         timeout=aiohttp.ClientTimeout(total=30)
                     ) as response:
                         if response.status == 200:
                             result = await response.json()
+                            logger.info(f"Anthropic Claude API success with {len(history_messages)} history messages")
                             return (result['content'][0]['text'], "AWS Bedrock Claude Sonnet 4")
                         else:
                             error_text = await response.text()
@@ -312,10 +364,15 @@ Respond naturally as {agent_role} would in a real {industry_context} setting."""
             except Exception as e:
                 logger.error(f"Error calling Anthropic Claude: {e}")
         
-        # Fallback to OpenAI
+        # Fallback to OpenAI with conversation history
         if self.openai_api_key:
             try:
                 async with aiohttp.ClientSession() as session:
+                    # Build messages with conversation history
+                    messages = [{'role': 'system', 'content': system_prompt}]
+                    messages.extend(history_messages)
+                    messages.append({'role': 'user', 'content': message})
+                    
                     async with session.post(
                         'https://api.openai.com/v1/chat/completions',
                         headers={
@@ -324,16 +381,14 @@ Respond naturally as {agent_role} would in a real {industry_context} setting."""
                         },
                         json={
                             'model': 'gpt-4-turbo-preview',
-                            'messages': [
-                                {'role': 'system', 'content': system_prompt},
-                                {'role': 'user', 'content': message}
-                            ],
+                            'messages': messages,
                             'max_tokens': 1024
                         },
                         timeout=aiohttp.ClientTimeout(total=30)
                     ) as response:
                         if response.status == 200:
                             result = await response.json()
+                            logger.info(f"OpenAI GPT-4 API success with {len(history_messages)} history messages")
                             return (result['choices'][0]['message']['content'], "OpenAI GPT-4 Turbo")
                         else:
                             logger.error(f"OpenAI API error: {response.status}")
@@ -658,9 +713,40 @@ Respond naturally as {agent_role} would in a real {industry_context} setting."""
             logger.error(f"Failed to get network topology: {e}")
             return {"nodes": [], "connections": []}
     
-    async def send_message_to_network(self, network_name: str, message: str, session_id: str = None) -> Dict[str, Any]:
-        """Send message to agent network and track activity"""
+    async def send_message_to_network(self, network_name: str, message: str, session_id: str = None, context: Dict[str, Any] = None) -> Dict[str, Any]:
+        """Send message to agent network with conversation history management
+        
+        Args:
+            network_name: Agent ID to send message to
+            message: User message (may include brand-aware system instructions)
+            session_id: Session ID for conversation continuity
+            context: Optional context dict with brand, system_override, etc.
+        """
         session_id = session_id or f"session_{datetime.now().timestamp()}"
+        context = context or {}
+        
+        # Initialize session storage if not exists
+        if session_id not in self.active_sessions:
+            self.active_sessions[session_id] = {
+                "history": [],
+                "system_override": context.get("system_override"),
+                "brand": context.get("brand"),
+                "agent_id": network_name,
+                "created_at": datetime.now().isoformat()
+            }
+        
+        # Update session with current context
+        session_data = self.active_sessions[session_id]
+        if context.get("system_override"):
+            session_data["system_override"] = context["system_override"]
+        if context.get("brand"):
+            session_data["brand"] = context["brand"]
+        
+        # Add user message to conversation history
+        session_data["history"].append({
+            "role": "user",
+            "content": message
+        })
         
         # Track agent activity
         self.agent_activity[network_name] = {
@@ -684,17 +770,35 @@ Respond naturally as {agent_role} would in a real {industry_context} setting."""
             agent_info = next((node for node in topology["nodes"] if node["id"] == network_name), None)
             
             if agent_info:
-                ai_response, actual_model = await self._call_ai_model(agent_info, message)
+                # Build conversation history (last 12 messages for context window)
+                conversation_history = session_data["history"][-12:]
+                
+                # Call AI model with conversation history and session_id
+                ai_response, actual_model = await self._call_ai_model(
+                    agent_info, 
+                    message, 
+                    conversation_history=conversation_history,
+                    session_id=session_id,
+                    system_override=session_data.get("system_override"),
+                    brand=session_data.get("brand")
+                )
             else:
                 ai_response = f"Agent {network_name} is processing your request."
                 actual_model = "Demo Mode"
+            
+            # Add assistant response to conversation history
+            session_data["history"].append({
+                "role": "assistant",
+                "content": ai_response
+            })
             
             response = {
                 "response": ai_response,
                 "session_id": session_id,
                 "timestamp": datetime.now().isoformat(),
                 "model": actual_model,
-                "agent": agent_info.get("label", network_name) if agent_info else network_name
+                "agent": agent_info.get("label", network_name) if agent_info else network_name,
+                "agent_id": network_name
             }
             
             self.agent_activity[network_name] = {
@@ -788,13 +892,14 @@ def get_activity():
 
 @app.route('/api/chat', methods=['POST'])
 def chat():
-    """API endpoint to send messages to agent networks"""
+    """API endpoint to send messages to agent networks with conversation history"""
     data = request.get_json()
     network_name = data.get('network_name')
     message = data.get('message')
     session_id = data.get('session_id')
+    context = data.get('context', {})  # Brand, system_override, etc.
     
-    logger.info(f"Chat request: network={network_name}, message={message[:50]}...")
+    logger.info(f"Chat request: network={network_name}, session={session_id}, context_keys={list(context.keys())}")
     
     if not network_name or not message:
         return jsonify({"status": "error", "message": "Missing network_name or message"}), 400
@@ -802,7 +907,9 @@ def chat():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
-        response = loop.run_until_complete(neuro_interface.send_message_to_network(network_name, message, session_id))
+        response = loop.run_until_complete(
+            neuro_interface.send_message_to_network(network_name, message, session_id, context)
+        )
         logger.info(f"Chat response generated for {network_name}")
         return jsonify({"status": "success", "data": response})
     except Exception as e:

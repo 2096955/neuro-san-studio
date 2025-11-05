@@ -500,7 +500,7 @@
                     <select id="network-type" onchange="switchNetwork()">
                         <option value="insurance">Insurance Underwriting</option>
                         <option value="banking">Banking Operations</option>
-                        <option value="automotive">Automotive Manufacturing</option>
+                        <option value="automotive" selected>Automotive Manufacturing</option>
                     </select>
                 </div>
                 <div style="font-size: 0.8rem; color: #6b7280; margin-top: 10px;">
@@ -650,7 +650,7 @@
         }
 
         // Load network topology from server
-        async function loadNetworkTopology(networkType = 'insurance') {
+        async function loadNetworkTopology(networkType = 'automotive') {
             try {
                 console.log('Loading network topology for:', networkType);
                 const response = await fetch(`/api/topology?network=${networkType}`);
@@ -1073,7 +1073,7 @@
         // Chat functions
         function initializeChat() {
             // Add initial system message
-            addChatMessage('system', 'System', 'Welcome to the Insurance Multi-Agent Network. Click any agent on the left to start chatting.');
+            addChatMessage('system', 'System', 'Welcome to the Automotive Multi-Agent Network. Click any agent on the left to start chatting.');
             
             // Handle enter key in chat input
             document.getElementById('message-input').addEventListener('keypress', function(e) {
@@ -1107,7 +1107,7 @@
         }
 
         // Track selected agent for chat and maintain separate chat histories
-        let selectedAgentForChat = 'insurance_agent';
+        let selectedAgentForChat = 'automotive_operations_coordinator';
         let chatHistories = {}; // Store chat history per agent
         
         // Save current chat history before switching agents

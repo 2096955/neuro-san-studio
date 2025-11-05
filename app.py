@@ -106,7 +106,12 @@ class AgentNetworkInterface:
                 ) as response:
                     if response.status == 200:
                         result = await response.json()
-                        agent_response = result.get('result', result.get('response', 'I can help you with your inquiry.'))
+                        
+                        # Extract message from Salesforce response structure
+                        if 'messages' in result and len(result['messages']) > 0:
+                            agent_response = result['messages'][0].get('message', 'I can help you with your inquiry.')
+                        else:
+                            agent_response = result.get('result', result.get('response', 'I can help you with your inquiry.'))
                         
                         # Determine which Salesforce agent was used
                         agent_names = {

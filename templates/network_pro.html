@@ -750,11 +750,26 @@
                 .attr('d', 'M0,-5L10,0L0,5')
                 .attr('fill', '#4f46e5');
 
-            // Define zones for organizing agents
+            // Define zones for organizing agents (vertical layout)
             const zones = {
-                'front_office': { x: width * 0.2, color: '#1e3a5f' },    // Customer-facing
-                'middle_office': { x: width * 0.5, color: '#2d1b4e' },   // Coordination
-                'back_office': { x: width * 0.8, color: '#1e2d3f' }      // Processing
+                'front_office': { 
+                    y: height * 0.15,           // Top section
+                    color: '#8B5CF6',           // Purple
+                    bgColor: '#f3e8ff',         // Light purple background
+                    label: 'Front Office (Customer)'
+                },
+                'middle_office': { 
+                    y: height * 0.50,           // Middle section
+                    color: '#3B82F6',           // Blue
+                    bgColor: '#dbeafe',         // Light blue background
+                    label: 'Middle Office (Coordination)'
+                },
+                'back_office': { 
+                    y: height * 0.80,           // Bottom section
+                    color: '#14B8A6',           // Teal
+                    bgColor: '#ccfbf1',         // Light teal background
+                    label: 'Back Office (Processing)'
+                }
             };
 
             // Assign zones to agents based on their role
@@ -785,21 +800,20 @@
                     return 'back_office';
                 }
                 
-                // AUTOMOTIVE NETWORK ZONES
-                // Front Office: Customer-facing agents
-                if (['automotive_operations_coordinator', 'customer_service_agent', 'dealership_support_agent',
-                     'service_scheduling_specialist', 'recall_information_agent', 'technical_service_advisor',
-                     'warranty_claims_processor'].includes(agentId)) {
+                // AUTOMOTIVE NETWORK ZONES (Reorganized)
+                // Front Office: Customer-facing agents (Purple)
+                if (['customer_service_agent', 'dealership_support_agent', 'service_scheduling_specialist', 
+                     'recall_information_agent', 'warranty_claims_processor'].includes(agentId)) {
                     return 'front_office';
                 }
-                // Middle Office: Manufacturing and coordination
-                if (['manufacturing_operations_agent', 'production_planning_specialist', 'quality_control_agent',
-                     'factory_efficiency_optimizer'].includes(agentId)) {
+                // Middle Office: Coordination and quality (Blue, except Operations Coordinator)
+                if (['automotive_operations_coordinator', 'quality_control_agent', 'factory_efficiency_optimizer',
+                     'production_planning_specialist', 'technical_service_advisor'].includes(agentId)) {
                     return 'middle_office';
                 }
-                // Back Office: Supply chain and engineering support
-                if (['supply_chain_management_agent', 'parts_inventory_specialist', 'supplier_relations_agent',
-                     'logistics_coordinator', 'engineering_support_agent'].includes(agentId)) {
+                // Back Office: Processing, supply chain, manufacturing (Teal)
+                if (['manufacturing_operations_agent', 'supply_chain_management_agent', 'logistics_coordinator',
+                     'engineering_support_agent', 'supplier_relations_agent', 'parts_inventory_specialist'].includes(agentId)) {
                     return 'back_office';
                 }
                 
@@ -811,7 +825,10 @@
             const nodes = networkTopology.nodes.map(d => {
                 const node = Object.assign({}, d);
                 node.zone = getAgentZone(d.id);
-                node.targetX = zones[node.zone].x;
+                node.targetY = zones[node.zone].y;
+                node.zoneColor = zones[node.zone].color;
+                // Special handling for Operations Coordinator
+                node.isHub = d.id === 'automotive_operations_coordinator';
                 return node;
             });
             
@@ -821,44 +838,45 @@
                 type: d.type
             }, d));
 
-            // Draw zone backgrounds
-            const zoneLabels = [
-                { name: 'Front Office', x: width * 0.2, label: '(Customer)' },
-                { name: 'Middle Office', x: width * 0.5, label: '(Coordination)' },
-                { name: 'Back Office', x: width * 0.8, label: '(Processing)' }
+            // Draw zone backgrounds (vertical sections)
+            const zoneBackgrounds = [
+                { zone: 'front_office', y: 0, height: height * 0.3 },
+                { zone: 'middle_office', y: height * 0.3, height: height * 0.4 },
+                { zone: 'back_office', y: height * 0.7, height: height * 0.3 }
             ];
 
             svg.append('g')
-                .selectAll('text')
-                .data(zoneLabels)
+                .selectAll('rect')
+                .data(zoneBackgrounds)
                 .enter()
-                .append('text')
-                .attr('x', d => d.x)
-                .attr('y', 20)
-                .attr('text-anchor', 'middle')
-                .style('fill', '#475569')
-                .style('font-size', '12px')
-                .style('font-weight', 'bold')
-                .text(d => d.name);
+                .append('rect')
+                .attr('x', 0)
+                .attr('y', d => d.y)
+                .attr('width', width)
+                .attr('height', d => d.height)
+                .style('fill', d => zones[d.zone].bgColor)
+                .style('opacity', 0.3);
 
+            // Draw zone labels (vertical layout on left side)
             svg.append('g')
                 .selectAll('text')
-                .data(zoneLabels)
+                .data(Object.keys(zones))
                 .enter()
                 .append('text')
-                .attr('x', d => d.x)
-                .attr('y', 35)
-                .attr('text-anchor', 'middle')
-                .style('fill', '#64748b')
-                .style('font-size', '10px')
-                .text(d => d.label);
+                .attr('x', 15)
+                .attr('y', d => zones[d].y)
+                .attr('text-anchor', 'start')
+                .style('fill', d => zones[d].color)
+                .style('font-size', '13px')
+                .style('font-weight', 'bold')
+                .text(d => zones[d].label);
 
-            // Create simulation with zone positioning
+            // Create simulation with vertical zone positioning
             simulation = d3.forceSimulation(nodes)
-                .force('charge', d3.forceManyBody().strength(-400))
-                .force('y', d3.forceY(height / 2).strength(0.1))
-                .force('x', d3.forceX(d => d.targetX).strength(0.8))
-                .force('collision', d3.forceCollide().radius(80));
+                .force('charge', d3.forceManyBody().strength(-300))
+                .force('x', d3.forceX(width / 2).strength(0.1))
+                .force('y', d3.forceY(d => d.targetY).strength(0.9))
+                .force('collision', d3.forceCollide().radius(85));
             
             // Add links with validation
             try {
@@ -899,21 +917,21 @@
 
             // Add rounded rectangles to nodes
             node.append('rect')
-                .attr('width', 160)
-                .attr('height', 50)
-                .attr('x', -80)
-                .attr('y', -25)
+                .attr('width', d => d.isHub ? 200 : 160)  // Larger for Operations Coordinator
+                .attr('height', d => d.isHub ? 60 : 50)
+                .attr('x', d => d.isHub ? -100 : -80)
+                .attr('y', d => d.isHub ? -30 : -25)
                 .attr('rx', 8)
                 .attr('ry', 8)
-                .style('fill', d => getNodeColor(d.type))
-                .style('stroke', '#0ea5e9')
-                .style('stroke-width', 2);
+                .style('fill', d => d.isHub ? '#F59E0B' : d.zoneColor)  // Orange for hub, zone color otherwise
+                .style('stroke', d => d.isHub ? '#D97706' : '#0ea5e9')
+                .style('stroke-width', d => d.isHub ? 3 : 2);
 
             // Add labels to nodes
             node.append('text')
                 .text(d => d.label)
-                .style('font-size', '11px')
-                .style('font-weight', '600')
+                .style('font-size', d => d.isHub ? '13px' : '11px')  // Larger font for hub
+                .style('font-weight', d => d.isHub ? 'bold' : '600')
                 .style('text-anchor', 'middle')
                 .style('fill', 'white')
                 .attr('dy', '0.35em')
@@ -937,8 +955,8 @@
             // Add status indicators
             node.append('circle')
                 .attr('r', 4)
-                .attr('cx', 70)
-                .attr('cy', -20)
+                .attr('cx', d => d.isHub ? 90 : 70)
+                .attr('cy', d => d.isHub ? -25 : -20)
                 .style('fill', '#10b981')
                 .attr('class', 'status-indicator');
 

@@ -1,0 +1,271 @@
+# Replit Prompt: Reorganize Organizational Chart
+
+## Goal
+Restructure the organizational chart to properly align nodes under Front Office, Middle Office, and Back Office with consistent color coding and clear visual hierarchy.
+
+## Current Issues
+1. Nodes are not grouped under their correct office categories
+2. Color coding is inconsistent
+3. Layout is messy with overlapping connections
+4. Office categories (Front/Middle/Back) are not clearly delineated
+
+## Required Structure
+
+### Front Office (Customer-Facing) - Color: Purple (#8B5CF6)
+**Direct customer interaction roles:**
+- Customer Service
+- Sales Agent
+- Service Scheduling
+- Recall Information
+- Warranty Claims
+
+### Middle Office (Coordination/Non-Client Facing) - Color: Blue (#3B82F6)
+**Coordination and support roles:**
+- Operations Coordinator (central hub)
+- Quality Control
+- Factory Efficiency
+- Production Planning
+- Technical Service Agent
+
+### Back Office (Processing/Operations) - Color: Teal (#14B8A6)
+**Internal operations and processing:**
+- Manufacturing Operations
+- Supply Chain Management
+- Logistics Coordinator
+- Engineering Support
+- Supplier Relations
+- Parts Inventory
+
+## Implementation Instructions
+
+### 1. Layout Structure
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ Front Office (Customer)                                          │
+│ Purple nodes in a horizontal row at top                         │
+│ [Customer Service] [Sales Agent] [Service Scheduling]           │
+│ [Recall Information] [Warranty Claims]                          │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│ Middle Office (Coordination)                                     │
+│ Blue nodes in middle section                                    │
+│     [Quality Control]  [Factory Efficiency]                     │
+│                                                                  │
+│         [Operations Coordinator] ← CENTRAL HUB                  │
+│                                                                  │
+│  [Production Planning]  [Technical Service Agent]               │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│ Back Office (Processing)                                         │
+│ Teal nodes in a grid at bottom                                  │
+│ [Manufacturing Ops] [Supply Chain Mgmt] [Logistics Coord]       │
+│ [Engineering Support] [Supplier Relations] [Parts Inventory]    │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 2. Color Scheme
+```javascript
+const colors = {
+  frontOffice: '#8B5CF6',   // Purple - Customer-facing
+  middleOffice: '#3B82F6',  // Blue - Coordination
+  backOffice: '#14B8A6',    // Teal - Processing
+  centralHub: '#F59E0B'     // Orange - Operations Coordinator
+};
+```
+
+### 3. Node Groupings
+
+**Front Office Nodes (Purple):**
+- Customer Service
+- Sales Agent
+- Service Scheduling
+- Recall Information
+- Warranty Claims
+
+**Middle Office Nodes (Blue):**
+- Quality Control
+- Factory Efficiency
+- Production Planning
+- Technical Service Agent
+- Operations Coordinator (Orange - special central hub)
+
+**Back Office Nodes (Teal):**
+- Manufacturing Operations
+- Supply Chain Management
+- Logistics Coordinator
+- Engineering Support
+- Supplier Relations
+- Parts Inventory
+
+### 4. Connection Rules
+
+**Front Office → Middle Office:**
+- Customer Service → Operations Coordinator
+- Customer Service → Technical Service Agent
+- Sales Agent → Operations Coordinator
+- Service Scheduling → Operations Coordinator
+- Warranty Claims → Quality Control
+- Recall Information → Quality Control
+
+**Middle Office → Back Office:**
+- Operations Coordinator → Manufacturing Operations (central connection)
+- Operations Coordinator → Supply Chain Management
+- Quality Control → Manufacturing Operations
+- Factory Efficiency → Manufacturing Operations
+- Production Planning → Manufacturing Operations
+- Technical Service Agent → Engineering Support
+
+**Back Office Internal:**
+- Manufacturing Operations → Supply Chain Management
+- Supply Chain Management → Logistics Coordinator
+- Supply Chain Management → Supplier Relations
+- Logistics Coordinator → Parts Inventory
+- Engineering Support → Manufacturing Operations
+
+### 5. Visual Requirements
+
+1. **Clear Section Dividers:**
+   - Add subtle background shading or borders for each office section
+   - Top section: Light purple background
+   - Middle section: Light blue background
+   - Bottom section: Light teal background
+
+2. **Section Labels:**
+   - Add clear section headers:
+     - "Front Office (Customer)" at top
+     - "Middle Office (Coordination)" in middle
+     - "Back Office (Processing)" at bottom
+
+3. **Node Layout:**
+   - Horizontal alignment within each section
+   - Equal spacing between nodes
+   - Avoid overlapping connections
+   - Use curved connectors (Bezier curves)
+
+4. **Operations Coordinator:**
+   - Larger node size (emphasize central hub)
+   - Orange color to stand out
+   - Positioned centrally in Middle Office
+   - All connections route through or near this node
+
+### 6. Code Structure (React Flow or similar)
+
+```javascript
+const nodes = [
+  // Front Office (Purple)
+  { id: 'customer-service', data: { label: 'Customer Service' }, position: { x: 50, y: 100 }, style: { background: '#8B5CF6' } },
+  { id: 'sales-agent', data: { label: 'Sales Agent' }, position: { x: 250, y: 100 }, style: { background: '#8B5CF6' } },
+  { id: 'service-scheduling', data: { label: 'Service Scheduling' }, position: { x: 450, y: 100 }, style: { background: '#8B5CF6' } },
+  { id: 'recall-info', data: { label: 'Recall Information' }, position: { x: 650, y: 100 }, style: { background: '#8B5CF6' } },
+  { id: 'warranty-claims', data: { label: 'Warranty Claims' }, position: { x: 850, y: 100 }, style: { background: '#8B5CF6' } },
+
+  // Middle Office (Blue)
+  { id: 'quality-control', data: { label: 'Quality Control' }, position: { x: 150, y: 300 }, style: { background: '#3B82F6' } },
+  { id: 'factory-efficiency', data: { label: 'Factory Efficiency' }, position: { x: 750, y: 300 }, style: { background: '#3B82F6' } },
+  { id: 'operations-coord', data: { label: 'Operations Coordinator' }, position: { x: 450, y: 350 }, style: { background: '#F59E0B', fontSize: '16px', fontWeight: 'bold' } },
+  { id: 'production-planning', data: { label: 'Production Planning' }, position: { x: 250, y: 400 }, style: { background: '#3B82F6' } },
+  { id: 'technical-service', data: { label: 'Technical Service Agent' }, position: { x: 650, y: 400 }, style: { background: '#3B82F6' } },
+
+  // Back Office (Teal)
+  { id: 'manufacturing-ops', data: { label: 'Manufacturing Operations' }, position: { x: 450, y: 600 }, style: { background: '#14B8A6' } },
+  { id: 'supply-chain', data: { label: 'Supply Chain Management' }, position: { x: 200, y: 700 }, style: { background: '#14B8A6' } },
+  { id: 'logistics-coord', data: { label: 'Logistics Coordinator' }, position: { x: 700, y: 700 }, style: { background: '#14B8A6' } },
+  { id: 'engineering-support', data: { label: 'Engineering Support' }, position: { x: 50, y: 800 }, style: { background: '#14B8A6' } },
+  { id: 'supplier-relations', data: { label: 'Supplier Relations' }, position: { x: 350, y: 800 }, style: { background: '#14B8A6' } },
+  { id: 'parts-inventory', data: { label: 'Parts Inventory' }, position: { x: 650, y: 800 }, style: { background: '#14B8A6' } },
+];
+
+const edges = [
+  // Front → Middle
+  { id: 'e1', source: 'customer-service', target: 'operations-coord', animated: true },
+  { id: 'e2', source: 'sales-agent', target: 'operations-coord', animated: true },
+  { id: 'e3', source: 'warranty-claims', target: 'quality-control' },
+
+  // Middle → Back
+  { id: 'e4', source: 'operations-coord', target: 'manufacturing-ops', animated: true, style: { stroke: '#F59E0B', strokeWidth: 3 } },
+  { id: 'e5', source: 'quality-control', target: 'manufacturing-ops' },
+  { id: 'e6', source: 'production-planning', target: 'manufacturing-ops' },
+
+  // Back Office internal
+  { id: 'e7', source: 'manufacturing-ops', target: 'supply-chain' },
+  { id: 'e8', source: 'supply-chain', target: 'logistics-coord' },
+  { id: 'e9', source: 'logistics-coord', target: 'parts-inventory' },
+];
+```
+
+## Prompt for Replit AI
+
+Use this exact prompt:
+
+---
+
+**Reorganize this organizational chart with clear Front Office, Middle Office, and Back Office sections:**
+
+**Front Office (Customer-Facing) - Purple (#8B5CF6):**
+Place these nodes in a horizontal row at the top:
+- Customer Service
+- Sales Agent
+- Service Scheduling
+- Recall Information
+- Warranty Claims
+
+**Middle Office (Coordination) - Blue (#3B82F6):**
+Place these nodes in the middle section with Operations Coordinator as the central hub (Orange #F59E0B):
+- Quality Control (left)
+- Factory Efficiency (right)
+- Operations Coordinator (CENTER - make it larger and orange)
+- Production Planning (lower left)
+- Technical Service Agent (lower right)
+
+**Back Office (Processing) - Teal (#14B8A6):**
+Place these nodes in a grid at the bottom:
+- Manufacturing Operations (top center)
+- Supply Chain Management (middle left)
+- Logistics Coordinator (middle right)
+- Engineering Support (bottom left)
+- Supplier Relations (bottom middle)
+- Parts Inventory (bottom right)
+
+**Visual Requirements:**
+1. Add light background shading for each section
+2. Add section headers: "Front Office (Customer)", "Middle Office (Coordination)", "Back Office (Processing)"
+3. Use curved connectors (Bezier curves)
+4. Ensure no overlapping lines
+5. Make Operations Coordinator larger and orange to emphasize it as the central hub
+6. Front Office nodes connect down to Middle Office
+7. Middle Office connects down to Back Office
+8. Operations Coordinator is the main connection point between all sections
+
+**Layout:** Top-to-bottom flow with clear visual separation between the three office layers.
+
+---
+
+## Alternative: Step-by-Step Instructions
+
+If Replit AI needs more specific guidance:
+
+1. **"Create three horizontal sections with labels at top: Front Office, Middle Office, Back Office"**
+
+2. **"In Front Office section (purple background), place 5 purple nodes horizontally: Customer Service, Sales Agent, Service Scheduling, Recall Information, Warranty Claims"**
+
+3. **"In Middle Office section (blue background), create a star pattern with Operations Coordinator (orange, larger) in the center, surrounded by: Quality Control, Factory Efficiency, Production Planning, Technical Service Agent (all blue)"**
+
+4. **"In Back Office section (teal background), create a 2-row grid with 6 teal nodes: Row 1: Manufacturing Operations (center), Row 2: Supply Chain Management, Logistics Coordinator, Row 3: Engineering Support, Supplier Relations, Parts Inventory"**
+
+5. **"Connect Front Office nodes → Operations Coordinator → Manufacturing Operations → Back Office nodes using curved lines"**
+
+6. **"Adjust spacing so nodes don't overlap and connections are clear"**
+
+---
+
+## Expected Result
+
+The reorganized chart should have:
+- ✅ Clear visual hierarchy (Top → Middle → Bottom)
+- ✅ Consistent color coding by office type
+- ✅ Operations Coordinator as prominent central hub
+- ✅ Clean connections without overlaps
+- ✅ Professional appearance with proper spacing
+- ✅ Logical flow: Customer → Coordination → Operations

@@ -52,67 +52,79 @@ class AgentNetworkInterface:
         self.azure_gpt5_endpoint = 'https://20969-mgp7xyl6-eastus2.cognitiveservices.azure.com'
         self.azure_gpt5_model = 'gpt-5-chat'
         self.azure_gpt5_api_version = '2024-12-01-preview'
-        # Salesforce Agentforce Configuration
-        self.agentforce_domain = os.environ.get('AGENTFORCE_MY_DOMAIN_URL', '')
-        self.agentforce_service_agent_id = os.environ.get('AGENTFORCE_SERVICE_AGENT_ID', '')
-        self.agentforce_vwi_service_agent_id = os.environ.get('VWI_AGENTFORCE_SERVICE_AGENT_ID', '')
-        self.agentforce_client_id = os.environ.get('AGENTFORCE_CLIENT_ID', '')
-        self.agentforce_client_secret = os.environ.get('AGENTFORCE_CLIENT_SECRET', '')
+        # Salesforce Agentforce Cloud Run Configuration
+        self.cloud_run_agentforce_url = 'https://salesforce-agentforce-534348290993.us-central1.run.app/execute'
+        # Agent ID mapping from reference guide
+        self.agentforce_agent_mapping = {
+            'dealership_support_agent': '0XxfI0000003NEbSAM',  # VWI Sales Agent - for sales inquiries
+            'customer_service_agent': '0XxfI0000003MjxSAE',     # Default Service - for general support
+            'technical_service_advisor': '0XxfI0000003NCzSAM',  # VWI Service - for technical service
+            'warranty_claims_processor': '0XxfI0000003NCzSAM'   # VWI Service - for warranty claims
+        }
         
-    async def _call_salesforce_agentforce(self, message: str, session_id: str = None) -> tuple[str, str]:
-        """Call Salesforce Agentforce API for dealership support
+    async def _call_cloud_run_agentforce(self, agent_id: str, message: str, session_id: str = None) -> tuple[str, str]:
+        """Call Salesforce Agentforce via Cloud Run deployment
+        
+        Args:
+            agent_id: Internal agent ID (e.g., 'dealership_support_agent')
+            message: User message
+            session_id: Optional session ID for conversation continuity
         
         Returns:
             tuple: (response_text, actual_model_used)
         """
         import aiohttp
         
+        # Get the Salesforce agent ID from mapping
+        salesforce_agent_id = self.agentforce_agent_mapping.get(agent_id)
+        if not salesforce_agent_id:
+            logger.warning(f"No Salesforce agent mapping for {agent_id}")
+            return (f"I'm currently unavailable. Please try again later.", "Salesforce Agentforce (Not Configured)")
+        
         try:
-            # Get OAuth token
             async with aiohttp.ClientSession() as session:
-                # Request access token
-                async with session.post(
-                    f'{self.agentforce_domain}/services/oauth2/token',
-                    data={
-                        'grant_type': 'client_credentials',
-                        'client_id': self.agentforce_client_id,
-                        'client_secret': self.agentforce_client_secret
-                    },
-                    timeout=aiohttp.ClientTimeout(total=10)
-                ) as token_response:
-                    if token_response.status == 200:
-                        token_data = await token_response.json()
-                        access_token = token_data['access_token']
-                    else:
-                        error_text = await token_response.text()
-                        logger.error(f"Agentforce OAuth error {token_response.status}: {error_text[:200]}")
-                        return (f"I'm currently unavailable. Please try again later.", "Salesforce Agentforce (Error)")
+                # Call Cloud Run Agentforce endpoint
+                payload = {
+                    'task_id': f'neuro-san-{agent_id}-{datetime.now().timestamp()}',
+                    'prompt': message,
+                    'context': {
+                        'agent_id': salesforce_agent_id
+                    }
+                }
                 
-                # Call Agentforce API
+                # Add session_id if provided for conversation continuity
+                if session_id:
+                    payload['context']['session_id'] = session_id
+                
+                logger.info(f"Calling Cloud Run Agentforce: agent={agent_id}, salesforce_id={salesforce_agent_id}")
+                
                 async with session.post(
-                    f'{self.agentforce_domain}/services/data/v62.0/agent/runtime',
-                    headers={
-                        'Authorization': f'Bearer {access_token}',
-                        'Content-Type': 'application/json'
-                    },
-                    json={
-                        'agentId': self.agentforce_vwi_service_agent_id or self.agentforce_service_agent_id,
-                        'sessionId': session_id or f"session_{datetime.now().timestamp()}",
-                        'message': message
-                    },
+                    self.cloud_run_agentforce_url,
+                    headers={'Content-Type': 'application/json'},
+                    json=payload,
                     timeout=aiohttp.ClientTimeout(total=30)
                 ) as response:
                     if response.status == 200:
                         result = await response.json()
-                        agent_response = result.get('response', result.get('message', 'I can help you with dealership support.'))
-                        logger.info(f"Salesforce Agentforce API success")
-                        return (agent_response, "Salesforce Agentforce")
+                        agent_response = result.get('result', result.get('response', 'I can help you with your inquiry.'))
+                        
+                        # Determine which Salesforce agent was used
+                        agent_names = {
+                            '0XxfI0000003MjxSAE': 'Salesforce Agentforce (General Support)',
+                            '0XxfI0000003N1hSAE': 'Salesforce Agentforce (Sales)',
+                            '0XxfI0000003NEbSAM': 'Salesforce Agentforce (VWI Sales)',
+                            '0XxfI0000003NCzSAM': 'Salesforce Agentforce (VWI Service)'
+                        }
+                        model_name = agent_names.get(salesforce_agent_id, 'Salesforce Agentforce')
+                        
+                        logger.info(f"Cloud Run Agentforce success: {model_name}")
+                        return (agent_response, model_name)
                     else:
                         error_text = await response.text()
-                        logger.error(f"Agentforce API error {response.status}: {error_text[:200]}")
+                        logger.error(f"Cloud Run Agentforce error {response.status}: {error_text[:200]}")
                         return (f"I'm currently unavailable. Please try again later.", "Salesforce Agentforce (Error)")
         except Exception as e:
-            logger.error(f"Error calling Salesforce Agentforce: {e}")
+            logger.error(f"Error calling Cloud Run Agentforce: {e}")
             return (f"I'm currently unavailable. Please try again later.", "Salesforce Agentforce (Error)")
     
     async def _call_ai_model(self, agent_info: Dict[str, Any], message: str, conversation_history: Optional[List[Dict[str, str]]] = None) -> tuple[str, str]:
@@ -129,9 +141,9 @@ class AgentNetworkInterface:
         agent_persona = agent_info.get("persona", "")
         agent_model = agent_info.get("model", "")
         
-        # Route to Salesforce Agentforce for dealership_support_agent
-        if agent_id == "dealership_support_agent" and self.agentforce_domain and self.agentforce_client_id:
-            return await self._call_salesforce_agentforce(message)
+        # Route to Cloud Run Salesforce Agentforce for mapped automotive agents
+        if agent_id in self.agentforce_agent_mapping:
+            return await self._call_cloud_run_agentforce(agent_id, message)
         
         # Determine company context based on agent network
         if any(x in agent_id for x in ["automotive", "manufacturing", "dealership", "supply_chain", "production", "factory", "parts_inventory", "supplier_relations", "logistics", "engineering_support", "technical_service", "warranty_claims", "service_scheduling", "recall"]):
@@ -313,10 +325,10 @@ Respond naturally as {agent_role} would in a real {industry_context} setting."""
                 {"id": "supply_chain_management_agent", "label": "Supply Chain Management", "type": "domain", "status": "active", "model": "AWS Bedrock Claude Sonnet 4",
                  "description": "Manages supplier network and logistics",
                  "persona": "I manage the complex supply chain supporting automotive manufacturing. I handle just-in-time inventory, supplier relationships, and global logistics. I ensure production continuity and manage critical parts shortages."},
-                {"id": "dealership_support_agent", "label": "Dealership Support", "type": "domain", "status": "active", "model": "Salesforce Agentforce",
+                {"id": "dealership_support_agent", "label": "Dealership Support", "type": "domain", "status": "active", "model": "Salesforce Agentforce (VWI Sales)",
                  "description": "Supports dealer network operations via Salesforce",
                  "persona": "I support our authorized dealership network with technical service guidance, sales operations support, and warranty claim processing through Salesforce Agentforce. I help dealerships serve customers effectively while maintaining quality standards."},
-                {"id": "customer_service_agent", "label": "Customer Service", "type": "domain", "status": "active", "model": "AWS Bedrock Claude Sonnet 4",
+                {"id": "customer_service_agent", "label": "Customer Service", "type": "domain", "status": "active", "model": "Salesforce Agentforce (General Support)",
                  "description": "Direct customer service for vehicle owners",
                  "persona": "I am the voice of the company to customers. I handle service scheduling, recall information, product inquiries, and connected services. I provide empathetic, clear, and solution-focused support."},
                 {"id": "engineering_support_agent", "label": "Engineering Support", "type": "domain", "status": "active", "model": "AWS Bedrock Claude Sonnet 4",
@@ -346,10 +358,10 @@ Respond naturally as {agent_role} would in a real {industry_context} setting."""
                  "persona": "I optimize inbound and outbound logistics, coordinate vehicle distribution to dealerships, manage cross-border shipping and customs, and resolve delivery delays."},
                 
                 # Dealership Support Specialists
-                {"id": "technical_service_advisor", "label": "Technical Service Advisor", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4",
+                {"id": "technical_service_advisor", "label": "Technical Service Advisor", "type": "specialist", "status": "active", "model": "Salesforce Agentforce (VWI Service)",
                  "description": "Provides technical repair guidance",
                  "persona": "I provide technical guidance for complex repairs, interpret diagnostic codes, recommend repair procedures and parts, and assist with Technical Service Bulletins."},
-                {"id": "warranty_claims_processor", "label": "Warranty Claims", "type": "specialist", "status": "active", "model": "AWS Bedrock Claude Sonnet 4",
+                {"id": "warranty_claims_processor", "label": "Warranty Claims", "type": "specialist", "status": "active", "model": "Salesforce Agentforce (VWI Service)",
                  "description": "Processes warranty claims",
                  "persona": "I review and approve warranty claims, identify fraud patterns, provide guidance on warranty coverage, and track warranty cost trends."},
                 

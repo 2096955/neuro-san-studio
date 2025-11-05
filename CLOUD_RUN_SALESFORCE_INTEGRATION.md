@@ -22,12 +22,12 @@ The Automotive Manufacturing network integrates with Salesforce Agentforce agent
 
 The system automatically routes messages from specific automotive agents to the appropriate Salesforce Agentforce specialist:
 
-| Internal Agent | Salesforce Agent ID | Salesforce Agent Type | Best For |
-|----------------|---------------------|----------------------|----------|
-| **Dealership Support** | `0XxfI0000003NEbSAM` | VWI Sales Agent | Vehicle sales, pricing, model information, electric vehicles |
-| **Customer Service** | `0XxfI0000003MjxSAE` | Default Service Agent | General inquiries, routing, basic questions |
-| **Technical Service Advisor** | `0XxfI0000003NCzSAM` | VWI Service Agent | Technical repairs, diagnostics, service guidance |
-| **Warranty Claims** | `0XxfI0000003NCzSAM` | VWI Service Agent | Warranty processing, coverage questions |
+| Internal Agent | Salesforce Agent ID | Salesforce Agent Type | Display Name | Best For |
+|----------------|---------------------|----------------------|--------------|----------|
+| **Dealership Support** | `0XxfI0000003NEbSAM` | VWI Sales Agent | VWI Sales Agent (0XxfI0000003NEbSAM) | Vehicle sales, pricing, model information, electric vehicles |
+| **Customer Service** | `0XxfI0000003MjxSAE` | Default Service Agent | Default Service Agent (0XxfI0000003MjxSAE) | General inquiries, routing, basic questions |
+| **Technical Service Advisor** | `0XxfI0000003NCzSAM` | VWI Service Agent | VWI Service Agent (0XxfI0000003NCzSAM) | Technical repairs, diagnostics, service guidance |
+| **Warranty Claims** | `0XxfI0000003NCzSAM` | VWI Service Agent | VWI Service Agent (0XxfI0000003NCzSAM) | Warranty processing, coverage questions |
 
 ---
 

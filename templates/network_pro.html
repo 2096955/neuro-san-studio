@@ -636,6 +636,7 @@
             selectedAgent = null;
             selectedAgentForChat = null;  // Reset chat routing
             currentSessionId = null;
+            conversationContext = {};  // Reset conversation context
             chatHistories = {};
             
             // Reload topology for selected network
@@ -1088,7 +1089,10 @@
             document.getElementById('tooltip').style.display = 'none';
         }
 
-        // Chat functions
+        // Chat functions and session management
+        let currentSessionId = null;
+        let conversationContext = {};  // Store extracted user details
+        
         function initializeChat() {
             // Add initial system message
             addChatMessage('system', 'System', 'Welcome to the Automotive Multi-Agent Network. Click any agent on the left to start chatting.');
@@ -1099,6 +1103,33 @@
                     sendMessage();
                 }
             });
+        }
+        
+        // Extract user details from message
+        function extractUserDetails(message) {
+            const details = {};
+            
+            // Extract email
+            const emailMatch = message.match(/[\w.-]+@[\w.-]+\.\w+/);
+            if (emailMatch) details.email = emailMatch[0];
+            
+            // Extract phone (Australian format)
+            const phoneMatch = message.match(/0\d{9}|\+61\d{9}/);
+            if (phoneMatch) details.phone = phoneMatch[0];
+            
+            // Extract name (after "name is" or "I'm" or "I am")
+            const nameMatch = message.match(/(?:name is|I'm|I am)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/i);
+            if (nameMatch) details.name = nameMatch[1];
+            
+            // Extract rego (6-7 alphanumeric characters)
+            const regoMatch = message.match(/\b([A-Z0-9]{6,7})\s+is the rego|rego is\s+([A-Z0-9]{6,7})|rego[:\s]+([A-Z0-9]{6,7})/i);
+            if (regoMatch) details.rego = (regoMatch[1] || regoMatch[2] || regoMatch[3]).toUpperCase();
+            
+            // Extract vehicle model
+            const modelMatch = message.match(/\b(Tiguan|Golf|ID\.4|Passat|Polo|Amarok|T-Roc|Arteon)\b/i);
+            if (modelMatch) details.vehicle = modelMatch[1];
+            
+            return details;
         }
 
         function addChatMessage(type, agent, message, messageId = null) {
@@ -1154,6 +1185,16 @@
             const message = input.value.trim();
             
             if (message) {
+                // Extract user details from message
+                const extractedDetails = extractUserDetails(message);
+                conversationContext = { ...conversationContext, ...extractedDetails };
+                
+                // Log extracted context
+                if (Object.keys(extractedDetails).length > 0) {
+                    console.log('Extracted user details:', extractedDetails);
+                    console.log('Updated context:', conversationContext);
+                }
+                
                 addChatMessage('user', 'You', message);
                 input.value = '';
                 
@@ -1161,7 +1202,25 @@
                 const typingId = `typing-${Date.now()}`;
                 addChatMessage('agent', 'Agent', '● ● ● Thinking...', typingId);
                 
-                // Send to real AI backend (AWS Bedrock Claude Sonnet 4)
+                // Create or maintain session ID
+                if (!currentSessionId) {
+                    currentSessionId = `session_${Date.now()}`;
+                }
+                
+                // Build enriched message with context
+                let enrichedMessage = message;
+                if (Object.keys(conversationContext).length > 0) {
+                    let contextStr = "Customer information: ";
+                    if (conversationContext.name) contextStr += `Name: ${conversationContext.name}. `;
+                    if (conversationContext.email) contextStr += `Email: ${conversationContext.email}. `;
+                    if (conversationContext.phone) contextStr += `Phone: ${conversationContext.phone}. `;
+                    if (conversationContext.rego) contextStr += `Registration: ${conversationContext.rego}. `;
+                    if (conversationContext.vehicle) contextStr += `Vehicle: ${conversationContext.vehicle}. `;
+                    
+                    enrichedMessage = `${contextStr}\n\nCustomer request: ${message}`;
+                }
+                
+                // Send to real AI backend
                 fetch('/api/chat', {
                     method: 'POST',
                     headers: {
@@ -1169,8 +1228,9 @@
                     },
                     body: JSON.stringify({
                         network_name: selectedAgentForChat,
-                        message: message,
-                        session_id: `session_${Date.now()}`
+                        message: enrichedMessage,
+                        session_id: currentSessionId,
+                        context: conversationContext
                     })
                 })
                 .then(response => response.json())
@@ -1189,6 +1249,11 @@
                             if (modelElement) {
                                 modelElement.textContent = data.data.model;
                             }
+                        }
+                        
+                        // Update session ID from response if provided
+                        if (data.data.session_id) {
+                            currentSessionId = data.data.session_id;
                         }
                         
                         addChatMessage('agent', agentName, responseText);
@@ -1217,6 +1282,11 @@
             
             // Switch to new agent
             selectedAgentForChat = agentId;
+            
+            // Reset session and context when switching agents (fresh conversation)
+            currentSessionId = null;
+            conversationContext = {};
+            console.log(`Switched to ${agentName}, reset session and context`);
             
             // Update UI
             const connectedAgent = document.getElementById('connected-agent');

@@ -31,13 +31,15 @@ The Flask-based web client provides a professional three-panel interface for age
 The visual design features a professional light theme with zone-based color coding: Purple (#8B5CF6) for Front Office customer-facing agents, Blue (#3B82F6) for Middle Office coordination agents, Teal (#14B8A6) for Back Office processing agents, and Orange (#F59E0B) for the central Operations Coordinator hub. The layout emphasizes visual hierarchy with larger hub nodes and clear section labels. Interactive features include clicking agent cards for chat context switching, node dragging, JSON export of topology, and session-based conversation management. The technical stack includes Flask, Socket.IO, D3.js v7, and a responsive CSS Grid layout.
 
 ### Intelligent Context Management System
-The platform implements advanced conversation context management with multi-format data extraction and brand-aware routing:
+The platform implements advanced conversation context management with multi-format data extraction, session-based conversation history, and brand-aware routing:
+- **Session-Based Conversation History**: Maintains per-session conversation history in the `active_sessions` dictionary, preserving up to 11 prior message turns. Each LLM provider (Azure GPT-5, Google Gemini, AWS Bedrock, OpenAI) receives full conversation context, enabling agents to remember customer details across multiple interactions without repetition.
 - **Structured Data Extraction**: Parses checkmark format (✓ name: "value") and natural language inputs to extract customer information including name, email, phone (UK and Australian formats), vehicle registration, and model.
 - **Brand Detection**: Automatically identifies brand context (VWI/Volkswagen, Ford, BMW) from vehicle models, keywords, and conversation history.
-- **Brand Isolation**: Prevents brand cross-contamination by injecting brand-specific instructions into agent prompts, ensuring agents never mention competitor brands.
-- **Session Persistence**: Maintains session IDs across conversations to preserve context and prevent agents from re-requesting already-provided information.
+- **Brand Isolation**: Prevents brand cross-contamination through `system_override` context field that injects brand-specific instructions into agent prompts, ensuring agents never mention competitor brands. System overrides enforce guardrails across all LLM providers.
+- **Session Persistence**: Maintains session IDs across conversations to preserve context and prevent agents from re-requesting already-provided information. Session IDs are threaded through to Salesforce Agentforce for conversation continuity.
 - **Phone Number Support**: Handles UK formats (07xxx xxxxxx, +44 7xxx xxxxxx, 020 xxxx xxxx) and Australian formats (04xx xxx xxx, +61 4xx xxx xxx).
-- **Selective Salesforce Routing**: Only customer-facing Front Office agents use Salesforce Agentforce; internal coordination and processing agents use cost-effective LLMs (AWS Bedrock Claude Sonnet 4, OpenAI GPT-4 Turbo).
+- **Selective Salesforce Routing**: Only customer-facing Front Office agents (dealership_support, customer_service, technical_service_advisor, warranty_claims) use Salesforce Agentforce; internal coordination and processing agents use cost-effective LLMs (AWS Bedrock Claude Sonnet 4, OpenAI GPT-4 Turbo).
+- **Warm Greeting Handling**: Agents are configured to respond positively to simple greetings ("hello", "hi") and casual queries, providing welcoming customer experiences.
 
 ### Document Processing and RAG Integration
 The system offers Retrieval-Augmented Generation (RAG) capabilities using multiple document loaders (PDF, Confluence, arXiv, Wikipedia, Docling). It supports both in-memory and PostgreSQL-backed vector stores with configurable embedding models and text splitting strategies.

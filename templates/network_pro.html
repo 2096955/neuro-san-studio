@@ -1105,31 +1105,168 @@
             });
         }
         
-        // Extract user details from message
+        // ENHANCED extraction function for structured data and brand detection
         function extractUserDetails(message) {
-            const details = {};
+            const extracted = {};
             
-            // Extract email
-            const emailMatch = message.match(/[\w.-]+@[\w.-]+\.\w+/);
-            if (emailMatch) details.email = emailMatch[0];
+            // ===== 1. STRUCTURED FORMAT (✓ checkmarks) =====
+            const structuredPatterns = {
+                name: /✓\s*name\s*:\s*["']?([^"'\n]+?)["']?(?:\s|$)/i,
+                email: /✓\s*email\s*:\s*["']?([^"'\n]+?)["']?(?:\s|$)/i,
+                phone: /✓\s*phone\s*:\s*["']?([^"'\n]+?)["']?(?:\s|$)/i,
+                rego: /✓\s*rego\s*:\s*["']?([^"'\n]+?)["']?(?:\s|$)/i,
+                registration: /✓\s*registration\s*:\s*["']?([^"'\n]+?)["']?(?:\s|$)/i,
+                vehicle: /✓\s*vehicle\s*:\s*["']?([^"'\n]+?)["']?(?:\s|$)/i,
+                model: /✓\s*model\s*:\s*["']?([^"'\n]+?)["']?(?:\s|$)/i
+            };
             
-            // Extract phone (Australian format)
-            const phoneMatch = message.match(/0\d{9}|\+61\d{9}/);
-            if (phoneMatch) details.phone = phoneMatch[0];
+            Object.keys(structuredPatterns).forEach(key => {
+                const match = message.match(structuredPatterns[key]);
+                if (match && match[1]) {
+                    extracted[key] = match[1].trim().replace(/["']$/g, '').replace(/^["']/g, '');
+                }
+            });
             
-            // Extract name (after "name is" or "I'm" or "I am")
-            const nameMatch = message.match(/(?:name is|I'm|I am)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/i);
-            if (nameMatch) details.name = nameMatch[1];
+            // ===== 2. NATURAL LANGUAGE EXTRACTION =====
             
-            // Extract rego (6-7 alphanumeric characters)
-            const regoMatch = message.match(/\b([A-Z0-9]{6,7})\s+is the rego|rego is\s+([A-Z0-9]{6,7})|rego[:\s]+([A-Z0-9]{6,7})/i);
-            if (regoMatch) details.rego = (regoMatch[1] || regoMatch[2] || regoMatch[3]).toUpperCase();
+            // Name extraction (multiple patterns)
+            if (!extracted.name) {
+                const namePatterns = [
+                    /(?:name is|my name is|i'm|i am|call me)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/i,
+                    /([A-Z][a-z]+\s+[A-Z][a-z]+)\s+(?:is the name|is my name)/i
+                ];
+                for (const pattern of namePatterns) {
+                    const match = message.match(pattern);
+                    if (match && match[1]) {
+                        extracted.name = match[1].trim();
+                        break;
+                    }
+                }
+            }
             
-            // Extract vehicle model
-            const modelMatch = message.match(/\b(Tiguan|Golf|ID\.4|Passat|Polo|Amarok|T-Roc|Arteon)\b/i);
-            if (modelMatch) details.vehicle = modelMatch[1];
+            // Email extraction
+            if (!extracted.email) {
+                const emailMatch = message.match(/[\w.-]+@[\w.-]+\.\w+/);
+                if (emailMatch && !emailMatch[0].includes('example')) {
+                    extracted.email = emailMatch[0].trim();
+                }
+            }
             
-            return details;
+            // Phone extraction (UK and Australian formats)
+            if (!extracted.phone) {
+                const phonePatterns = [
+                    // UK formats
+                    /07\d{2}\s?\d{3}\s?\d{3}\s?\d{3}/,  // UK mobile: 07123 456789
+                    /\+44\s*7\d{2}\s?\d{3}\s?\d{3}\s?\d{3}/,  // +44 7123 456789
+                    /\+44\s*7\d{9}/,  // +447123456789
+                    /0\d{2,3}\s?\d{3,4}\s?\d{3,4}/,  // UK landline: 020 1234 5678
+                    /\(0\d{2,3}\)\s?\d{3,4}\s?\d{3,4}/,  // (020) 1234 5678
+                    // Australian formats
+                    /04\d{2}\s?\d{3}\s?\d{3}/,  // Australian mobile: 0412 345 678
+                    /\+614\d{8}/,  // +61412345678
+                    /0\d{9}/  // General 10-digit number
+                ];
+                
+                for (const pattern of phonePatterns) {
+                    const match = message.match(pattern);
+                    if (match) {
+                        let phone = match[0].replace(/[\s()-]/g, '');
+                        if (phone.startsWith('44') && !phone.startsWith('+44')) {
+                            phone = '+' + phone;
+                        }
+                        extracted.phone = phone;
+                        break;
+                    }
+                }
+            }
+            
+            // Registration/Rego extraction
+            if (!extracted.rego && !extracted.registration) {
+                const regoPatterns = [
+                    /(?:rego|registration|reg)\s*(?:is|:|=)\s*["']?([A-Z0-9]{5,8})["']?/i,
+                    /\b([A-Z]{2}\d{2}[A-Z]{3})\b/,  // GD23JSV format
+                    /([A-Z0-9]{6,7})\s+is the rego/i
+                ];
+                
+                for (const pattern of regoPatterns) {
+                    const match = message.match(pattern);
+                    if (match && match[1]) {
+                        const rego = match[1].toUpperCase().replace(/\s+/g, '');
+                        if (rego.length >= 5 && rego.length <= 8 && /[A-Z]/.test(rego) && /\d/.test(rego)) {
+                            extracted.rego = rego;
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            // Vehicle model extraction
+            if (!extracted.model && !extracted.vehicle) {
+                const vwModels = ['Tiguan', 'Golf', 'ID.4', 'ID.3', 'Passat', 'Polo', 'Amarok', 'T-Roc', 'Arteon', 'Touareg'];
+                const fordModels = ['Mustang', 'F-150', 'Ranger', 'Explorer', 'Focus', 'Fiesta', 'Edge', 'Bronco'];
+                const bmwModels = ['3 Series', '5 Series', '7 Series', 'X1', 'X3', 'X5', 'X7', 'M3', 'M5'];
+                const allModels = [...vwModels, ...fordModels, ...bmwModels];
+                
+                for (const model of allModels) {
+                    const regex = new RegExp(`\\b${model.replace('.', '\\.')}\\b`, 'i');
+                    if (regex.test(message)) {
+                        extracted.model = model;
+                        break;
+                    }
+                }
+            }
+            
+            // Clean up extracted data
+            if (extracted.name) {
+                extracted.name = extracted.name.replace(/^["']+|["']+$/g, '').trim();
+                extracted.name = extracted.name.split(' ').map(word => 
+                    word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+                ).join(' ');
+            }
+            
+            if (extracted.email) {
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(extracted.email)) {
+                    delete extracted.email;
+                }
+            }
+            
+            return extracted;
+        }
+        
+        // Brand detection function
+        function detectBrand(message, context = {}) {
+            const lowerMessage = message.toLowerCase();
+            
+            // Check if brand already detected in context
+            if (context.brand) return context.brand;
+            
+            // VWI/Volkswagen indicators
+            const vwiKeywords = ['vw', 'volkswagen', 'vwi', 'tiguan', 'golf', 'passat', 'arteon', 
+                                 'polo', 'id.4', 'id.3', 'id4', 'id3', 'touareg', 't-roc', 'amarok'];
+            
+            // Ford indicators
+            const fordKeywords = ['ford', 'mustang', 'f-150', 'f150', 'ranger', 'explorer', 
+                                  'focus', 'fiesta', 'edge', 'bronco'];
+            
+            // BMW indicators
+            const bmwKeywords = ['bmw', '3 series', '5 series', '7 series', 'x1', 'x3', 'x5', 
+                                 'x7', 'm3', 'm5'];
+            
+            if (vwiKeywords.some(keyword => lowerMessage.includes(keyword))) {
+                return 'VWI';
+            }
+            
+            if (fordKeywords.some(keyword => lowerMessage.includes(keyword))) {
+                return 'FORD';
+            }
+            
+            if (bmwKeywords.some(keyword => lowerMessage.includes(keyword))) {
+                return 'BMW';
+            }
+            
+            // Default to VWI (based on current setup)
+            return 'VWI';
         }
 
         function addChatMessage(type, agent, message, messageId = null) {
@@ -1185,13 +1322,23 @@
             const message = input.value.trim();
             
             if (message) {
-                // Extract user details from message
+                // Extract user details from message (handles ✓ checkmarks and natural language)
                 const extractedDetails = extractUserDetails(message);
-                conversationContext = { ...conversationContext, ...extractedDetails };
+                
+                // Detect brand from message and context
+                const detectedBrand = detectBrand(message, conversationContext);
+                
+                // Update conversation context with extracted details and brand
+                conversationContext = { 
+                    ...conversationContext, 
+                    ...extractedDetails,
+                    brand: detectedBrand
+                };
                 
                 // Log extracted context
                 if (Object.keys(extractedDetails).length > 0) {
                     console.log('Extracted user details:', extractedDetails);
+                    console.log('Detected brand:', detectedBrand);
                     console.log('Updated context:', conversationContext);
                 }
                 
@@ -1207,18 +1354,42 @@
                     currentSessionId = `session_${Date.now()}`;
                 }
                 
-                // Build enriched message with context
-                let enrichedMessage = message;
-                if (Object.keys(conversationContext).length > 0) {
-                    let contextStr = "Customer information: ";
-                    if (conversationContext.name) contextStr += `Name: ${conversationContext.name}. `;
-                    if (conversationContext.email) contextStr += `Email: ${conversationContext.email}. `;
-                    if (conversationContext.phone) contextStr += `Phone: ${conversationContext.phone}. `;
-                    if (conversationContext.rego) contextStr += `Registration: ${conversationContext.rego}. `;
-                    if (conversationContext.vehicle) contextStr += `Vehicle: ${conversationContext.vehicle}. `;
-                    
-                    enrichedMessage = `${contextStr}\n\nCustomer request: ${message}`;
+                // Build BRAND-AWARE enriched message to prevent cross-contamination
+                let enrichedMessage = '';
+                
+                // Add brand context (CRITICAL: prevents mentioning wrong brands)
+                const brandName = detectedBrand === 'VWI' ? 'Volkswagen (VW)' : 
+                                  detectedBrand === 'FORD' ? 'Ford' : 'BMW';
+                enrichedMessage += `You are a ${brandName} customer service agent. `;
+                
+                if (detectedBrand === 'VWI') {
+                    enrichedMessage += `You specialize in Volkswagen vehicles including Tiguan, Golf, ID.4, Passat, and other VW models. `;
+                    enrichedMessage += `IMPORTANT: Never mention Ford or BMW brands. Only discuss Volkswagen products and services. `;
+                } else if (detectedBrand === 'FORD') {
+                    enrichedMessage += `You specialize in Ford vehicles including Mustang, F-150, Ranger, and other Ford models. `;
+                    enrichedMessage += `IMPORTANT: Never mention Volkswagen or BMW brands. Only discuss Ford products and services. `;
+                } else if (detectedBrand === 'BMW') {
+                    enrichedMessage += `You specialize in BMW vehicles including 3 Series, 5 Series, X Series, and other BMW models. `;
+                    enrichedMessage += `IMPORTANT: Never mention Volkswagen or Ford brands. Only discuss BMW products and services. `;
                 }
+                
+                // Add customer information if available
+                if (Object.keys(conversationContext).length > 1) { // More than just 'brand'
+                    enrichedMessage += "\n\nCustomer information: ";
+                    if (conversationContext.name) enrichedMessage += `Name: ${conversationContext.name}. `;
+                    if (conversationContext.email) enrichedMessage += `Email: ${conversationContext.email}. `;
+                    if (conversationContext.phone) enrichedMessage += `Phone: ${conversationContext.phone}. `;
+                    if (conversationContext.rego || conversationContext.registration) {
+                        enrichedMessage += `Registration: ${conversationContext.rego || conversationContext.registration}. `;
+                    }
+                    if (conversationContext.vehicle || conversationContext.model) {
+                        enrichedMessage += `Vehicle: ${conversationContext.vehicle || conversationContext.model}. `;
+                    }
+                }
+                
+                enrichedMessage += `\n\nCustomer request: ${message}`;
+                
+                console.log('Brand-aware prompt:', enrichedMessage);
                 
                 // Send to real AI backend
                 fetch('/api/chat', {

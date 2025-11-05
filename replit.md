@@ -25,10 +25,19 @@ The platform features a dual-tool architecture: CodedTools (custom Python implem
 ### Web Interface and Client Architecture
 The Flask-based web client provides a professional three-panel interface for agent network management:
 - **Left Panel**: Agent network browser with status indicators.
-- **Center Panel**: D3.js force-directed graph visualization with zone-based positioning (Front/Middle/Back Office), draggable nodes, and directional connection arrows.
-- **Right Panel**: Real-time chat interface with per-agent conversation history and system status.
+- **Center Panel**: D3.js force-directed graph visualization with vertical 3-tier layout (Front Office/Customer, Middle Office/Coordination, Back Office/Processing), draggable nodes, directional connection arrows, and color-coded zone backgrounds.
+- **Right Panel**: Real-time chat interface with per-agent conversation history, system status, and intelligent context management.
 
-The visual design features a professional light theme with a purple/orange node color scheme (Orange for frontman, Purple for domain agents, Blue for specialists), dark connection lines, and cyan interactive elements. It includes interactive features like clicking agent cards for chat context switching, node dragging, and JSON export of topology. The technical stack includes Flask, Socket.IO, D3.js v7, and a responsive CSS Grid layout.
+The visual design features a professional light theme with zone-based color coding: Purple (#8B5CF6) for Front Office customer-facing agents, Blue (#3B82F6) for Middle Office coordination agents, Teal (#14B8A6) for Back Office processing agents, and Orange (#F59E0B) for the central Operations Coordinator hub. The layout emphasizes visual hierarchy with larger hub nodes and clear section labels. Interactive features include clicking agent cards for chat context switching, node dragging, JSON export of topology, and session-based conversation management. The technical stack includes Flask, Socket.IO, D3.js v7, and a responsive CSS Grid layout.
+
+### Intelligent Context Management System
+The platform implements advanced conversation context management with multi-format data extraction and brand-aware routing:
+- **Structured Data Extraction**: Parses checkmark format (✓ name: "value") and natural language inputs to extract customer information including name, email, phone (UK and Australian formats), vehicle registration, and model.
+- **Brand Detection**: Automatically identifies brand context (VWI/Volkswagen, Ford, BMW) from vehicle models, keywords, and conversation history.
+- **Brand Isolation**: Prevents brand cross-contamination by injecting brand-specific instructions into agent prompts, ensuring agents never mention competitor brands.
+- **Session Persistence**: Maintains session IDs across conversations to preserve context and prevent agents from re-requesting already-provided information.
+- **Phone Number Support**: Handles UK formats (07xxx xxxxxx, +44 7xxx xxxxxx, 020 xxxx xxxx) and Australian formats (04xx xxx xxx, +61 4xx xxx xxx).
+- **Selective Salesforce Routing**: Only customer-facing Front Office agents use Salesforce Agentforce; internal coordination and processing agents use cost-effective LLMs (AWS Bedrock Claude Sonnet 4, OpenAI GPT-4 Turbo).
 
 ### Document Processing and RAG Integration
 The system offers Retrieval-Augmented Generation (RAG) capabilities using multiple document loaders (PDF, Confluence, arXiv, Wikipedia, Docling). It supports both in-memory and PostgreSQL-backed vector stores with configurable embedding models and text splitting strategies.

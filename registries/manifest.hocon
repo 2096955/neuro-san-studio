@@ -21,6 +21,8 @@
     "music_nerd_pro_sly.hocon": true,
     "music_nerd_pro_sly_local.hocon": true,
     "music_nerd_llm_fallbacks.hocon": true,
+    # Vertex AI (Gemini on GCP): set true and set GOOGLE_APPLICATION_CREDENTIALS + project in music_nerd_vertex.hocon
+    "music_nerd_vertex.hocon": false,
     "hello_world.hocon": true,
     "advanced_calculator.hocon": false,
     "smart_home.hocon": true,
@@ -54,7 +56,8 @@
     "google_search.hocon": false,
 
     "agent_network_html_creator.hocon": true,
-    "agentforce.hocon": true,
+    # Calls Salesforce Agentforce via Cloud Run — off for local-only / no external services
+    "agentforce.hocon": false,
     "agentspace_adapter.hocon": false,
     "pdf_rag.hocon": true,
     "agentic_rag.hocon": false,
@@ -65,16 +68,17 @@
     # - OPENAI_API_KEY
     # See https://platform.openai.com/docs/guides/tools?api-mode=responses and
     # https://python.langchain.com/docs/integrations/chat/openai/#responses-api
-    "openai_web_search.hocon": true,
-    "openai_code_interpreter.hocon": true,
+    # OpenAI built-in tool demos require OPENAI_API_KEY — off for local-native Ollama demos
+    "openai_web_search.hocon": false,
+    "openai_code_interpreter.hocon": false,
 
     # Requirement to use this agent network:
     # - langchain-anthropic>=0.3.13
     # - ANTHROPIC_API_KEY
     # See https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/overview and
     # https://python.langchain.com/docs/integrations/chat/anthropic/#built-in-tools
-    "anthropic_web_search.hocon": true,
-    "anthropic_code_execution.hocon": true,
+    "anthropic_web_search.hocon": false,
+    "anthropic_code_execution.hocon": false,
 
     # To use this agent network, start by installing the required package:
     #     pip install atlassian-python-api

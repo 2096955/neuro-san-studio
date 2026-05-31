@@ -17,8 +17,9 @@ pkill -f server_main_loop 2>/dev/null || true
 sleep 1
 (
   cd "$STUDIO" && \
+    PYTHONPATH="$STUDIO${PYTHONPATH:+:$PYTHONPATH}" \
     AGENT_MANIFEST_FILE="$STUDIO/registries/manifest.hocon" \
-    AGENT_TOOL_PATH="$STUDIO/coded_tools" \
+    AGENT_TOOL_PATH="coded_tools" \
     AGENT_TOOLBOX_INFO_FILE="$STUDIO/toolbox/toolbox_info.hocon" \
     AGENT_HTTP_PORT=8080 AGENT_ALLOW_CORS_HEADERS=1 \
     nohup python3 -m neuro_san.service.main_loop.server_main_loop > /tmp/neurosan-server.log 2>&1 &

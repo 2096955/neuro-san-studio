@@ -31,9 +31,12 @@ def swap(registries_dir: str) -> int:
         t = re.sub(r'(\bclass\s*=\s*)"ollama"', r'\1"gemini"', t)
         # any qwen3.6 model -> gemini
         t = re.sub(r'"qwen3\.6:[^"]+"', f'"{GEMINI_MODEL}"', t)
-        # strip the ollama-only "reasoning" kwarg (gemini class rejects it)
-        t = re.sub(r',?\s*"reasoning"\s*:\s*(?:true|false)', "", t)
-        t = re.sub(r";?\s*\breasoning\s*=\s*(?:true|false)", "", t)
+        # Map the Ollama-only `reasoning: false` to Gemini's `thinking_budget: 0` — disabling
+        # "thinking" in the same authoritative spot (the registry llm_config the gemini policy reads
+        # directly). Measured ~4.1s/call (thinking on) -> ~1.1s/call (budget 0); across a deep
+        # multi-agent network this is the difference between ~50s and ~15s per query.
+        t = re.sub(r'"reasoning"\s*:\s*(?:true|false)', '"thinking_budget": 0', t)
+        t = re.sub(r"\breasoning\s*=\s*(?:true|false)", "thinking_budget = 0", t)
         if t != original:
             f.write_text(t)
             n += 1

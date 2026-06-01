@@ -51,6 +51,92 @@
   <img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki: Neuro SAN" /></a>
 </p>
 
+## 🚀 This fork — Local-native + Cloud Run Multi-Agent Accelerator
+
+This fork makes Cognizant's **Multi-Agent Accelerator (MAA)** runnable end-to-end two ways, with a
+**categorized agent-network sidebar** (Basic / Experimental / Industry / Tools):
+
+1. **Local-native on [Ollama](https://ollama.com)** (`qwen3.6`) — no cloud API keys needed.
+2. **Public on Google Cloud Run with Gemini** — a reproducible deploy of the same demo.
+
+> **Live demo:** https://neuro-san-maa-ui-kcvokjzgdq-uc.a.run.app/multiAgentAccelerator
+> (backend: https://neuro-san-maa-backend-kcvokjzgdq-uc.a.run.app, on `gemini-3.5-flash`)
+
+### Two repos are needed
+| Role | Repo | Branch |
+|---|---|---|
+| **Backend** (agent networks, coded tools, deploy scripts) — this repo | `https://github.com/2096955/neuro-san-studio` | `feat/local-maa-categories` |
+| **UI** (the Next.js Neuro® AI MAA front end) | `https://github.com/2096955/neuro-san-ui` | `feat/local-maa` |
+
+### What this fork adds vs upstream
+- **Categorized sidebar** — each registry carries `metadata.tags`; the UI groups networks by category. Tags are injected by `scripts/tag_registries.py`.
+- **Local-native LLM** — all enabled registries pinned to Ollama `qwen3.6:35b-a3b` (fallback `qwen3.6:27b`).
+- **Bug fixes that make it actually work**: dotted `AGENT_TOOL_PATH=coded_tools` (+ `PYTHONPATH`) so class-based coded tools import; `AGENT_TOOLBOX_INFO_FILE` wired so toolbox tools load; 3 registries' `name` fields de-spaced so they validate. (The UI repo also fixes the chat JSON-render bug, an XSS via raw HTML, and `[object Object]` chat history.)
+- **Cloud Run deploy on Gemini** — `deploy/cloud-maa/` (the local Ollama registries are swapped to Gemini on a throwaway build copy; the repo stays Ollama-native).
+
+```
+Local:  Browser → UI :3000 → neuro-san backend :8080 → Ollama (qwen3.6)
+Cloud:  Browser → UI (Cloud Run) → neuro-san backend (Cloud Run) → Gemini (GOOGLE_API_KEY)
+```
+
+### A) Run it locally (Ollama, no cloud keys)
+**Prereqs:** [Ollama](https://ollama.com) running with `ollama pull qwen3.6:35b-a3b` (and `qwen3.6:27b`); Python 3.11; Node 22 + Yarn 4.
+
+```bash
+# 1. Clone both repos side by side
+git clone -b feat/local-maa-categories https://github.com/2096955/neuro-san-studio
+git clone -b feat/local-maa            https://github.com/2096955/neuro-san-ui
+
+# 2. Backend (from neuro-san-studio/)
+cd neuro-san-studio
+pip install -r requirements.txt
+PYTHONPATH="$(pwd)" \
+AGENT_MANIFEST_FILE="$(pwd)/registries/manifest.hocon" \
+AGENT_TOOL_PATH="coded_tools" \
+AGENT_TOOLBOX_INFO_FILE="$(pwd)/toolbox/toolbox_info.hocon" \
+AGENT_HTTP_PORT=8080 AGENT_ALLOW_CORS_HEADERS=1 \
+python3 -m neuro_san.service.main_loop.server_main_loop
+
+# 3. UI (from neuro-san-ui/, in another terminal)
+cd neuro-san-ui
+cp apps/main/.env.local.example apps/main/.env.local   # already points at http://localhost:8080, auth disabled
+yarn install && yarn build:lib
+cd apps/main && yarn dev
+# open http://localhost:3000/multiAgentAccelerator
+```
+
+A convenience launcher `scripts/run-local-maa.sh` starts both (edit the `STUDIO`/`UI` paths at the
+top first). Full details: **`neuro-san-ui/docs/LOCAL_MAA.md`**.
+
+### B) Deploy to Google Cloud Run (Gemini)
+Ollama can't run on Cloud Run, so the deployed backend uses **Gemini** (`class "gemini"` →
+`ChatGoogleGenerativeAI`, auth via `GOOGLE_API_KEY`). You need: a GCP project with Cloud Build +
+Cloud Run + Artifact Registry enabled, `gcloud` authenticated (an SA that can build & deploy), and a
+**valid Google AI Studio API key**.
+
+```bash
+# Backend (from neuro-san-studio/)
+export GEMINI_API_KEY="<your Google AI Studio key>"
+export PROJECT="<your-gcp-project>"            # defaults to gbg-neuro
+export GEMINI_MODEL="gemini-2.5-flash"         # or gemini-3.5-flash, gemini-3-flash, ...
+bash deploy/cloud-maa/deploy-backend.sh        # builds + deploys, prints the backend URL
+
+# UI (from neuro-san-ui/)
+BACKEND_URL="<backend url from above>" bash deploy/cloud-maa/deploy-ui.sh
+```
+
+Both deploy `--allow-unauthenticated` (public). The backend URL is **baked into the UI at build
+time** (`NEXT_PUBLIC_NEURO_SAN_SERVER_URL`). Full details, gotchas, and the exact identities used:
+**[`deploy/cloud-maa/README.md`](deploy/cloud-maa/README.md)**.
+
+### Notes / gotchas
+- **Switch cloud models** anytime: `GEMINI_MODEL=gemini-3.5-flash bash deploy/cloud-maa/deploy-backend.sh`. Models neuro-san doesn't know yet are registered via `deploy/cloud-maa/llm_info_extra.hocon` (overlaid through `AGENT_LLM_INFO_FILE`).
+- **Build needs BuildKit** for the UI (`DOCKER_BUILDKIT=1`, already in its `cloudbuild.yaml`).
+- **`GOOGLE_API_KEY`** is passed as a Cloud Run env var (Secret Manager recommended once IAM allows). Never commit it.
+- Tool-heavy networks (web scrapers, `pdf_rag`) render their graph but may degrade on chat when their external tools aren't reachable.
+
+---
+
 ## What is Neuro SAN?
 
 [**Neuro AI system of agent networks (Neuro SAN)**](https://github.com/cognizant-ai-lab/neuro-san) is an open-source,
@@ -182,6 +268,8 @@ for the [neuro-san library](https://github.com/cognizant-ai-lab/neuro-san).
 
 You'll find comprehensive documentation, example agent networks, and tutorials to guide you through your first steps.
 
+For **local Ollama** demos without an OpenAI API key, see [docs/LOCAL_NATIVE_DEMOS.md](docs/LOCAL_NATIVE_DEMOS.md), [docs/DEMO_MANIFEST_SCOPE.md](docs/DEMO_MANIFEST_SCOPE.md), and [docs/CRUSE_AGENTIC_UI_LOCAL.md](docs/CRUSE_AGENTIC_UI_LOCAL.md).
+
 ---
 
 ### Installation
@@ -296,6 +384,8 @@ If you want to use neuro-san with a FastAPI-based developer-oriented client, fol
 Screenshot:
 
 ![NSFlow UI Snapshot](https://raw.githubusercontent.com/cognizant-ai-lab/nsflow/main/docs/snapshot01.png)
+
+When you run `python -m run`, the **Studio API** (Flask `app.py`) also starts on port **8000**, exposing `/api/networks`, `/api/topology`, `/api/chat` for the in-repo Vite frontend. To use it: in another terminal run `cd frontend && npm run dev`, then open http://localhost:5173 (the Multi-Agent Accelerator and chat use the Studio API at localhost:8000 by default). Use `python -m run --no-studio-api` if you do not need this API.
 
 ---
 

@@ -80,7 +80,12 @@ such as payment due dates or loan payoff amounts.
 Throughout all interactions, you remain patient, courteous, and solutions-oriented. You document customer interactions
 accurately and follow up as necessary to ensure their needs are met. If any issues arise, you address them proactively,
 always striving to provide a resolution that aligns with CarMax’s customer-first philosophy.
-            """ ${aaosa_instructions},
+
+Your specialists (call only the relevant one(s) by name):
+- sales_consultant: Consult for selecting and purchasing vehicles from inventory, test drives, pricing, trade-ins, warranties, and the buying process.
+- service_advisor: Consult for scheduling service appointments, maintenance and repair information, costs, timelines, and vehicle service status.
+- finance_specialist: Consult for financing options, loan terms, interest rates, applications, and account or payoff inquiries via CarMax Auto Finance.
+            """ ${aaosa_router_instructions},
             "tools": ["sales_consultant", "service_advisor", "finance_specialist"]
         },
         {

@@ -70,7 +70,13 @@ An assistant that answer inquiries from the user.
             # Values next to quoted strings are automatically concatenated.
             "instructions": ${instructions_prefix} """
             Your name is SmartHouseAssistant. Answer inquiries related to the smart home.
-            """ ${aaosa_instructions},
+
+            Your specialists (call only the relevant one(s) by name):
+            - TV: turns the TV on or off; consult when the user wants to control the television.
+            - Lights: turns lights on or off; consult for any lighting requests (living room, kitchen).
+            - Book: a book that cannot perform actions; consult only for book-related mentions.
+            - Radio: turns the radio on or off; consult when the user wants to control the radio.
+            """ ${aaosa_router_instructions},
             "tools": ["TV", "Lights", "Book", "Radio"]
         },
         {

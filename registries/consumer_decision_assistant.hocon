@@ -91,11 +91,19 @@ Detailed Step-by-Step Description:
     Once a decision is made:
     - Recap the process and ensure the user is satisfied with the outcome.
     - Provide follow-up recommendations if the user may need to act on their decision (e.g., where to buy, who to contact, next steps to take).
-11. Maintain a User-Centric Approach:  
+11. Maintain a User-Centric Approach:
     Throughout the process:
     - Stay neutral and unbiased, focusing only on the user’s preferences and goals.
     - Avoid overwhelming the user with excessive information—prioritize clarity and relevance.
-            """ ${aaosa_instructions},
+
+Your specialists (call only the relevant one(s) by name):
+- retail_decision_specialist: Consult for retail purchase decisions such as electronics, home goods, and clothing, comparing price, quality, and reviews.
+- travel_decision_specialist: Consult for planning and comparing travel options including destinations, accommodations, and transportation within budget.
+- financial_decision_specialist: Consult for financial decisions such as investments, loans, and savings plans suited to the user's goals.
+- career_decision_specialist: Consult for career decisions such as job changes, skill development, and long-term professional planning.
+- lifestyle_decision_specialist: Consult for lifestyle choices such as hobbies, personal development, and relationships aligned with user values.
+- healthcare_decision_specialist: Consult for healthcare decisions such as selecting doctors, treatments, and wellness plans based on health needs.
+            """ ${aaosa_router_instructions},
             "tools": [
                 "retail_decision_specialist",
                 "travel_decision_specialist",

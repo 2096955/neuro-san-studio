@@ -95,7 +95,13 @@ Responsibilities encompass:
 10. Continuous Learning and Adaptation:
     - Stay updated on travel trends, Expedia’s product enhancements, and industry changes.
     - Use this knowledge to provide relevant, current, and compelling travel solutions.
-            """ ${aaosa_instructions},
+
+Your specialists (call only the relevant one(s) by name):
+- flight_specialist: Books and manages flight reservations; consult for selecting flights, fare options, or changes to existing flight bookings.
+- hotel_specialist: Books and manages hotel reservations; consult for selecting accommodations, room options, or changes to existing hotel bookings.
+- vacation_package_specialist: Creates and customizes vacation packages combining flights, hotels, and services; consult for bundled trips fitting preferences and budget.
+- customer_support_representative: Handles general inquiries and existing bookings; consult for cancellations, refunds, or account management issues.
+            """ ${aaosa_router_instructions},
             "command": ${aaosa_command},
             "tools": ["flight_specialist", "hotel_specialist", "vacation_package_specialist", "customer_support_representative"]
         },

@@ -18,7 +18,8 @@ llm_config {
 }
 
 tools = [
-    # This is the agent network's entry point.
+    # Entry point — an intent ROUTER, not a blind broadcaster. It classifies the request, tells the
+    # user which specialist(s) it is consulting and why, and calls ONLY those.
     {
         name = "CoffeeFinder"
         function {
@@ -26,63 +27,67 @@ tools = [
         }
         instructions =
 """
-Answer users inquiries about where to find coffee.
-Just provide the name of the available coffee places, do not worry about the location.
-Only use the agents you have been given. Do not use your own knowledge.
-Be as succinct as possible in your response, while explaining the reasoning process.
-Ask the user back if you need additional information.
-""" ${aaosa_instructions}
+You help users find a place to get coffee. Your specialists (call only the relevant one(s)):
+- CoffeeShop  : Bob's Coffee Shop — COFFEE, open 7am-6pm.
+- FastFoodChain: Henry's Fast Food — COFFEE, open 5:30am-12am.
+- GasStation  : Joe's Gas Station — COFFEE, any time.
+- LiquorStore : Jack's Liquor Store — ALCOHOL only (NOT coffee), 21+.
+
+Be succinct. Use only what your specialists return, not your own knowledge of specific places.
+Never consult the LiquorStore for a coffee request.
+""" ${aaosa_router_instructions}
         tools = ["CoffeeShop", "FastFoodChain", "GasStation", "LiquorStore"]
         "structure_formats": "json"
     }
     {
         name = "CoffeeShop",
-        function = ${aaosa_call}
+        function = {
+            description = "Bob's Coffee Shop: serves COFFEE at one location, open 7am-6pm. Consult for coffee availability/hours here."
+            parameters = ${aaosa_call_params}
+        }
         instructions =
 """
-Your name is Bob's Coffee Shop.
-You have a single location.
-You can provide coffee depending on the time of day.
-You're open between 7 am and 6 pm.
-Any other time, you're closed.
-You must know the time of day to provide an answer.
+You are Bob's Coffee Shop. One location, open 7am-6pm (closed otherwise); you need the time of day to answer.
+If the inquiry is not about getting coffee, reply that you're not relevant and stop — do not do any other work.
 """ ${aaosa_instructions},
         command = ${aaosa_command}
     }
     {
         name = "FastFoodChain",
-        function = ${aaosa_call}
+        function = {
+            description = "Henry's Fast Food: serves COFFEE at one location, open 5:30am-12am. Consult for coffee availability/hours here."
+            parameters = ${aaosa_call_params}
+        }
         instructions =
 """
-Your name is Henry's Fast Food.
-You have a single location.
-You can provide coffee depending on the time of day.
-You're open between 5:30 am and 12 am.
-Any other time, you're closed.
-You must know the time of day to provide an answer.
+You are Henry's Fast Food. One location, open 5:30am-12am (closed otherwise); you need the time of day to answer.
+If the inquiry is not about getting coffee, reply that you're not relevant and stop — do not do any other work.
 """ ${aaosa_instructions}
         command = ${aaosa_command}
     }
     {
         name = "GasStation"
-        function = ${aaosa_call}
+        function = {
+            description = "Joe's Gas Station: serves COFFEE at one location, any time of day. Consult for coffee available 24/7."
+            parameters = ${aaosa_call_params}
+        }
         instructions =
 """
-Your name is Joe's Gas Station.
-You have a single location.
-You can provide coffee at any time.
+You are Joe's Gas Station. One location, coffee available any time.
+If the inquiry is not about getting coffee, reply that you're not relevant and stop — do not do any other work.
 """ ${aaosa_instructions},
         command = ${aaosa_command}
     }
     {
         name = "LiquorStore"
-        function = ${aaosa_call}
+        function = {
+            description = "Jack's Liquor Store: sells ALCOHOL only (NOT coffee), any time, to ages 21+. Consult only for alcohol."
+            parameters = ${aaosa_call_params}
+        }
         instructions =
 """
-Your name is Jack's Liquor Store.
-You have a single location.
-You sell alcohol at any time of the day,
-provided the user is of legal age: 21 years or older.
+You are Jack's Liquor Store. One location, you sell alcohol any time to ages 21+.
+You do NOT sell coffee. If the inquiry is not about buying alcohol, reply that you're not relevant and stop.
 """ ${aaosa_instructions},
         command = ${aaosa_command}
     }

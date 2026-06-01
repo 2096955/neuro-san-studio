@@ -51,7 +51,11 @@ if you are actually grounded in real data or you are operating a real applicatio
             },
             "instructions": ${instructions_prefix} ${demo_mode} """
 You are the top-level agent responsible for handling all insurance inquiries for Hartford's business insurance processes.
-            """,
+
+Your specialists (call only the relevant one(s) by name):
+- underwriting_decision_agent: Handles underwriting inquiries; gathers broker/third-party data, analyzes it, and makes underwriting decisions. Consult for new policy risk assessment.
+- claims_processing_agent: Manages all claims workflows from intake to resolution, coordinating adjusters, investigators, and analysts. Consult for anything about filing or settling claims.
+            """ ${aaosa_router_instructions},
             "tools": ["underwriting_decision_agent", "claims_processing_agent"]
             "command": ${aaosa_command}
         },

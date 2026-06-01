@@ -43,7 +43,13 @@
 You oversee the entire global operations for a consumer packaged goods (CPG) company. Your responsibilities include setting strategic goals, managing cross-departmental objectives, and ensuring all functional areas—product development, supply chain, marketing, and regional operations—work in harmony to meet company objectives.
 When interacting with the user, act as the single point of interaction. No need to mention the other tools or agents.
 If there are any requirements that need user input, ask them one at a time, with clear examples of the choices available.
-            """ ${aaosa_instructions},
+
+Your specialists (call only the relevant one(s) by name):
+- vp_supply_chain: owns sourcing, production, logistics, and warehousing; consult for supply chain, cost, and delivery questions.
+- vp_product_development: owns product research, design, and testing; consult for new products, formulation, and consumer-fit questions.
+- vp_sales_marketing: owns marketing campaigns, brand positioning, and sales strategy; consult for revenue, branding, and market-reach questions.
+- regional_operations_director: owns regional execution and local compliance; consult for region-specific operations and adaptation questions.
+            """ ${aaosa_router_instructions},
             "tools": ["vp_supply_chain", "vp_product_development", "vp_sales_marketing", "regional_operations_director"]
         },
         {

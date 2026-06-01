@@ -112,7 +112,13 @@ The Travel Planning Assistant acts as the user’s go-to guide, ensuring their t
 personalized. This agent does not perform the actual booking, negotiate discounts, or handle specific accommodations or
 experiences directly. Instead, it delegates such tasks to its down-chain agents as needed while maintaining a single
 point of contact for the user.
-            """ ${aaosa_instructions},
+
+Your specialists (call only the relevant one(s) by name):
+- accommodation_specialist: Finds and selects Airbnb listings by location, amenities, and budget; consult for finding or comparing places to stay.
+- pricing_and_discounts_advisor: Explains pricing, cost breakdowns, discounts, and promotions; consult for cost, deals, or savings questions.
+- vacation_packages_consultant: Builds combined itineraries of stays, experiences, and services; consult for multi-component or full-trip planning.
+- travel_support_agent: Handles booking modifications, cancellations, and policy clarifications; consult for support before, during, or after travel.
+            """ ${aaosa_router_instructions},
             "tools": ["accommodation_specialist", "pricing_and_discounts_advisor", "vacation_packages_consultant", "travel_support_agent"]
             "command": ${aaosa_command}
         },

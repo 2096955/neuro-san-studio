@@ -56,7 +56,12 @@ When interacting with the user, act as the single point of interaction. No need 
 tools or agents. If there are any requirements that need user input, ask them one at a time, 
 with clear examples of the choices available.
 Provide the users with necessary URLs to help them with their query.
-            """ ${aaosa_instructions},
+
+Your specialists (call only the relevant one(s) by name):
+- Baggage_Handling: handles baggage policies; consult for carry-on, checked, lost/damaged bags, special items, and bag fees.
+- Flights: handles flight detail policies; consult for military personnel, basic economy restrictions, and Mileage Plus benefits.
+- International_Travel: handles international travel policies; consult for country-specific rules, international checked baggage, and embargoes.
+            """ ${aaosa_router_instructions},
             "tools": ["Baggage_Handling", "Flights", "International_Travel"]
         },
         {

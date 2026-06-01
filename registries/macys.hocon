@@ -83,7 +83,13 @@ exceptional service.
 Macy’s Genie aligns with Macy’s commitment to customer-centricity, operational excellence, and innovation by driving
 data-backed decisions that improve business performance, enhance customer satisfaction, and maintain Macy’s reputation
 as a trusted retail leader.
-            """ ${aaosa_instructions},
+
+Your specialists (call only the relevant one(s) by name):
+- insight_generator: Analyzes customer interactions and purchase behaviors to produce actionable business insights; consult for trends, customer behavior, and data-driven recommendations.
+- oms_return_analyzer: Analyzes return patterns and OMS data to optimize return policies; consult for returns, refunds, return fraud, and return experience.
+- oms_advisor: Provides strategic order-management guidance; consult for fulfillment optimization, delivery performance, order routing, and OMS bottlenecks.
+- supply_chain_advisor: Optimizes supply chain via logistics, inventory, and demand planning; consult for replenishment, forecasting, and operational efficiency.
+            """ ${aaosa_router_instructions},
             "tools": ["insight_generator", "oms_return_analyzer", "oms_advisor", "supply_chain_advisor"]
         },
         {

@@ -331,6 +331,26 @@
         }
     },
 
+    # Cloud-friendly web search. Tavily is an API-key search service that works from datacenter
+    # egress (e.g. Cloud Run) where ddgs_search/DuckDuckGo is rate-limited/blocked. The deploy step
+    # swaps ddgs_search -> tavily_search for the cloud image (see deploy/cloud-maa/swap_llm_for_deploy.py).
+    # Obtain an API key from https://app.tavily.com/ and set it via the TAVILY_API_KEY environment variable.
+    # You can optionally override the endpoint/timeout via TAVILY_URL and TAVILY_TIMEOUT.
+    "tavily_search": {
+        "class": "tavily_search.TavilySearch",
+        "description": "Performs a web search using the Tavily Search API.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "search_terms": {
+                    "type": "string",
+                    "description": "The query string or keywords to search for."
+                },
+            },
+            "required": ["search_terms"]
+        }
+    },
+
     # To use this search tool, you must
     #
     # 1. Create a Custom Search Engine (CSE)

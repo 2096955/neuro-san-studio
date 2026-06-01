@@ -36,7 +36,10 @@ f = pathlib.Path(sys.argv[1]); t = f.read_text()
 t = t.replace("python:3.13-slim", "python:3.11-slim")
 t = t.replace("/usr/local/lib/python3.13/site-packages", "/usr/local/lib/python3.11/site-packages")
 m = 'COPY ./coded_tool[s] ${APP_SOURCE}/coded_tools'
-if 'COPY ./toolbox' not in t: t = t.replace(m, m + '\nCOPY ./toolbox ${APP_SOURCE}/toolbox')
+extra = ''
+if 'COPY ./toolbox' not in t: extra += '\nCOPY ./toolbox ${APP_SOURCE}/toolbox'
+if 'llm_info_extra' not in t: extra += '\nCOPY ./deploy/cloud-maa/llm_info_extra.hocon ${APP_SOURCE}/llm_info_extra.hocon'
+if extra: t = t.replace(m, m + extra)
 a = 'RUN if [ -f ${APP_SOURCE}/requirements.txt ]; \\'
 if 'build-essential' not in t:
     t = t.replace(a, 'RUN apt-get update && apt-get install -y --no-install-recommends gcc build-essential && rm -rf /var/lib/apt/lists/*\n' + a)
@@ -49,7 +52,7 @@ echo "[4/5] build image"
 echo "[5/5] deploy public Cloud Run (Gemini + CORS + dotted AGENT_TOOL_PATH)"
 gcloud run deploy "$SERVICE" --image "$IMAGE" --region "$REGION" --allow-unauthenticated \
   --port 8080 --memory 4Gi --cpu 2 --timeout 600 --max-instances 5 \
-  --set-env-vars "^@^AGENT_ALLOW_CORS_HEADERS=1@AGENT_MANIFEST_FILE=${APP}/registries/manifest.hocon@AGENT_TOOL_PATH=coded_tools@AGENT_TOOLBOX_INFO_FILE=${APP}/toolbox/toolbox_info.hocon@GOOGLE_API_KEY=${GEMINI_API_KEY}"
+  --set-env-vars "^@^AGENT_ALLOW_CORS_HEADERS=1@AGENT_MANIFEST_FILE=${APP}/registries/manifest.hocon@AGENT_TOOL_PATH=coded_tools@AGENT_TOOLBOX_INFO_FILE=${APP}/toolbox/toolbox_info.hocon@AGENT_LLM_INFO_FILE=${APP}/llm_info_extra.hocon@GOOGLE_API_KEY=${GEMINI_API_KEY}"
 
 gcloud run services describe "$SERVICE" --region "$REGION" --format='value(status.url)'
 rm -rf "$BT"

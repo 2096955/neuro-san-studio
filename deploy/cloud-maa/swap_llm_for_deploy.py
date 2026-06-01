@@ -13,11 +13,12 @@ Validation gate (must print nothing):
     grep -rnE '"ollama"|qwen3\\.6' <registries>/*.hocon
 """
 
+import os
 import re
 import sys
 import pathlib
 
-GEMINI_MODEL = "gemini-2.5-flash"
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 
 
 def swap(registries_dir: str) -> int:

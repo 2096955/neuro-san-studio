@@ -1,0 +1,28 @@
+// Extra LLM catalog entries overlaid onto neuro-san's defaults via AGENT_LLM_INFO_FILE.
+// neuro-san 0.6.23 doesn't know gemini-3.x.5 models yet; register them as the "gemini" class
+// (langchain_google_genai.ChatGoogleGenerativeAI, uses GOOGLE_API_KEY). Mirrors the built-in
+// gemini-2.5-flash entry. The DictionaryOverlay merges this with the defaults, so only the new
+// entries are needed.
+{
+    "gemini-3.5-flash": {
+        "class": "gemini",
+        "model_info_url": "https://ai.google.dev/gemini-api/docs/models",
+        "modalities": {
+            "input": [ "text", "images", "video", "audio" ],
+            "output": [ "text" ],
+        },
+        "capabilities": [ "tools" ],
+        "context_window_size": 1048576,
+        "max_output_tokens": 65536,
+    },
+    "gemini-3-flash": {
+        "class": "gemini",
+        "modalities": {
+            "input": [ "text", "images", "video", "audio" ],
+            "output": [ "text" ],
+        },
+        "capabilities": [ "tools" ],
+        "context_window_size": 1048576,
+        "max_output_tokens": 65536,
+    },
+}

@@ -62,6 +62,11 @@ This fork makes Cognizant's **Multi-Agent Accelerator (MAA)** runnable end-to-en
 > **Live demo:** https://neuro-san-maa-ui-kcvokjzgdq-uc.a.run.app/multiAgentAccelerator
 > (backend: https://neuro-san-maa-backend-kcvokjzgdq-uc.a.run.app, on `gemini-3.5-flash`)
 
+<!-- pyml disable-next-line no-inline-html -->
+<p align="center">
+  <img src="./docs/images/multi_agent_accelerator.png" alt="Multi-Agent Accelerator: categorized agent-network sidebar, agent graph, and chat" width="900"/>
+</p>
+
 ### Two repos are needed
 | Role | Repo | Branch |
 |---|---|---|

@@ -263,6 +263,12 @@ And many more: check out [docs/examples.md](docs/examples.md).
 
 ## Getting Started
 
+> **Using this fork's Multi-Agent Accelerator?** Follow the **"🚀 This fork"** section near the top
+> of this README — that's the categorized MAA front end (the live demo), running on **Ollama
+> locally** (no API key) or **Gemini on Cloud Run**. Everything below (`python -m run`, nsflow, the
+> Flask web client, OpenAI keys) is the **upstream developer clients / providers** — optional for this
+> fork, kept for reference. The screenshots below are the upstream clients, **not** our MAA UI.
+
 To dive into Neuro SAN and start building your own multi-agent networks, this repository contains a collection of demos
 for the [neuro-san library](https://github.com/cognizant-ai-lab/neuro-san).
 
@@ -318,11 +324,13 @@ Install the requirements:
 pip install -r requirements.txt
 ```
 
-**IMPORTANT**: By default the server relies on OpenAI's `gpt-4o` model. Set the OpenAI API key, and add it to your shell
-configuration so it's available in future sessions.
+> **This fork does NOT need an OpenAI key.** Its enabled agent networks are pinned to **local Ollama
+> (`qwen3.6`)**, so for local runs you only need Ollama running (see the "🚀 This fork" section above).
+> The Cloud Run deploy uses **Gemini** (`GEMINI_API_KEY`). The OpenAI / other-provider setup below is
+> **optional** — only needed if you switch the registries' `llm_config` to that provider.
 
-You can get your OpenAI API key from <https://platform.openai.com/signup>. After signing up, create a new API key in the
-API keys section in your profile.
+**Upstream default (optional):** stock neuro-san uses OpenAI's `gpt-4o` if you set an OpenAI API key.
+You can get one from <https://platform.openai.com/signup> (API keys section of your profile).
 
 **NOTE**: Replace `XXX` with your actual OpenAI API key.  
 **NOTE**: This is OS dependent.
@@ -363,6 +371,11 @@ There are multiple ways in which we can now use the neuro-san server with a clie
 <!-- pyml disable-next-line line-length -->
 #### Option 1: Using [`nsflow`](https://github.com/cognizant-ai-lab/nsflow) as a developer-oriented web client
 
+> **Note:** This is the upstream **nsflow** developer client (that's what the screenshot below shows) —
+> **not** this fork's categorized Multi-Agent Accelerator. For the MAA front end in the live demo, use
+> the Next.js UI in [`2096955/neuro-san-ui`](https://github.com/2096955/neuro-san-ui) per the
+> "🚀 This fork" section above.
+
 If you want to use neuro-san with a FastAPI-based developer-oriented client, follow these steps:
 
 * Start the server and client with a single command, from project root:
@@ -385,7 +398,7 @@ Screenshot:
 
 ![NSFlow UI Snapshot](https://raw.githubusercontent.com/cognizant-ai-lab/nsflow/main/docs/snapshot01.png)
 
-When you run `python -m run`, the **Studio API** (Flask `app.py`) also starts on port **8000**, exposing `/api/networks`, `/api/topology`, `/api/chat` for the in-repo Vite frontend. To use it: in another terminal run `cd frontend && npm run dev`, then open http://localhost:5173 (the Multi-Agent Accelerator and chat use the Studio API at localhost:8000 by default). Use `python -m run --no-studio-api` if you do not need this API.
+When you run `python -m run`, the **Studio API** (Flask `app.py`) also starts on port **8000**, exposing `/api/networks`, `/api/topology`, `/api/chat` for the **in-repo `frontend/` Vite app** (a separate, bundled demo UI — *not* this fork's Next.js MAA in `2096955/neuro-san-ui`). To use it: in another terminal run `cd frontend && npm run dev`, then open http://localhost:5173. Use `python -m run --no-studio-api` if you do not need this API.
 
 ---
 

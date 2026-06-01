@@ -1,8 +1,12 @@
 // Extra LLM catalog entries overlaid onto neuro-san's defaults via AGENT_LLM_INFO_FILE.
 // neuro-san 0.6.23 doesn't know gemini-3.x.5 models yet; register them as the "gemini" class
-// (langchain_google_genai.ChatGoogleGenerativeAI, uses GOOGLE_API_KEY). Mirrors the built-in
-// gemini-2.5-flash entry. The DictionaryOverlay merges this with the defaults, so only the new
-// entries are needed.
+// (langchain_google_genai.ChatGoogleGenerativeAI, uses GOOGLE_API_KEY). The DictionaryOverlay
+// MERGES this with the defaults, so these entries can also override built-in models.
+//
+// thinking_budget = 0 DISABLES Gemini "thinking" — the cloud analog of Ollama reasoning:false.
+// Measured on gemini-3.5-flash: ~4.1s/call (thinking on) -> ~1.1s/call (budget 0). Across a deep
+// multi-agent network (e.g. insurance, ~11 sequential agent calls) this cuts a query from ~50s to
+// ~15s. Remove/raise the budget if you want the model to reason more (slower).
 {
     "gemini-3.5-flash": {
         "class": "gemini",
@@ -14,6 +18,7 @@
         "capabilities": [ "tools" ],
         "context_window_size": 1048576,
         "max_output_tokens": 65536,
+        "thinking_budget": 0,
     },
     "gemini-3-flash": {
         "class": "gemini",
@@ -24,5 +29,11 @@
         "capabilities": [ "tools" ],
         "context_window_size": 1048576,
         "max_output_tokens": 65536,
+        "thinking_budget": 0,
+    },
+    // Override the built-in gemini-2.5-flash entry to also disable thinking (merged over defaults).
+    "gemini-2.5-flash": {
+        "class": "gemini",
+        "thinking_budget": 0,
     },
 }

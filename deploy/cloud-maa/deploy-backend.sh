@@ -52,6 +52,7 @@ echo "[4/5] build image"
 echo "[5/5] deploy public Cloud Run (Gemini + CORS + dotted AGENT_TOOL_PATH)"
 gcloud run deploy "$SERVICE" --image "$IMAGE" --region "$REGION" --allow-unauthenticated \
   --port 8080 --memory 4Gi --cpu 2 --timeout 600 --max-instances 5 \
+  --min-instances 1 --cpu-boost \
   --set-env-vars "^@^AGENT_ALLOW_CORS_HEADERS=1@AGENT_MANIFEST_FILE=${APP}/registries/manifest.hocon@AGENT_TOOL_PATH=coded_tools@AGENT_TOOLBOX_INFO_FILE=${APP}/toolbox/toolbox_info.hocon@AGENT_LLM_INFO_FILE=${APP}/llm_info_extra.hocon@GOOGLE_API_KEY=${GEMINI_API_KEY}"
 
 gcloud run services describe "$SERVICE" --region "$REGION" --format='value(status.url)'

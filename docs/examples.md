@@ -2,6 +2,26 @@
 
 Here are a few examples ordered by level of complexity.
 
+> **🚀 This fork: how these examples are powered**
+>
+> In this fork of the categorized Multi-Agent Accelerator, the **enabled** agent networks run two ways:
+>
+> - **Local (default):** all enabled networks are pinned to local Ollama
+>   (`qwen3.6:35b-a3b`, fallback `qwen3.6:27b`). **No OpenAI/cloud key is required** to run them locally.
+> - **Cloud (Cloud Run):** the backend runs on Gemini (neuro-san `gemini` class; auth via `GOOGLE_API_KEY` —
+>   the deploy script takes `GEMINI_API_KEY` and forwards it as `GOOGLE_API_KEY`; model set by `GEMINI_MODEL`,
+>   e.g. `gemini-2.5-flash`).
+>
+> Because of this, the references below to OpenAI as the "default" or "required" LLM are **upstream defaults and optional**
+> for this fork — local Ollama (no key) and cloud Gemini are this fork's supported paths. The exceptions are examples
+> tagged with a **specific provider's built-in tools** (see the `OpenAI` and `Anthropic` tags below): those tool examples
+> require **that** provider's API key and are optional add-ons, independent of the local/Gemini path.
+>
+> The categories in this catalog line up with the MAA sidebar groupings in the
+> [neuro-san-ui](https://github.com/2096955/neuro-san-ui) front end: **Basic** (🔰 Basic Examples),
+> **Tools** (🧰 Tool Integration Examples), **Industry** (🏢 Industry-Specific Examples), and
+> **Experimental** (🧪 Experimental and Research). Only the networks enabled in this fork appear in the live UI.
+
 <!-- TOC -->
 
 * [Examples](#examples)

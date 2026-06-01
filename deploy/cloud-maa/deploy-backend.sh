@@ -19,13 +19,35 @@ APP=/usr/local/neuro-san/myapp                          # APP_SOURCE inside the 
 
 : "${GEMINI_API_KEY:?set GEMINI_API_KEY to a valid Google AI Studio key}"
 
-echo "[1/5] copy build context (exclude vcs/caches/heavy dirs)"
+# Optional: cloud web-search backend. DuckDuckGo (ddgs_search) is rate-limited/blocked from
+# datacenter egress (and the lean cloud image omits the `ddgs` package), so when a TAVILY_API_KEY
+# is available we swap ddgs_search -> tavily_search (step [2]) and forward the key to Cloud Run.
+# Source it from the repo .env if not already in the environment. The swap and the key are COUPLED:
+# no key -> no swap (ddgs stays; web search stays broken on Cloud Run rather than emitting tavily
+# references with nothing behind them).
+if [ -z "${TAVILY_API_KEY:-}" ] && [ -f "$STUDIO/.env" ]; then
+  set -a; . "$STUDIO/.env"; set +a
+fi
+TAVILY_ENV=""
+if [ -n "${TAVILY_API_KEY:-}" ]; then
+  export SWAP_DDGS_TO_TAVILY=1
+  TAVILY_ENV="@TAVILY_API_KEY=${TAVILY_API_KEY}"
+  echo "  TAVILY_API_KEY found -> cloud web search = Tavily (ddgs_search will be swapped)"
+else
+  echo "  WARNING: TAVILY_API_KEY not set -> keeping ddgs_search; web search will be blocked on Cloud Run"
+fi
+
+echo "[1/5] copy build context (exclude vcs/caches/heavy dirs + secrets)"
 rsync -a --exclude '.git' --exclude 'node_modules' --exclude '__pycache__' \
-      --exclude 'logs' --exclude 'frontend' --exclude '.venv' "$STUDIO/" "$BT/"
+      --exclude 'logs' --exclude 'frontend' --exclude '.venv' --exclude '.env' "$STUDIO/" "$BT/"
 
 echo "[2/5] swap registries ollama -> gemini, then validate"
 python3 "$STUDIO/deploy/cloud-maa/swap_llm_for_deploy.py" "$BT/registries"
 ! grep -rnE '"ollama"|qwen3\.6' "$BT/registries"/*.hocon || { echo "ollama still present"; exit 1; }
+if [ "${SWAP_DDGS_TO_TAVILY:-}" = "1" ]; then
+  ! grep -rnE '"toolbox"[[:space:]]*[:=][[:space:]]*"ddgs_search"' "$BT/registries"/*.hocon \
+    || { echo "ddgs_search toolbox ref still present after tavily swap"; exit 1; }
+fi
 
 echo "[3/5] lean requirements + cloud Dockerfile (py3.11 + gcc + toolbox)"
 cp "$STUDIO/deploy/cloud-maa/requirements-cloud.txt" "$BT/requirements.txt"
@@ -53,7 +75,7 @@ echo "[5/5] deploy public Cloud Run (Gemini + CORS + dotted AGENT_TOOL_PATH)"
 gcloud run deploy "$SERVICE" --image "$IMAGE" --region "$REGION" --allow-unauthenticated \
   --port 8080 --memory 4Gi --cpu 2 --timeout 600 --max-instances 5 \
   --min-instances 1 --cpu-boost \
-  --set-env-vars "^@^AGENT_ALLOW_CORS_HEADERS=1@AGENT_MANIFEST_FILE=${APP}/registries/manifest.hocon@AGENT_TOOL_PATH=coded_tools@AGENT_TOOLBOX_INFO_FILE=${APP}/toolbox/toolbox_info.hocon@AGENT_LLM_INFO_FILE=${APP}/llm_info_extra.hocon@GOOGLE_API_KEY=${GEMINI_API_KEY}"
+  --set-env-vars "^@^AGENT_ALLOW_CORS_HEADERS=1@AGENT_MANIFEST_FILE=${APP}/registries/manifest.hocon@AGENT_TOOL_PATH=coded_tools@AGENT_TOOLBOX_INFO_FILE=${APP}/toolbox/toolbox_info.hocon@AGENT_LLM_INFO_FILE=${APP}/llm_info_extra.hocon@GOOGLE_API_KEY=${GEMINI_API_KEY}${TAVILY_ENV}"
 
 gcloud run services describe "$SERVICE" --region "$REGION" --format='value(status.url)'
 rm -rf "$BT"

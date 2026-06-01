@@ -1,0 +1,1307 @@
+# Automotive Manufacturing Operations and Customer Service
+
+## Overview
+
+This multi-agent network demonstrates an automotive manufacturing and customer service system designed for companies like Volkswagen, Ford, or BMW. It showcases how specialized AI agents can collaborate to handle complex manufacturing operations, supply chain management, dealership support, and customer service inquiries across the automotive value chain.
+
+The system manages everything from production line optimization and quality control to vehicle service scheduling and customer inquiries, providing a comprehensive solution for modern automotive operations.
+
+## Use Case
+
+Modern automotive manufacturers like Volkswagen, Ford, and BMW face multifaceted challenges:
+
+- **Manufacturing Operations**: Coordinating complex production lines across multiple facilities globally
+- **Supply Chain Complexity**: Managing thousands of parts suppliers and just-in-time inventory
+- **Quality Assurance**: Ensuring consistent quality standards across vehicles and components
+- **Dealership Network**: Supporting hundreds or thousands of dealerships with technical and operational guidance
+- **Customer Service**: Handling warranty claims, recalls, service appointments, and general inquiries
+- **Regulatory Compliance**: Navigating emissions standards, safety regulations, and regional requirements
+
+This agent network addresses these challenges by routing requests to specialized agents with domain expertise in each area.
+
+## Agent Network Architecture
+
+### Network Topology
+
+```
+Automotive_Operations_Coordinator (Frontman)
+├── Manufacturing_Operations_Agent
+│   ├── Production_Planning_Specialist
+│   ├── Quality_Control_Agent
+│   └── Factory_Efficiency_Optimizer
+├── Supply_Chain_Management_Agent
+│   ├── Parts_Inventory_Specialist
+│   ├── Supplier_Relations_Agent
+│   └── Logistics_Coordinator
+├── Dealership_Support_Agent
+│   ├── Technical_Service_Advisor
+│   ├── Sales_Operations_Support
+│   └── Warranty_Claims_Processor
+├── Customer_Service_Agent
+│   ├── Service_Scheduling_Specialist
+│   ├── Recall_Information_Agent
+│   └── General_Inquiry_Handler
+└── Engineering_Support_Agent
+    ├── Vehicle_Diagnostics_Specialist
+    ├── Technical_Documentation_Agent
+    └── Recall_Engineering_Coordinator
+```
+
+### Agent Descriptions
+
+#### **Automotive_Operations_Coordinator** (Frontman Agent)
+The main orchestrator that receives all incoming requests and intelligently routes them to the appropriate specialized agent or agent network. It understands the context of automotive operations and ensures queries are handled by the most qualified agent.
+
+**Key Capabilities:**
+- Intelligent query classification and routing
+- Multi-agent coordination for complex requests
+- Context preservation across agent handoffs
+- Priority escalation for critical issues (safety recalls, production line stoppages)
+
+---
+
+#### **Manufacturing_Operations_Agent**
+Handles all aspects of automotive production, from planning to execution and optimization.
+
+**Sub-Agents:**
+
+**Production_Planning_Specialist**
+- Creates and optimizes production schedules
+- Balances capacity across multiple facilities
+- Manages model changeovers and variant production
+- Handles production line rebalancing requests
+
+**Quality_Control_Agent**
+- Monitors quality metrics across production lines
+- Investigates defect patterns and root causes
+- Coordinates corrective actions
+- Tracks quality KPIs (First Time Through rate, defects per million)
+
+**Factory_Efficiency_Optimizer**
+- Analyzes Overall Equipment Effectiveness (OEE)
+- Identifies bottlenecks in production processes
+- Recommends efficiency improvements
+- Monitors downtime and maintenance schedules
+
+**Example Queries:**
+- "What's the current production status at our Wolfsburg plant?"
+- "We're experiencing a quality issue with transmission assemblies on the F-150 line"
+- "Can we increase production of the ID.4 model next quarter?"
+- "What's causing the bottleneck on Assembly Line 3?"
+
+---
+
+#### **Supply_Chain_Management_Agent**
+Manages the complex network of suppliers, parts, and logistics that keep automotive manufacturing running.
+
+**Sub-Agents:**
+
+**Parts_Inventory_Specialist**
+- Tracks inventory levels across warehouses
+- Manages just-in-time (JIT) delivery schedules
+- Identifies potential shortages before they impact production
+- Coordinates emergency parts procurement
+
+**Supplier_Relations_Agent**
+- Maintains supplier quality ratings
+- Handles supplier communications and escalations
+- Manages supplier onboarding and qualification
+- Tracks supplier delivery performance
+
+**Logistics_Coordinator**
+- Optimizes inbound and outbound logistics
+- Coordinates vehicle distribution to dealerships
+- Manages cross-border shipping and customs
+- Tracks shipment status and resolves delays
+
+**Example Queries:**
+- "Do we have sufficient semiconductor inventory for next month's production?"
+- "Which suppliers are experiencing delivery delays?"
+- "What's the delivery timeline for ID.4 vehicles to California dealerships?"
+- "We need to expedite battery shipments to the Dearborn plant"
+
+---
+
+#### **Dealership_Support_Agent**
+Provides comprehensive support to the dealer network, enabling them to serve customers effectively.
+
+**Sub-Agents:**
+
+**Technical_Service_Advisor**
+- Provides technical guidance for complex repairs
+- Interprets diagnostic codes and symptoms
+- Recommends repair procedures and parts
+- Assists with TSBs (Technical Service Bulletins)
+
+**Sales_Operations_Support**
+- Answers product specification questions
+- Provides pricing and incentive information
+- Handles allocation and ordering support
+- Assists with inventory management
+
+**Warranty_Claims_Processor**
+- Reviews and approves warranty claims
+- Identifies warranty fraud patterns
+- Provides guidance on warranty coverage
+- Tracks warranty cost trends
+
+**Example Queries:**
+- "Customer has a check engine light on a 2023 VW Atlas - code P0171"
+- "What incentives are available on the F-150 Lightning this month?"
+- "Is the infotainment system replacement covered under warranty?"
+- "How do we process a goodwill warranty claim?"
+
+---
+
+#### **Customer_Service_Agent**
+Directly handles customer inquiries, service needs, and information requests.
+
+**Sub-Agents:**
+
+**Service_Scheduling_Specialist**
+- Books service appointments
+- Finds nearest authorized service centers
+- Provides estimated service times
+- Manages recall appointment scheduling
+
+**Recall_Information_Agent**
+- Checks if a vehicle is affected by recalls
+- Explains recall procedures and timelines
+- Schedules recall service appointments
+- Provides recall remedy information
+
+**General_Inquiry_Handler**
+- Answers product questions
+- Provides owner's manual information
+- Handles connected services questions (FordPass, Car-Net)
+- Assists with mobile app issues
+
+**Example Queries:**
+- "Is my 2020 Golf GTI affected by any recalls?"
+- "How do I schedule an oil change for my F-150?"
+- "What's the towing capacity of the ID.4?"
+- "I can't connect my phone to the SYNC system"
+
+---
+
+#### **Engineering_Support_Agent**
+Provides deep technical expertise for complex engineering and diagnostic issues.
+
+**Sub-Agents:**
+
+**Vehicle_Diagnostics_Specialist**
+- Interprets complex diagnostic data
+- Analyzes CAN bus and sensor data
+- Identifies intermittent electrical issues
+- Provides root cause analysis
+
+**Technical_Documentation_Agent**
+- Retrieves wiring diagrams and technical drawings
+- Provides assembly procedures
+- Accesses engineering specifications
+- Delivers service manual information
+
+**Recall_Engineering_Coordinator**
+- Manages recall campaigns from engineering perspective
+- Coordinates fix implementations
+- Tracks recall effectiveness
+- Interfaces with regulatory agencies (NHTSA, Transport Canada)
+
+**Example Queries:**
+- "We need the wiring diagram for the 2024 Mustang Mach-E power distribution"
+- "Customer reports intermittent power steering failure - no codes stored"
+- "What's the torque specification for the ID.4 suspension components?"
+- "Technical details on recall 24V-123 remedy procedure"
+
+---
+
+## Configuration
+
+### Agent Network Configuration (HOCON)
+
+```hocon
+automotive_operations_coordinator {
+  type = "agent_network"
+  description = "Intelligent coordinator for automotive manufacturing operations and customer service"
+  llm = "gpt-4"
+  
+  instructions = """
+  You are the Automotive Operations Coordinator for a major automotive manufacturer (Volkswagen, Ford, or BMW).
+  
+  Your role is to understand incoming requests and route them to the appropriate specialized agent:
+  
+  1. Manufacturing Operations - Production, quality, factory efficiency
+  2. Supply Chain Management - Parts inventory, suppliers, logistics
+  3. Dealership Support - Technical service, sales support, warranty
+  4. Customer Service - Appointments, recalls, general inquiries
+  5. Engineering Support - Deep diagnostics, technical documentation, recall engineering
+  
+  Always consider:
+  - Safety-critical issues require immediate escalation
+  - Production line stoppages are high priority
+  - Customer-facing issues need empathetic handling
+  - Regulatory compliance must be maintained
+  - Premium brands (BMW, Audi) require elevated service standards
+  - M Performance, Ford Performance, and performance variants need specialized expertise
+  
+  Route queries efficiently and ensure customers/dealers receive expert assistance.
+  """
+  
+  agents = [
+    "manufacturing_operations_agent"
+    "supply_chain_management_agent"
+    "dealership_support_agent"
+    "customer_service_agent"
+    "engineering_support_agent"
+  ]
+}
+
+manufacturing_operations_agent {
+  type = "agent_network"
+  description = "Manages all aspects of automotive production operations"
+  llm = "gpt-4"
+  
+  instructions = """
+  You oversee manufacturing operations across all production facilities.
+  
+  Coordinate with your sub-agents to:
+  - Optimize production schedules
+  - Monitor and improve quality
+  - Increase factory efficiency and OEE
+  
+  You work with plants including:
+  - Volkswagen: Germany (Wolfsburg, Zwickau), USA (Chattanooga), Mexico (Puebla), China (Shanghai)
+  - Ford: USA (Dearborn, Kansas City, Chicago), Mexico (Hermosillo), Germany (Cologne)
+  - BMW: Germany (Munich, Dingolfing, Regensburg, Leipzig), USA (Spartanburg), China (Shenyang), 
+         UK (Oxford - MINI), Austria (Steyr), South Africa (Rosslyn)
+  
+  Key metrics: JPH (Jobs Per Hour), FTT (First Time Through), OEE, Downtime
+  
+  BMW-specific: BPS (BMW Production System) methodology, premium quality standards (3.4 sigma),
+  flexible production lines for high customization (BMW Individual program)
+  """
+  
+  agents = [
+    "production_planning_specialist"
+    "quality_control_agent"
+    "factory_efficiency_optimizer"
+  ]
+}
+
+supply_chain_management_agent {
+  type = "agent_network"
+  description = "Manages supplier network, parts inventory, and logistics"
+  llm = "gpt-4"
+  
+  instructions = """
+  You manage the complex supply chain that supports automotive manufacturing.
+  
+  Handle:
+  - Just-in-time inventory for thousands of parts
+  - Supplier performance and relationships
+  - Global logistics and distribution
+  - Critical parts shortages and expediting
+  
+  Key challenges: semiconductor availability, battery supply, shipping disruptions
+  
+  Work closely with manufacturing to ensure production continuity.
+  """
+  
+  agents = [
+    "parts_inventory_specialist"
+    "supplier_relations_agent"
+    "logistics_coordinator"
+  ]
+}
+
+dealership_support_agent {
+  type = "agent_network"
+  description = "Supports dealer network with technical and operational guidance"
+  llm = "gpt-4"
+  
+  instructions = """
+  You support a network of authorized dealerships.
+  
+  Provide:
+  - Technical service guidance for complex repairs
+  - Sales operations support and product information
+  - Warranty claim processing and approval
+  
+  Dealerships rely on your expertise to serve customers effectively.
+  Maintain high service quality standards and customer satisfaction.
+  
+  Balance customer advocacy with warranty cost management.
+  """
+  
+  agents = [
+    "technical_service_advisor"
+    "sales_operations_support"
+    "warranty_claims_processor"
+  ]
+}
+
+customer_service_agent {
+  type = "agent_network"
+  description = "Direct customer service for vehicle owners"
+  llm = "gpt-4"
+  
+  instructions = """
+  You are the voice of Volkswagen/Ford/BMW to customers.
+  
+  Handle inquiries about:
+  - Service scheduling and maintenance
+  - Recall information and scheduling
+  - Product features and specifications
+  - Connected services and apps
+  
+  Be empathetic, clear, and solution-focused.
+  Ensure customers feel valued and supported.
+  
+  Safety recalls are highest priority.
+  
+  Brand-specific service expectations:
+  - BMW: Premium concierge-level service, BMW Genius support, ConnectedDrive features
+  - Ford: FordPass integration, Blue Oval service standards, accessibility focus  
+  - VW: Volkswagen Care, ID. digital experience, European service excellence
+  
+  Connected Services:
+  - BMW: ConnectedDrive, My BMW app, Digital Key Plus
+  - Ford: FordPass, SYNC, Ford Power-Up (OTA updates)
+  - VW: Car-Net, We Connect, ID. software updates
+  """
+  
+  agents = [
+    "service_scheduling_specialist"
+    "recall_information_agent"
+    "general_inquiry_handler"
+  ]
+}
+
+engineering_support_agent {
+  type = "agent_network"
+  description = "Deep technical expertise for complex issues"
+  llm = "gpt-4"
+  
+  instructions = """
+  You provide engineering-level technical support.
+  
+  Handle:
+  - Complex diagnostic scenarios
+  - Technical documentation and specifications
+  - Recall campaign engineering
+  - Root cause analysis
+  
+  Work with both internal teams and dealerships.
+  Maintain technical accuracy and safety focus.
+  
+  Interface with regulatory bodies when needed.
+  """
+  
+  agents = [
+    "vehicle_diagnostics_specialist"
+    "technical_documentation_agent"
+    "recall_engineering_coordinator"
+  ]
+}
+```
+
+### Required Tools and Integrations
+
+For a production implementation, this agent network would integrate with:
+
+**Manufacturing Systems:**
+- MES (Manufacturing Execution System)
+- SCADA systems
+- Quality management systems
+- Production planning tools (SAP, Oracle)
+
+**Supply Chain Systems:**
+- ERP systems
+- Supplier portals
+- Inventory management
+- Logistics tracking systems
+
+**Dealership Systems:**
+- DMS (Dealer Management System)
+- Service scheduling platforms
+- Parts ordering systems
+- Warranty management systems
+
+**Customer-Facing Systems:**
+- CRM platforms
+- Mobile apps (FordPass, Car-Net)
+- Customer databases
+- Recall notification systems
+
+**Engineering Systems:**
+- PLM (Product Lifecycle Management)
+- Technical documentation repositories
+- Diagnostic tools (VCDS, IDS)
+- Regulatory compliance tracking
+
+### Example Code Tools
+
+```python
+class ManufacturingDataTool(CodedTool):
+    """Retrieves real-time manufacturing data from MES"""
+    
+    async def execute_async(self, args: dict, sly_data: dict) -> str:
+        plant = args.get("plant_code")
+        metric = args.get("metric_type")
+        
+        # Query manufacturing system
+        data = await query_mes_system(plant, metric)
+        
+        return format_manufacturing_report(data)
+
+class VehicleRecallLookupTool(CodedTool):
+    """Checks if a VIN is affected by recalls"""
+    
+    async def execute_async(self, args: dict, sly_data: dict) -> str:
+        vin = args.get("vin")
+        
+        # Query NHTSA and internal recall database
+        recalls = await check_recall_status(vin)
+        
+        if recalls:
+            return format_recall_information(recalls)
+        else:
+            return "No open recalls found for this vehicle."
+
+class PartAvailabilityTool(CodedTool):
+    """Checks parts inventory across warehouse network"""
+    
+    async def execute_async(self, args: dict, sly_data: dict) -> str:
+        part_number = args.get("part_number")
+        required_quantity = args.get("quantity", 1)
+        
+        availability = await check_inventory(part_number)
+        
+        return format_availability_report(availability, required_quantity)
+```
+
+## Example Interactions
+
+### Scenario 1: Production Issue
+
+**User:** "We're having quality issues with door alignment on the ID.4 production line at Zwickau"
+
+**Automotive_Operations_Coordinator:** *Routes to Manufacturing_Operations_Agent → Quality_Control_Agent*
+
+**Quality_Control_Agent:** 
+```
+I've identified the issue. Let me analyze the recent quality data:
+
+Analysis of ID.4 Door Alignment - Zwickau Plant:
+- Issue started 3 days ago on Line 2
+- Affects passenger front door
+- Gap measurement exceeding spec by 0.8mm average
+- 47 vehicles affected
+
+Root Cause Investigation:
+- Correlation with recent fixture maintenance on Station 15
+- Alignment pins may need recalibration
+
+Recommended Actions:
+1. Immediate: Inspect fixture Station 15
+2. Recalibrate alignment pins per procedure QC-045
+3. Measure next 5 units to verify correction
+4. Review affected units for rework
+
+Estimated resolution time: 2-4 hours
+Production impact: Minimal if addressed immediately
+
+Would you like me to create a quality incident report and notify the production supervisor?
+```
+
+---
+
+### Scenario 2: Customer Recall Inquiry
+
+**User:** "Is my 2023 Ford F-150 VIN 1FTFW1E84PFA12345 affected by any recalls?"
+
+**Automotive_Operations_Coordinator:** *Routes to Customer_Service_Agent → Recall_Information_Agent*
+
+**Recall_Information_Agent:**
+```
+I've checked your vehicle VIN 1FTFW1E84PFA12345 (2023 F-150).
+
+Active Recalls for Your Vehicle:
+
+1. NHTSA Campaign: 23V-654
+   - Component: Rearview Camera
+   - Issue: Camera display may intermittently show blank screen
+   - Risk: Reduced rear visibility when reversing
+   - Remedy: Software update (30 minutes)
+   - Status: Remedy available
+
+Recommended Action:
+Schedule service at your nearest Ford dealership. The repair is free under recall.
+
+Nearest Dealers:
+- Anderson Ford (5.2 miles) - (555) 123-4567
+- Smithtown Ford (7.8 miles) - (555) 234-5678
+
+Would you like me to help schedule an appointment?
+
+Safety Note: Until repaired, please verify the backup camera is functioning before reversing.
+```
+
+---
+
+### Scenario 3: Supply Chain Emergency
+
+**User:** "Urgent: Battery pack shipment from CATL delayed. This will stop ID.4 production in 48 hours."
+
+**Automotive_Operations_Coordinator:** *Routes to Supply_Chain_Management_Agent → Parts_Inventory_Specialist + Logistics_Coordinator*
+
+**Supply_Chain_Management_Agent:**
+```
+PRIORITY: Production Stoppage Risk
+
+Current Situation Analysis:
+- Battery packs: 156 units remaining in Zwickau warehouse
+- Daily consumption: 285 units
+- Time to stockout: 13 hours (not 48)
+- Affected models: ID.4 (all variants)
+
+Delayed Shipment:
+- Supplier: CATL (China)
+- Quantity: 850 units
+- Original ETA: Tomorrow 06:00
+- Revised ETA: +5 days (port congestion Shanghai)
+
+Emergency Response Actions:
+
+Option 1 - Air Freight (RECOMMENDED):
+- Divert 400 units to air freight
+- Cost: €125,000 premium
+- New ETA: 36 hours
+- Buys 2.5 days additional production
+
+Option 2 - Alternate Source:
+- LG Energy (Poland) has 300 units available
+- Compatibility: Requires software update
+- Lead time: 24 hours + validation
+- Risk: Medium
+
+Option 3 - Production Adjustment:
+- Shift to ID.3 production (sufficient batteries)
+- Reschedule ID.4 orders
+- Customer impact: 5-day delay for 1,200 customers
+
+Recommendation: Option 1 (Air Freight) + initiate Option 2 as backup
+
+Approval required for €125K expenditure. 
+Decision needed within 2 hours to execute air freight.
+
+Notify: Production Planning, Finance, Logistics
+```
+
+---
+
+### Scenario 4: Dealer Technical Support
+
+**User:** "Customer has 2024 Mustang Mach-E with error code B1342:54. Charging intermittently fails."
+
+**Automotive_Operations_Coordinator:** *Routes to Dealership_Support_Agent → Technical_Service_Advisor*
+
+**Technical_Service_Advisor:**
+```
+Error Code Analysis:
+Code: B1342:54
+Description: Battery Energy Control Module - Signal Invalid
+Vehicle: 2024 Mustang Mach-E
+
+Common Causes:
+1. BMS communication fault (60% of cases)
+2. High voltage connector corrosion (25%)
+3. BMS software version outdated (10%)
+4. Faulty BMS module (5%)
+
+Diagnostic Procedure:
+
+Step 1: Check Software Version
+- Current software level on BMS
+- If below v2.1.47, flash update available (TSB 24-2156)
+- Software update resolves 70% of these cases
+
+Step 2: Inspect HV Connections
+- Check orange high-voltage connectors for corrosion
+- Pay attention to charge port connections
+- Clean/reseat if needed
+
+Step 3: Monitor BMS Data
+- Using IDS: Monitor cell voltages during charge attempt
+- Look for voltage imbalance >50mV
+- Check for communication timeouts
+
+Step 4: If unresolved
+- Replace BMS module
+- Part #: ML3Z-10B759-A
+- Warranty coverage: Yes (36/36,000)
+- Labor time: 2.3 hours
+
+Customer Communication:
+"We've identified the issue with your Mach-E charging system. This is typically 
+resolved with a software update which takes about 45 minutes. If additional work 
+is needed, it's covered under warranty. Can we schedule this for you?"
+
+Related TSBs:
+- TSB 24-2156: BMS Software Update
+- TSB 24-0088: HV Connector Service Procedure
+
+Need additional assistance with this case?
+```
+
+---
+
+---
+
+### Scenario 4A: BMW Premium Customer Service - M Performance Issue
+
+**User:** "Customer with 2024 BMW M4 Competition complains about intermittent power loss in Track mode at Nürburgring. VIN: WBS8M9C07PCG12345"
+
+**Automotive_Operations_Coordinator:** *Routes to Dealership_Support_Agent → Technical_Service_Advisor + Engineering_Support_Agent*
+
+**Technical_Service_Advisor:**
+```
+BMW M4 Competition - Track Mode Performance Issue
+VIN: WBS8M9C07PCG12345
+Customer: High-performance driving enthusiast
+
+Initial Assessment:
+- Vehicle: 2024 M4 Competition (G82)
+- Engine: S58 3.0L Twin-Turbo I6 (503 HP)
+- Transmission: 8-speed M Steptronic
+- Drive: M xDrive (AWD)
+- Condition: Track mode, high ambient temperatures
+
+Track Mode Analysis:
+Track mode activates most aggressive:
+- Engine mapping
+- MDM (M Dynamic Mode) with minimal intervention  
+- Adaptive M suspension (full stiffness)
+- Active M differential (maximum lock)
+- Cooling system maximum capacity
+
+Potential Causes of Power Loss:
+
+1. Thermal Management (Most Likely - 65%)
+   - Track mode sustained high-load conditions
+   - Cooling system entering protection mode
+   - Cylinder head/turbo temperature limits
+   - Oil temperature exceeding 150°C threshold
+
+2. Fuel System Protection (20%)
+   - High G-force cornering affecting fuel pickup
+   - Fuel temperature protection activation
+   - Low fuel level combined with track conditions
+
+3. DME (Engine Control) Learning (10%)
+   - Adaptation values need reset after aggressive driving
+   - Knock sensor false positives from premium fuel variations
+   - Turbo boost pressure learning
+
+4. Hardware Issue (5%)
+   - Turbocharger wastegate actuator
+   - Charge air cooling system
+   - High-pressure fuel pump
+
+Diagnostic Steps:
+
+Step 1: Data Logging with ISTA
+- Connect ISTA diagnostic system
+- Review stored adaptation values
+- Check for thermal management activations
+- Analyze fuel system pressure logs
+- Review knock sensor events during track session
+
+Step 2: Track Mode Simulation
+- Dynometer testing in Track mode
+- Monitor coolant/oil temperatures under sustained load
+- Log boost pressure and timing retard
+- Verify thermal management thresholds
+
+Step 3: Cooling System Verification  
+- Pressure test cooling system
+- Verify radiator fan operation (both speeds)
+- Check coolant flow rates
+- Inspect charge air cooler effectiveness
+
+BMW M-Specific Diagnostics:
+- S58 engine has sophisticated thermal management
+- Track mode expects adequate cool-down periods
+- System designed for: 20 min track / 10 min cool-down cycle
+- Continuous track use may trigger protection
+
+Customer Communication (Premium Tone):
+"Thank you for choosing to exercise your M4 Competition at the Nordschleife - 
+the ultimate proving ground. The S58 engine incorporates advanced thermal 
+protection systems designed to preserve longevity even under track conditions.
+
+We'd like to analyze the vehicle's performance data logs to optimize your 
+track experience. This may involve:
+- Thermal management system verification
+- Engine adaptation optimization  
+- Track-focused service recommendations
+
+Your M4 is engineered for this, and we'll ensure it performs to M standards."
+
+Recommended Actions:
+
+For Customer:
+1. Track mode cooling protocol:
+   - 15-minute warm-up before track session
+   - 10-minute cool-down every 20 minutes of hard driving
+   - Monitor oil temperature (should stay below 145°C for sustained performance)
+   
+2. Fuel recommendations:
+   - Minimum 1/2 tank for track use (fuel surge protection)
+   - 98+ RON fuel (100 octane US) for Track mode
+   
+3. Brake fluid service:
+   - BMW M-spec fluid (DOT 4 LV)
+   - Service every 2 years or after 3+ track days
+
+For Dealer Service:
+1. Complete M-specific health check
+2. ISTA programming: Latest M performance software
+3. Cooling system pressure test
+4. Optional: Track-focused service package
+   - Performance brake fluid
+   - Upgraded track pads (if frequent track use)
+   - Oil service with Castrol Edge Professional (LL-01 FE)
+
+Parts Potentially Needed:
+- If cooling issue confirmed: Water pump (11518635089) - €425
+- If wastegate issue: Turbo wastegate (multiple options) - €800-1,200
+- Service items: Oil, brake fluid, air filter
+
+M Performance Warranty Note:
+Track use is supported under warranty. Competitive driving (timed events, racing) 
+may require disclosure. Customer appears to be HPDE (track day) use - covered.
+
+Follow-up:
+- Schedule 2-hour diagnostic with M-certified technician
+- Provide loaner (ideally M vehicle if available)  
+- BMW Genius can explain M mode optimizations
+- Offer M Track Day program information
+
+Would you like me to:
+1. Schedule the diagnostic appointment
+2. Arrange M Performance loaner vehicle
+3. Connect customer with BMW M Track Day program
+4. Notify M Performance technical support team
+```
+
+**Engineering_Support_Agent:**
+```
+S58 Engine - Track Mode Technical Deep Dive
+
+Known Characteristics:
+The S58 3.0L twin-turbo I6 (G8x M3/M4) has robust but active thermal management:
+
+Normal Power: 503 HP (Competition), 473 HP (standard)
+Track Mode Power: Full power sustained with adequate cooling
+Protection Mode: Power reduction to ~420 HP when thermal limits reached
+
+Temperature Thresholds:
+- Oil temp warning: 145°C (293°F)
+- Oil temp reduction: 150°C+ (302°F+) - 15% power cut
+- Coolant temp reduction: 110°C+ (230°F+) - timing retard
+- Turbo inlet temp: 60°C+ maximum efficiency
+
+This is normal, designed behavior - not a defect.
+
+S58 Track Performance Optimization:
+
+Hardware (Optional Upgrades):
+1. Oil cooler upgrade (M Performance part: 17 21 2 365 280) - €1,850
+   - 40% increase in oil cooling capacity
+   - Recommended for frequent track use (5+ days/year)
+   
+2. Additional radiator (M Performance: 17 11 2 461 442) - €2,100
+   - Increases coolant capacity  
+   - Lowers sustained temp by 8-10°C
+
+Software Optimization:
+- Latest DME calibration (check for updates)
+- M laptimer app to monitor temps in real-time
+- M Drift Analyzer (included) provides thermal data
+
+Comparison to Competition:
+- Porsche 911: Similar thermal management
+- Mercedes-AMG: More aggressive power reduction
+- Audi RS: Comparable thermal protection  
+
+This S58 behavior is within specification for sustained track use.
+
+Recommendation: Customer education + optional M Performance cooling upgrades 
+if >5 track days per year.
+```
+
+---
+
+### Scenario 5: Cross-Functional Complex Issue
+
+**User:** "Multiple customer complaints: 2025 VW Tiguan engine hesitation at 40-50 mph. Pattern emerging."
+
+**Automotive_Operations_Coordinator:** *Routes to multiple agents: Customer_Service_Agent, Engineering_Support_Agent, Quality_Control_Agent*
+
+**Coordinated Response:**
+
+**Customer_Service_Agent:**
+```
+Customer Impact Assessment:
+- 47 complaints received (last 30 days)
+- Pattern confirmed: 2025 Tiguan, 2.0T engine
+- Symptom: Hesitation/surge at 40-50 mph
+- Customer satisfaction impact: High
+- Social media mentions: 12 posts
+```
+
+**Engineering_Support_Agent:**
+```
+Technical Analysis:
+- Engine: EA888 Gen 4, 2.0L TSI
+- VINs affected: Production dates Sept 15 - Oct 3, 2024
+- Approximately 3,200 vehicles in field
+
+Root Cause Investigation:
+- Transmission shift mapping software issue
+- Specific to DQ381 7-speed DSG
+- Torque converter lockup timing
+
+Engineering Fix:
+- Software calibration update available
+- Flash time: 45 minutes
+- Validation: 2,500 test miles completed
+- No hardware changes required
+```
+
+**Quality_Control_Agent:**
+```
+Production Impact:
+- Issue corrected in production: Oct 4, 2024
+- Pre-fix vehicles: 8,750 units (3,200 in field, 5,550 in pipeline)
+- Updated calibration now in all new production
+
+Field Action Recommendation:
+Issue Level: Customer Satisfaction Campaign (not safety recall)
+Proposed Action: Service campaign notification to affected owners
+Implementation: OTA update capability (85% of vehicles), dealer flash (15%)
+```
+
+**Automotive_Operations_Coordinator - Final Summary:**
+```
+ISSUE RESOLUTION PLAN: 2025 Tiguan Hesitation
+
+Problem: Transmission shift quality issue affecting 3,200 customer vehicles
+
+Solution: Software update (campaign, not recall)
+
+Action Plan:
+1. Customer notification: Email + app notification (7-day rollout)
+2. OTA update: Available immediately for connected vehicles (85%)
+3. Dealer service: Available for remaining vehicles (15%)
+4. Timeline: Complete within 60 days
+5. Cost: Covered by warranty/goodwill
+
+Customer Communication:
+"Volkswagen is issuing a software update to improve the driving experience 
+of your 2025 Tiguan. This update enhances transmission shift quality. 
+If your vehicle is connected, you'll receive an over-the-air update. 
+Otherwise, please visit your dealer for a complimentary update."
+
+Monitoring:
+- Track update completion rate
+- Monitor complaint reduction
+- Customer satisfaction surveys
+- Social media sentiment
+
+Lessons Learned:
+- Enhance shift calibration validation in pre-production
+- Expand OTA update adoption to reduce dealer visits
+- Improve early complaint pattern detection
+
+Campaign approved pending: Legal, Regulatory Affairs, Customer Care
+```
+
+---
+
+## Benefits of This Multi-Agent Approach
+
+### 1. **Specialized Expertise**
+Each agent has deep domain knowledge:
+- Manufacturing agents understand production processes and KPIs
+- Supply chain agents know inventory management and logistics
+- Customer service agents are trained in empathy and problem resolution
+
+### 2. **Scalability**
+Handle thousands of concurrent requests:
+- Multiple dealers seeking support simultaneously
+- High-volume customer inquiries
+- Real-time production monitoring
+
+### 3. **Consistency**
+Standardized responses across:
+- Global dealership network
+- Multiple customer touchpoints
+- Different regions and languages
+
+### 4. **Context Preservation**
+Complex issues requiring multiple agents maintain context:
+- Quality issues that impact supply chain
+- Recalls requiring engineering, customer service, and dealer coordination
+- Production problems affecting logistics planning
+
+### 5. **Intelligent Routing**
+Right-agent-first-time approach reduces:
+- Escalations and handoffs
+- Resolution time
+- Customer frustration
+
+### 6. **24/7 Availability**
+Continuous operations support:
+- Global manufacturing facilities across time zones
+- Round-the-clock customer service
+- Emergency production support
+
+### 7. **Data-Driven Insights**
+Agent interactions generate valuable data:
+- Common issue patterns
+- Quality trends
+- Customer sentiment
+- Process bottlenecks
+
+---
+
+## Implementation Considerations
+
+### For Volkswagen Group:
+**Specific Considerations:**
+- Multi-brand support (VW, Audi, Porsche, SEAT, Škoda)
+- MEB platform specifics (electric vehicle architecture)
+- German/European manufacturing standards
+- WLTP emissions compliance
+- Extensive European dealer network
+
+**Key Integration Points:**
+- CARIAD (VW software division) systems
+- MEB battery management systems
+- ID. software platform
+- VW Group Logistics systems
+
+---
+
+### For Ford Motor Company:
+**Specific Considerations:**
+- Ford Pro commercial vehicle support
+- Blue Oval Certified network
+- F-Series truck dominance (special focus)
+- Ford+ plan integration (connected services)
+- BlueOval City (future mega-campus)
+
+**Key Integration Points:**
+- FordPass app and connected services
+- SYNC infotainment system
+- Ford Pro Intelligence (commercial vehicles)
+- Ford Credit systems
+- Transportation Mobility Cloud
+
+---
+
+### For BMW Group:
+**Specific Considerations:**
+- Premium/luxury manufacturing standards
+- Multi-brand portfolio (BMW, MINI, Rolls-Royce, BMW Motorrad)
+- iDrive and Operating System 8/9 integration
+- BMW i (electric) and M Performance divisions
+- Individualization and customization options (BMW Individual)
+- Strong emphasis on driving dynamics and performance
+
+**Key Integration Points:**
+- BMW ConnectedDrive and My BMW app
+- iDrive operating system (OS 8/9)
+- BMW Intelligent Personal Assistant
+- BMW Production System (BPS)
+- ISTA diagnostic and programming systems
+- BMW TIS (Technical Information System)
+- Parts e-commerce platform (ETK - Electronic Parts Catalog)
+- Genius and Product Specialist training systems
+- BMW Financial Services integration
+
+**BMW-Specific Agent Capabilities:**
+- **M Performance Support**: Specialized guidance for M vehicles, track-focused features, and performance driving modes
+- **Individualization Coordination**: Managing bespoke orders through BMW Individual program
+- **Motorcycle Division**: Dedicated BMW Motorrad support for motorcycle operations
+- **Premium Service Experience**: Concierge-level customer service expectations
+- **Advanced Driver Assistance**: iX and i7 autonomous driving features support
+- **Sustainable Manufacturing**: Focus on circular economy and carbon-neutral production (Leipzig plant)
+
+---
+
+## Advanced Features
+
+### Predictive Capabilities
+Agents can identify patterns and predict issues:
+- **Quality Trends**: "Production line 3 showing early signs of alignment drift"
+- **Supply Shortages**: "Semiconductor supply may become constrained in 6 weeks"
+- **Warranty Trends**: "Increased warranty claims on 2023 model year component X"
+
+### Multi-Language Support
+Global operations require localization:
+- German, English, Spanish, Chinese, Portuguese
+- Regional terminology (bonnet vs. hood, boot vs. trunk)
+- Cultural communication preferences
+
+### Integration with Physical Systems
+Beyond information retrieval:
+- Automatically create work orders in MES
+- Schedule maintenance windows
+- Reserve parts from inventory
+- Book customer appointments
+
+### Learning and Improvement
+Agents improve over time:
+- Learn from successful resolutions
+- Adapt to new products and issues
+- Incorporate updated TSBs and service procedures
+- Refine routing based on resolution efficiency
+
+---
+
+## Metrics and KPIs
+
+### Manufacturing Operations:
+- Overall Equipment Effectiveness (OEE)
+- First Time Through (FTT) rate
+- Downtime reduction
+- Quality defects per million
+
+### Supply Chain:
+- On-time delivery rate
+- Inventory turnover
+- Days inventory on hand
+- Supplier performance scores
+
+### Dealership Support:
+- First-call resolution rate
+- Average handle time
+- Dealer satisfaction scores
+- Warranty approval time
+
+### Customer Service:
+- Customer satisfaction (CSAT)
+- Net Promoter Score (NPS)
+- Average response time
+- Issue resolution rate
+
+---
+
+## Security and Compliance
+
+### Data Protection:
+- Customer PII protection (GDPR, CCPA)
+- VIN data security
+- Proprietary manufacturing data protection
+- Supplier confidential information
+
+### Regulatory Compliance:
+- NHTSA (National Highway Traffic Safety Administration)
+- Transport Canada
+- European Commission regulations
+- Regional safety standards
+
+### Access Control:
+- Role-based permissions
+- Audit logging
+- Secure API integrations
+- Multi-factor authentication
+
+---
+
+## Getting Started
+
+### Prerequisites:
+```bash
+# Required packages
+pip install neuro-san>=0.5.40
+pip install aiohttp
+pip install python-dotenv
+```
+
+### Environment Setup:
+```bash
+# API Keys
+export OPENAI_API_KEY="your-key-here"
+export ANTHROPIC_API_KEY="your-key-here"  # If using Claude
+
+# Manufacturing Systems
+export MES_API_ENDPOINT="https://mes.company.com/api"
+export ERP_API_KEY="your-erp-key"
+
+# Customer Systems
+export CRM_API_ENDPOINT="https://crm.company.com/api"
+export DEALER_PORTAL_KEY="your-portal-key"
+```
+
+### Quick Start:
+```bash
+# Clone the repository
+git clone https://github.com/cognizant-ai-lab/neuro-san-studio.git
+cd neuro-san-studio
+
+# Install dependencies
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+
+# Copy automotive configuration
+cp examples/automotive_ops_and_customer_service/config.hocon registries/
+
+# Start the service
+python -m run
+```
+
+### Test Queries:
+```python
+from neuro_san import AgentSession
+
+# Initialize session
+session = AgentSession("automotive_operations_coordinator")
+
+# Manufacturing query
+response = await session.send_message(
+    "What's the current OEE at our Dearborn plant?"
+)
+
+# Customer service query
+response = await session.send_message(
+    "Check if VIN 1FTFW1E84PFA12345 has any recalls"
+)
+
+# Supply chain query
+response = await session.send_message(
+    "Show me battery pack inventory levels across all plants"
+)
+
+# BMW-specific queries
+response = await session.send_message(
+    "Customer reports iDrive system frozen on 2024 BMW iX - cannot access navigation"
+)
+
+response = await session.send_message(
+    "What's the production capacity for M Performance vehicles at Dingolfing?"
+)
+
+response = await session.send_message(
+    "BMW Individual order status for Arctic Race Blue M3 - order #BMW-IND-2024-8847"
+)
+```
+
+---
+
+## Customization Guide
+
+### Adding New Agents:
+1. Define agent in HOCON configuration
+2. Specify instructions and LLM model
+3. Add to parent agent's agent list
+4. Test routing logic
+
+### Creating Custom Tools:
+```python
+class VehicleDataTool(CodedTool):
+    """Custom tool for vehicle-specific data"""
+    
+    def __init__(self):
+        super().__init__(
+            name="vehicle_data_lookup",
+            description="Retrieves vehicle data by VIN"
+        )
+    
+    async def execute_async(self, args: dict, sly_data: dict) -> str:
+        vin = args.get("vin")
+        # Your custom logic here
+        return vehicle_info
+```
+
+### Modifying Instructions:
+Edit the `instructions` field in HOCON to adjust agent behavior:
+- Add company-specific terminology
+- Include recent product launches
+- Reference internal systems
+- Customize tone and style
+
+---
+
+## Future Enhancements
+
+### Planned Features:
+1. **Computer Vision Integration**: Quality inspection from camera feeds
+2. **IoT Sensor Data**: Real-time machine health monitoring
+3. **Predictive Maintenance**: AI-driven maintenance scheduling
+4. **Voice Integration**: Support for technician voice queries
+5. **AR Support**: Augmented reality service instructions
+6. **Autonomous Coordination**: Self-healing production systems
+
+### Industry Trends:
+- Electric vehicle-specific agents (battery health, charging optimization)
+- Software-defined vehicle support
+- OTA update management
+- Autonomous vehicle operational support
+- Sustainable manufacturing optimization
+
+---
+
+## Support and Resources
+
+### Documentation:
+- [Neuro SAN Core Docs](https://github.com/cognizant-ai-lab/neuro-san)
+- [HOCON Configuration Guide](https://github.com/lightbend/config/blob/master/HOCON.md)
+- [Automotive Industry Best Practices](#)
+
+### Community:
+- GitHub Discussions
+- Example implementations
+- Industry-specific use cases
+
+### Commercial Support:
+For enterprise deployment and customization:
+- Cognizant Neuro® AI Multi-Agent Accelerator
+- Cognizant Multi-Agent Services Suite
+- [Contact Form](https://www.cognizant.com/us/en/ai-lab/neuro-san)
+
+---
+
+## Conclusion
+
+This automotive multi-agent network demonstrates how specialized AI agents can transform operations across the automotive value chain. By intelligently routing complex queries and coordinating specialized expertise, Volkswagen, Ford, BMW, and other manufacturers can:
+
+- Improve manufacturing efficiency and quality
+- Optimize supply chain resilience
+- Enhance dealer and customer support
+- Accelerate problem resolution
+- Drive continuous improvement
+
+The modular, data-driven architecture of Neuro SAN makes it possible to rapidly prototype, deploy, and scale these intelligent systems across the enterprise.
+
+---
+
+## License
+
+This example is provided under the Cognizant Neuro SAN research license. See the main repository for details.
+
+## Contributing
+
+We welcome contributions and automotive industry-specific enhancements. Please see CONTRIBUTING.md in the main repository.
+
+---
+
+**Version**: 1.0.0  
+**Last Updated**: November 2025  
+**Maintained by**: Cognizant AI Lab
+
+For questions or support: [Cognizant Neuro SAN](https://www.cognizant.com/us/en/ai-lab/neuro-san)

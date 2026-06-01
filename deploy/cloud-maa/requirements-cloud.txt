@@ -1,0 +1,10 @@
+# Lean requirements for the Cloud Run MAA backend image.
+# The full repo requirements.txt is local/Ollama-oriented (nsflow, flask, socketio,
+# pymupdf, langchain-ollama) and fails to build on python:3.11-slim without build tools.
+# The cloud backend only needs the neuro-san server + the Gemini LLM binding + HOCON + the
+# coded_tools' runtime deps. Tool-heavy networks (pdf_rag/ddgs/web-scrapers) degrade gracefully.
+neuro-san==0.6.23
+langchain-google-genai>=4,<5
+pyhocon>=0.3.60
+aiofiles
+python-dotenv

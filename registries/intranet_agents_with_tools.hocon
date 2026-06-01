@@ -10,6 +10,9 @@
 #
 # END COPYRIGHT
 {
+    # >>> category-tag (managed by tag_registries.py) <<<
+    metadata { tags = ["Industry"] }
+
    # This "aaosa.hocon" file contains key-value pairs used for substitution.
     # Specifically, it provides values for the following keys:
     #   - aaosa_call
@@ -23,7 +26,10 @@
     include "registries/aaosa.hocon"
 
     "llm_config": {
-        "model_name": "gpt-4o"
+        "fallbacks": [
+            {"class": "ollama", "model_name": "qwen3.6:35b-a3b", "reasoning": false},
+            {"class": "ollama", "model_name": "qwen3.6:27b"}
+        ]
     },
     "instructions_prefix": """
     You are in charge of a portion of company's intranet. The intranet is also known as MyIntranet.
@@ -33,7 +39,7 @@
     Alwasy ask your down-chain agents for their take on the inquiry, and delegate to them as much as possible
     to fulfill the user's inquiry.
     If needed ask the user for clarification.
-    """
+    """,
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
         # does all the talking to the outside world/client.

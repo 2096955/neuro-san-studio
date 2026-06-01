@@ -1,0 +1,236 @@
+*Implementation:**
+
+```javascript
+// INTELLIGENT extraction function for all data formats
+const extractStructuredData = (message) => {
+  const extracted = {};
+  
+  // ===== 1. STRUCTURED FORMAT (✓ checkmarks) =====
+  const structuredPatterns = {
+    name: /✓\s*name\s*:\s*["']?([^"'\n]+?)["']?(?:\s|$)/i,
+    email: /✓\s*email\s*:\s*["']?([^"'\n]+?)["']?(?:\s|$)/i,
+    phone: /✓\s*phone\s*:\s*["']?([^"'\n]+?)["']?(?:\s|$)/i,
+    rego: /✓\s*rego\s*:\s*["']?([^"'\n]+?)["']?(?:\s|$)/i,
+    registration: /✓\s*registration\s*:\s*["']?([^"'\n]+?)["']?(?:\s|$)/i,
+    vehicle: /✓\s*vehicle\s*:\s*["']?([^"'\n]+?)["']?(?:\s|$)/i,
+    model: /✓\s*model\s*:\s*["']?([^"'\n]+?)["']?(?:\s|$)/i
+  };
+  
+  Object.keys(structuredPatterns).forEach(key => {
+    const match = message.match(structuredPatterns[key]);
+    if (match && match[1]) {
+      extracted[key] = match[1].trim().replace(/["']$/, '').replace(/^["']/, '');
+    }
+  });
+  
+  // ===== 2. KEY-VALUE PAIRS (name: value, email: value) =====
+  if (!extracted.name) {
+    const nameKeyValue = message.match(/(?:^|\s)(?:name|my name|i'm|i am)\s*[:=]\s*["']?([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)["']?/i);
+    if (nameKeyValue) extracted.name = nameKeyValue[1].trim();
+  }
+  
+  if (!extracted.email) {
+    const emailKeyValue = message.match(/(?:^|\s)(?:email|e-mail)\s*[:=]\s*["']?([\w.-]+@[\w.-]+\.\w+)["']?/i);
+    if (emailKeyValue) extracted.email = emailKeyValue[1].trim();
+  }
+  
+  if (!extracted.phone) {
+    const phoneKeyValue = message.match(/(?:^|\s)(?:phone|mobile|tel)\s*[:=]\s*["']?([0-9+\s()-]{10,15})["']?/i);
+    if (phoneKeyValue) {
+      extracted.phone = phoneKeyValue[1].trim().replace(/\s+/g, '');
+      // Ensure UK format is preserved
+      if (extracted.phone.startsWith('44') && !extracted.phone.startsWith('+44')) {
+        extracted.phone = '+' + extracted.phone;
+      }
+    }
+  }
+  
+  // ===== 3. NATURAL LANGUAGE EXTRACTION =====
+  
+  // Name extraction (multiple patterns)
+  if (!extracted.name) {
+    // Pattern 1: "name is Anthony Lui"
+    let nameMatch = message.match(/(?:name is|my name is|i'm|i am|call me)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/i);
+    if (nameMatch) {
+      extracted.name = nameMatch[1].trim();
+    }
+    
+    // Pattern 2: "Anthony Lui is the name"
+    if (!extracted.name) {
+      nameMatch = message.match(/([A-Z][a-z]+\s+[A-Z][a-z]+)\s+(?:is the name|is my name)/i);
+      if (nameMatch) extracted.name = nameMatch[1].trim();
+    }
+    
+    // Pattern 3: Quoted names "Anthony Lui"
+    if (!extracted.name) {
+      nameMatch = message.match(/"([A-Z][a-z]+\s+[A-Z][a-z]+)"/);
+      if (nameMatch && !nameMatch[1].includes('@')) extracted.name = nameMatch[1].trim();
+    }
+  }
+  
+  // Email extraction (robust)
+  if (!extracted.email) {
+    // Standard email pattern
+    const emailPatterns = [
+      /[\w.-]+@[\w.-]+\.\w+/g,  // Standard: user@domain.com
+      /[\w.-]+@[\w.-]+\.\w+\.\w+/g,  // Multi-level: user@sub.domain.com
+      /[\w.-]+\[at\][\w.-]+\.\w+/gi,  // Obfuscated: user[at]domain.com
+      /[\w.-]+\s*\(at\)\s*[\w.-]+\.\w+/gi  // Obfuscated: user (at) domain.com
+    ];
+    
+    for (const pattern of emailPatterns) {
+      const matches = message.match(pattern);
+      if (matches && matches.length > 0) {
+        // Prefer emails that look valid (not in code examples)
+        const validEmail = matches.find(email => 
+          email.includes('@') && 
+          email.includes('.') && 
+          !email.includes('example') &&
+          !email.includes('test@')
+        );
+        if (validEmail) {
+          extracted.email = validEmail.replace(/\[at\]/gi, '@').replace(/\s*\(at\)\s*/gi, '@').trim();
+          break;
+        }
+      }
+    }
+  }
+  
+  // Phone extraction (UK formats)
+  if (!extracted.phone) {
+    const phonePatterns = [
+      // UK mobile formats
+      /07\d{2}\s?\d{3}\s?\d{3}\s?\d{3}/,  // UK mobile: 07123 456789 or 07123456789
+      /\+44\s*7\d{2}\s?\d{3}\s?\d{3}\s?\d{3}/,  // International UK mobile: +44 7123 456789
+      /\+44\s*7\d{9}/,  // International UK mobile (compact): +447123456789
+      
+      // UK landline formats
+      /\+44\s*\d{1,2}\s?\d{4}\s?\d{6}/,  // International UK landline: +44 20 1234 5678
+      /0\d{2,3}\s?\d{3,4}\s?\d{3,4}/,  // UK landline: 020 1234 5678, 0117 123 4567
+      /\(0\d{2,3}\)\s?\d{3,4}\s?\d{3,4}/,  // UK landline with parentheses: (020) 1234 5678
+      
+      // General UK formats
+      /0\d{9,10}/,  // 10-11 digit UK number starting with 0
+      /\+44\s?\d{10,11}/,  // International UK format: +44 20 1234 5678 (without spaces)
+      /\d{5}\s?\d{6}/,  // UK mobile: 07123 456789
+      /\d{4}\s?\d{3}\s?\d{4}/,  // UK landline: 0207 123 4567
+      
+      // International format (fallback)
+      /\+\d{1,3}[\s.-]?\d{1,4}[\s.-]?\d{4,10}/  // General international format
+    ];
+    
+    for (const pattern of phonePatterns) {
+      const match = message.match(pattern);
+      if (match) {
+        // Clean up the phone number but preserve +44 for international format
+        let phone = match[0].replace(/\s+/g, '').replace(/[-()]/g, '');
+        
+        // Normalize UK international format: ensure +44 is present if international
+        if (phone.startsWith('44') && !phone.startsWith('+44')) {
+          phone = '+' + phone; // Add + if missing
+        }
+        
+        // Convert UK mobile from 07xxx to +447xxx format (optional - you may want to keep 07xxx)
+        // if (phone.startsWith('07') && phone.length === 11) {
+        //   phone = '+44' + phone.substring(1); // Convert 07123456789 to +447123456789
+        // }
+        
+        extracted.phone = phone;
+        break;
+      }
+    }
+  }
+  
+  // Registration/Rego extraction (multiple formats)
+  if (!extracted.rego && !extracted.registration) {
+    const regoPatterns = [
+      /(?:rego|registration|reg)\s*(?:is|:|=)\s*([A-Z0-9]{6,7})/i,  // "rego is GD23JSV"
+      /\b([A-Z]{2}\d{2}[A-Z]{3})\b/,  // Format: LLNNLLL (e.g., GD23JSV)
+      /\b([A-Z]{1,3}\d{1,4}[A-Z]{1,3})\b/,  // Flexible: 1-3 letters, 1-4 digits, 1-3 letters
+      /(?:rego|registration)\s*["']?([A-Z0-9]{5,8})["']?/i  // "rego 'GD23JSV'"
+    ];
+    
+    for (const pattern of regoPatterns) {
+      const match = message.match(pattern);
+      if (match && match[1]) {
+        // Validate it looks like a rego (not a random alphanumeric)
+        const rego = match[1].toUpperCase();
+        if (rego.length >= 5 && rego.length <= 8 && /[A-Z]/.test(rego) && /\d/.test(rego)) {
+          extracted.rego = rego;
+          break;
+        }
+      }
+    }
+  }
+  
+  // Vehicle model extraction
+  if (!extracted.model && !extracted.vehicle) {
+    const modelPatterns = [
+      /(?:model|vehicle|car)\s*(?:is|:|=)\s*["']?([A-Z0-9][\w\s.-]+?)["']?(?:\s|$)/i,
+      /\b(vw|volkswagen|ford|bmw|tiguan|golf|id\.?4|passat|mustang|ranger|explorer|3\s*series|5\s*series|x[1-9])\b/i
+    ];
+    
+    for (const pattern of modelPatterns) {
+      const match = message.match(pattern);
+      if (match && match[1]) {
+        extracted.model = match[1].trim();
+        break;
+      }
+    }
+  }
+  
+  // ===== 4. CLEANUP AND VALIDATION =====
+  
+  // Clean name (remove extra quotes, trim)
+  if (extracted.name) {
+    extracted.name = extracted.name.replace(/^["']+|["']+$/g, '').trim();
+    // Capitalize properly: "anthony lui" -> "Anthony Lui"
+    extracted.name = extracted.name.split(' ').map(word => 
+      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    ).join(' ');
+  }
+  
+  // Validate email format
+  if (extracted.email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(extracted.email)) {
+      delete extracted.email; // Invalid email, remove it
+    }
+  }
+  
+  // Clean phone (remove spaces, dashes, parentheses, preserve +44)
+  if (extracted.phone) {
+    // Remove spaces, dashes, parentheses but keep + sign
+    extracted.phone = extracted.phone.replace(/[\s\-()]/g, '');
+    
+    // Normalize UK formats
+    if (extracted.phone.startsWith('44') && !extracted.phone.startsWith('+44')) {
+      extracted.phone = '+' + extracted.phone; // Add + if missing for international format
+    }
+    
+    // Validate UK phone format
+    // UK mobile: +447xxxxxxxxx or 07xxxxxxxxx (10-11 digits)
+    // UK landline: +44xxxxxxxxxx or 0xxxxxxxxxx (10-11 digits)
+    const ukMobilePattern = /^(\+44|0)7\d{9}$/;
+    const ukLandlinePattern = /^(\+44|0)[1-9]\d{8,9}$/;
+    
+    if (!ukMobilePattern.test(extracted.phone) && !ukLandlinePattern.test(extracted.phone) && !extracted.phone.startsWith('+')) {
+      // If it doesn't match UK format, try to fix common issues
+      if (extracted.phone.length === 10 && extracted.phone.startsWith('0')) {
+        // Likely UK number, keep as is
+      } else if (extracted.phone.length === 11 && extracted.phone.startsWith('07')) {
+        // UK mobile, keep as is
+      }
+    }
+  }
+  
+  // Clean rego (uppercase, remove spaces)
+  if (extracted.rego) {
+    extracted.rego = extracted.rego.toUpperCase().replace(/\s+/g, '');
+  }
+  if (extracted.registration) {
+    extracted.registration = extracted.registration.toUpperCase().replace(/\s+/g, '');
+  }
+  
+  return extracted;
+};

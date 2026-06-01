@@ -1,0 +1,1868 @@
+# Replit Prompt: Fix Agent Chat Response Issues
+
+## Problem Analysis
+
+Looking at the conversation, there are **3 critical issues**:
+
+### Issue 1: Agent Doesn't Remember Context ❌
+```
+Customer: "gd23jsv is the rego, Anthony Lui is the name, phone is 0745128601,
+           email is Anthony.lui@cognizant.com"
+
+Agent: "It seems like you've shared some details. How can I assist you with
+        this information?"
+
+Customer: "Can you check the warranty given those details"
+
+Agent: "Could you please provide the details such as your contact email,
+        contact ID, contact name, or phone number?"
+```
+
+**Problem**: Agent asked for details, user provided them, then agent asks again! The agent is not maintaining conversation context.
+
+---
+
+### Issue 2: Wrong Agent Being Used ❌
+```
+System: "Connected to Sales Agent"
+User: "I want to get my VW Tiguan looked at"
+Agent (Customer Service): "I can assist with customer support-related questions..."
+```
+
+**Problem**: System says "Connected to Sales Agent" but responses are still from "Customer Service". The agent routing is broken.
+
+---
+
+### Issue 3: Agent Capabilities Don't Match Claims ❌
+```
+Agent: "Could you please provide your contact details... so I can check if
+        your vehicle is under warranty"
+
+[User provides details]
+
+Agent: "Could you please provide the details... This will help me check the
+        warranty information for you."
+```
+
+**Problem**: Agent claims it can check warranty but doesn't actually have that capability or isn't using it.
+
+---
+
+## Root Causes
+
+### 1. Session Management Issue
+The agent is likely **not maintaining session_id** between messages, causing it to lose conversation history.
+
+### 2. Agent Routing Not Working
+The UI switches to "Sales Agent" but the backend is still using the default "Customer Service" agent.
+
+### 3. No CRM Integration
+The agent asks for details but doesn't actually query Salesforce for warranty information.
+
+---
+
+## Replit Fix Prompt
+
+Copy this to Replit AI:
+
+---
+
+**Fix the following issues in the chat agent system:**
+
+## Issue 1: Agent Memory - Maintain Conversation Context
+
+**Problem:** Agent asks for customer details, user provides them, then agent asks again.
+
+**Fix Required:**
+1. Maintain `session_id` across all messages in the same conversation
+2. Store user-provided information in conversation context
+3. When user provides details (name, email, phone, rego), extract and remember them
+4. Don't ask for information that was already provided in the current conversation
+
+**Implementation:**
+```javascript
+// In your chat component
+const [sessionId, setSessionId] = useState(null);
+const [conversationContext, setConversationContext] = useState({});
+
+const sendMessage = async (userMessage) => {
+  // Extract user details from message if present
+  const extractedInfo = extractUserDetails(userMessage);
+  const updatedContext = { ...conversationContext, ...extractedInfo };
+
+  const response = await fetch('/execute', {
+    method: 'POST',
+    body: JSON.stringify({
+      task_id: `chat-${Date.now()}`,
+      prompt: userMessage,
+      context: {
+        session_id: sessionId,  // CRITICAL: Maintain session
+        agent_id: currentAgentId,
+        user_details: updatedContext  // Pass accumulated context
+      }
+    })
+  });
+
+  const data = await response.json();
+
+  // Save session ID from first response
+  if (!sessionId && data.context.session_id) {
+    setSessionId(data.context.session_id);
+  }
+
+  // Update conversation context
+  setConversationContext(updatedContext);
+};
+
+// Helper function to extract user details
+const extractUserDetails = (message) => {
+  const details = {};
+
+  // Extract email
+  const emailMatch = message.match(/[\w.-]+@[\w.-]+\.\w+/);
+  if (emailMatch) details.email = emailMatch[0];
+
+  // Extract phone (Australian format)
+  const phoneMatch = message.match(/04\d{8}|\+614\d{8}/);
+  if (phoneMatch) details.phone = phoneMatch[0];
+
+  // Extract name (after "name is")
+  const nameMatch = message.match(/(?:name is|I'm|I am)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/i);
+  if (nameMatch) details.name = nameMatch[1];
+
+  // Extract rego
+  const regoMatch = message.match(/\b([A-Z0-9]{6,7})\s+is the rego|rego is\s+([A-Z0-9]{6,7})/i);
+  if (regoMatch) details.rego = regoMatch[1] || regoMatch[2];
+
+  return details;
+};
+```
+
+---
+
+## Issue 2: Agent Routing - Connect to Correct Agent
+
+**Problem:** System shows "Connected to Sales Agent" but responses are from "Customer Service"
+
+**Fix Required:**
+1. When user mentions "service", "repair", "warranty", "looked at" → Use VWI Service Agent (`0XxfI0000003NCzSAM`)
+2. When user mentions "buy", "purchase", "new car" → Use VWI Sales Agent (`0XxfI0000003NEbSAM`)
+3. Update the agent label in the UI to match the actual agent being used
+
+**Implementation:**
+```javascript
+const routeToAgent = (message) => {
+  const lowerMessage = message.toLowerCase();
+
+  // Service keywords
+  const serviceKeywords = ['service', 'repair', 'warranty', 'looked at', 'check', 'maintenance', 'fix', 'problem', 'issue', 'rego'];
+  if (serviceKeywords.some(keyword => lowerMessage.includes(keyword))) {
+    return {
+      id: '0XxfI0000003NCzSAM',
+      name: 'VWI Service Agent',
+      color: '#14B8A6'  // Teal
+    };
+  }
+
+  // Sales keywords
+  const salesKeywords = ['buy', 'purchase', 'new', 'price', 'model', 'electric', 'ev', 'tiguan', 'golf', 'id.4'];
+  if (salesKeywords.some(keyword => lowerMessage.includes(keyword))) {
+    return {
+      id: '0XxfI0000003NEbSAM',
+      name: 'VWI Sales Agent',
+      color: '#8B5CF6'  // Purple
+    };
+  }
+
+  // Default to service agent
+  return {
+    id: '0XxfI0000003MjxSAE',
+    name: 'Customer Service',
+    color: '#3B82F6'  // Blue
+  };
+};
+
+const sendMessage = async (userMessage) => {
+  // Route to appropriate agent
+  const agent = routeToAgent(userMessage);
+  setCurrentAgent(agent);  // Update UI
+
+  // Show system message
+  addSystemMessage(`Connected to ${agent.name}`);
+
+  // Send to correct agent
+  const response = await fetch('/execute', {
+    method: 'POST',
+    body: JSON.stringify({
+      task_id: `chat-${Date.now()}`,
+      prompt: userMessage,
+      context: {
+        session_id: sessionId,
+        agent_id: agent.id  // Use correct agent ID
+      }
+    })
+  });
+};
+```
+
+---
+
+## Issue 3: Display Agent Name Correctly
+
+**Problem:** Messages show "Customer Service" even when other agents are active
+
+**Fix Required:**
+Update message display to show the actual agent name from the response
+
+**Implementation:**
+```javascript
+const displayMessage = (message, agentId) => {
+  const agentNames = {
+    '0XxfI0000003MjxSAE': 'Customer Service',
+    '0XxfI0000003N1hSAE': 'Sales Agent',
+    '0XxfI0000003NEbSAM': 'VWI Sales Agent',
+    '0XxfI0000003NCzSAM': 'VWI Service Agent'
+  };
+
+  return {
+    sender: agentNames[agentId] || 'Agent',
+    text: message,
+    timestamp: new Date().toLocaleTimeString()
+  };
+};
+```
+
+---
+
+## Issue 4: Better Context Prompt
+
+**Problem:** Agent doesn't use provided information effectively
+
+**Fix Required:**
+When user provides details, include them in a structured way in the prompt
+
+**Implementation:**
+```javascript
+const buildPromptWithContext = (userMessage, context) => {
+  if (Object.keys(context).length === 0) {
+    return userMessage;
+  }
+
+  // Build context string
+  let contextStr = "Customer information: ";
+  if (context.name) contextStr += `Name: ${context.name}. `;
+  if (context.email) contextStr += `Email: ${context.email}. `;
+  if (context.phone) contextStr += `Phone: ${context.phone}. `;
+  if (context.rego) contextStr += `Registration: ${context.rego}. `;
+
+  return `${contextStr}\n\nCustomer request: ${userMessage}`;
+};
+
+const sendMessage = async (userMessage) => {
+  const enrichedPrompt = buildPromptWithContext(userMessage, conversationContext);
+
+  const response = await fetch('/execute', {
+    method: 'POST',
+    body: JSON.stringify({
+      task_id: `chat-${Date.now()}`,
+      prompt: enrichedPrompt,  // Use enriched prompt
+      context: {
+        session_id: sessionId,
+        agent_id: currentAgentId
+      }
+    })
+  });
+};
+```
+
+---
+
+## Issue 5: Visual Feedback for Agent Switching
+
+**Problem:** User doesn't clearly see which agent they're talking to
+
+**Fix Required:**
+Add visual indicator showing current agent with color coding
+
+**Implementation:**
+```javascript
+// In your chat header
+const AgentIndicator = ({ agent }) => (
+  <div style={{
+    display: 'flex',
+    alignItems: 'center',
+    padding: '8px 16px',
+    backgroundColor: agent.color,
+    color: 'white',
+    borderRadius: '8px',
+    marginBottom: '16px'
+  }}>
+    <div style={{
+      width: '12px',
+      height: '12px',
+      borderRadius: '50%',
+      backgroundColor: '#4ade80',
+      marginRight: '8px',
+      animation: 'pulse 2s infinite'
+    }} />
+    <div>
+      <div style={{ fontWeight: 'bold' }}>{agent.name}</div>
+      <div style={{ fontSize: '12px', opacity: 0.9 }}>Online</div>
+    </div>
+  </div>
+);
+```
+
+---
+
+## Complete Fix Summary
+
+**Apply these 5 changes:**
+
+1. ✅ **Maintain session_id** - Store and pass session ID with every message
+2. ✅ **Extract user details** - Parse name, email, phone, rego from messages
+3. ✅ **Route to correct agent** - Use VWI Service Agent for service requests
+4. ✅ **Display correct agent name** - Show which agent is actually responding
+5. ✅ **Enrich prompts with context** - Include extracted user info in prompts
+
+**Expected Result:**
+
+```
+System: Connected to VWI Service Agent
+
+User: "I want to get my VW Tiguan looked at"
+
+VWI Service Agent: "I'd be happy to help with your VW Tiguan service.
+Could you please provide your contact details (name, email, phone)
+and registration number so I can check your warranty status?"
+
+User: "gd23jsv is the rego, Anthony Lui is the name, phone is 0745128601,
+email is Anthony.lui@cognizant.com"
+
+VWI Service Agent: "Thank you, Anthony. I have your details:
+- Name: Anthony Lui
+- Email: Anthony.lui@cognizant.com
+- Phone: 0745128601
+- Registration: GD23JSV
+
+I'm checking your VW Tiguan's warranty status now. What specific
+service does your vehicle need?"
+
+[Context maintained - no repeat questions!]
+```
+
+---
+
+## Testing Checklist
+
+After implementing fixes, test:
+
+1. ✅ Start conversation → Check session_id is created
+2. ✅ Provide details → Check they're extracted and remembered
+3. ✅ Ask follow-up question → Check details aren't requested again
+4. ✅ Mention "service" → Check VWI Service Agent is activated
+5. ✅ Check UI → Verify correct agent name is displayed
+6. ✅ Switch topics → Check agent routing changes appropriately
+
+---
+
+---
+
+## COMPREHENSIVE: Agent-Specific Memory Context Injection
+
+**This section provides detailed memory context injection for ALL 16 agents in the organizational chart.**
+
+### Context Data Structure
+
+```javascript
+const conversationContext = {
+  // Customer Information (collected by Front Office agents)
+  customer: {
+    name: null,
+    email: null,
+    phone: null,
+    registration: null,
+    vehicle: {
+      make: null,      // e.g., "VW"
+      model: null,     // e.g., "Tiguan"
+      year: null,      // e.g., "2023"
+      vin: null
+    },
+    address: null,
+    preferredContact: null
+  },
+  
+  // Service Information (collected by Service agents)
+  service: {
+    type: null,        // "warranty", "repair", "recall", "maintenance"
+    description: null,
+    urgency: null,     // "urgent", "normal", "scheduled"
+    appointmentNeeded: false,
+    preferredDate: null,
+    preferredTime: null
+  },
+  
+  // Sales Information (collected by Sales agents)
+  sales: {
+    interest: null,    // "new", "used", "lease", "finance"
+    model: null,
+    budget: null,
+    timeline: null,
+    features: []
+  },
+  
+  // Quality/Recall Information
+  recall: {
+    campaignId: null,
+    affectedVehicles: [],
+    status: null,
+    actionRequired: false
+  },
+  
+  // Warranty Information
+  warranty: {
+    status: null,      // "active", "expired", "transferable"
+    expiryDate: null,
+    coverage: [],
+    claims: []
+  },
+  
+  // Production/Supply Chain (for Back Office agents)
+  production: {
+    orderId: null,
+    partNumbers: [],
+    quantities: [],
+    deliveryDate: null
+  },
+  
+  // Agent Handoff History
+  handoffs: [
+    {
+      from: "customer-service",
+      to: "warranty-claims",
+      reason: "warranty inquiry",
+      timestamp: "2025-01-15T10:30:00Z"
+    }
+  ],
+  
+  // Session Metadata
+  session: {
+    sessionId: null,
+    currentAgent: null,
+    conversationStart: null,
+    lastActivity: null
+  }
+};
+```
+
+---
+
+## FRONT OFFICE AGENTS (Customer-Facing)
+
+### 1. Customer Service Agent
+**Agent ID**: `0XxfI0000003MjxSAE` (Default Service Agent)
+**Color**: Purple (#8B5CF6)
+**Memory Context Requirements**:
+
+```javascript
+const buildCustomerServiceContext = (message, context) => {
+  // Extract customer identifiers
+  const extracted = {
+    customer: {
+      name: extractName(message) || context.customer?.name,
+      email: extractEmail(message) || context.customer?.email,
+      phone: extractPhone(message) || context.customer?.phone,
+      registration: extractRego(message) || context.customer?.registration
+    }
+  };
+  
+  // Build prompt with full context
+  let promptContext = "";
+  
+  if (extracted.customer.name) {
+    promptContext += `Customer Name: ${extracted.customer.name}. `;
+  }
+  if (extracted.customer.email) {
+    promptContext += `Email: ${extracted.customer.email}. `;
+  }
+  if (extracted.customer.phone) {
+    promptContext += `Phone: ${extracted.customer.phone}. `;
+  }
+  if (extracted.customer.registration) {
+    promptContext += `Vehicle Registration: ${extracted.customer.registration}. `;
+  }
+  
+  // Add conversation history if available
+  if (context.conversationHistory) {
+    promptContext += `\nPrevious conversation summary: ${context.conversationHistory}. `;
+  }
+  
+  return {
+    prompt: `${promptContext}\n\nCustomer request: ${message}`,
+    context: { ...context, ...extracted }
+  };
+};
+```
+
+**Key Memory Points**:
+- ✅ Customer name, email, phone, registration
+- ✅ Previous inquiries (if any)
+- ✅ Preferred contact method
+- ✅ Active service cases or open tickets
+
+---
+
+### 2. Sales Agent
+**Agent ID**: `0XxfI0000003NEbSAM` (VWI Sales Agent)
+**Color**: Purple (#8B5CF6)
+**Memory Context Requirements**:
+
+```javascript
+const buildSalesAgentContext = (message, context) => {
+  // Extract sales-related information
+  const extracted = {
+    customer: {
+      name: extractName(message) || context.customer?.name,
+      email: extractEmail(message) || context.customer?.email,
+      phone: extractPhone(message) || context.customer?.phone
+    },
+    sales: {
+      interest: extractInterest(message) || context.sales?.interest,
+      model: extractModel(message) || context.sales?.model,
+      budget: extractBudget(message) || context.sales?.budget,
+      timeline: extractTimeline(message) || context.sales?.timeline,
+      features: extractFeatures(message) || context.sales?.features || []
+    }
+  };
+  
+  let promptContext = "Sales inquiry context: ";
+  
+  if (extracted.customer.name) {
+    promptContext += `Customer: ${extracted.customer.name}. `;
+  }
+  if (extracted.sales.model) {
+    promptContext += `Interested in: ${extracted.sales.model}. `;
+  }
+  if (extracted.sales.budget) {
+    promptContext += `Budget: ${extracted.sales.budget}. `;
+  }
+  if (extracted.sales.timeline) {
+    promptContext += `Timeline: ${extracted.sales.timeline}. `;
+  }
+  if (extracted.sales.features.length > 0) {
+    promptContext += `Features of interest: ${extracted.sales.features.join(", ")}. `;
+  }
+  
+  // Remember previous model discussions
+  if (context.sales?.previousModels) {
+    promptContext += `Previously discussed: ${context.sales.previousModels.join(", ")}. `;
+  }
+  
+  return {
+    prompt: `${promptContext}\n\nCustomer request: ${message}`,
+    context: { ...context, ...extracted }
+  };
+};
+
+// Helper functions
+const extractInterest = (msg) => {
+  const lower = msg.toLowerCase();
+  if (lower.includes("buy") || lower.includes("purchase")) return "purchase";
+  if (lower.includes("lease")) return "lease";
+  if (lower.includes("finance")) return "finance";
+  return null;
+};
+
+const extractModel = (msg) => {
+  const models = ["tiguan", "golf", "id.4", "id.3", "passat", "arteon", "polo"];
+  const lower = msg.toLowerCase();
+  return models.find(m => lower.includes(m)) || null;
+};
+
+const extractBudget = (msg) => {
+  const match = msg.match(/\$?\s*(\d{1,3}(?:[,\s]\d{3})*)/);
+  return match ? match[0] : null;
+};
+
+const extractTimeline = (msg) => {
+  const lower = msg.toLowerCase();
+  if (lower.includes("urgent") || lower.includes("asap")) return "urgent";
+  if (lower.includes("month")) return "within_month";
+  if (lower.includes("week")) return "within_week";
+  return null;
+};
+
+const extractFeatures = (msg) => {
+  const features = [];
+  const lower = msg.toLowerCase();
+  if (lower.includes("electric") || lower.includes("ev")) features.push("electric");
+  if (lower.includes("suv")) features.push("suv");
+  if (lower.includes("safety")) features.push("safety");
+  if (lower.includes("technology")) features.push("technology");
+  return features;
+};
+```
+
+**Key Memory Points**:
+- ✅ Customer contact information
+- ✅ Model preferences and budget
+- ✅ Purchase timeline
+- ✅ Features of interest
+- ✅ Previous discussions about specific models
+
+---
+
+### 3. Service Scheduling Agent
+**Agent ID**: `0XxfI0000003NCzSAM` (VWI Service Agent)
+**Color**: Purple (#8B5CF6)
+**Memory Context Requirements**:
+
+```javascript
+const buildServiceSchedulingContext = (message, context) => {
+  const extracted = {
+    customer: {
+      name: extractName(message) || context.customer?.name,
+      email: extractEmail(message) || context.customer?.email,
+      phone: extractPhone(message) || context.customer?.phone,
+      registration: extractRego(message) || context.customer?.registration
+    },
+    service: {
+      type: extractServiceType(message) || context.service?.type,
+      description: extractServiceDescription(message) || context.service?.description,
+      urgency: extractUrgency(message) || context.service?.urgency,
+      appointmentNeeded: context.service?.appointmentNeeded || false,
+      preferredDate: extractDate(message) || context.service?.preferredDate,
+      preferredTime: extractTime(message) || context.service?.preferredTime
+    },
+    vehicle: {
+      make: extractMake(message) || context.customer?.vehicle?.make,
+      model: extractModel(message) || context.customer?.vehicle?.model,
+      year: extractYear(message) || context.customer?.vehicle?.year
+    }
+  };
+  
+  let promptContext = "Service scheduling context: ";
+  
+  if (extracted.customer.name) {
+    promptContext += `Customer: ${extracted.customer.name}. `;
+  }
+  if (extracted.customer.registration) {
+    promptContext += `Vehicle Registration: ${extracted.customer.registration}. `;
+  }
+  if (extracted.vehicle.model) {
+    promptContext += `Vehicle: ${extracted.vehicle.make || "VW"} ${extracted.vehicle.model}. `;
+  }
+  if (extracted.service.type) {
+    promptContext += `Service Type: ${extracted.service.type}. `;
+  }
+  if (extracted.service.description) {
+    promptContext += `Service Description: ${extracted.service.description}. `;
+  }
+  if (extracted.service.preferredDate) {
+    promptContext += `Preferred Date: ${extracted.service.preferredDate}. `;
+  }
+  if (extracted.service.preferredTime) {
+    promptContext += `Preferred Time: ${extracted.service.preferredTime}. `;
+  }
+  
+  // Remember previous appointments
+  if (context.service?.previousAppointments) {
+    promptContext += `Previous appointments: ${context.service.previousAppointments.join(", ")}. `;
+  }
+  
+  return {
+    prompt: `${promptContext}\n\nCustomer request: ${message}`,
+    context: { ...context, ...extracted }
+  };
+};
+
+const extractServiceType = (msg) => {
+  const lower = msg.toLowerCase();
+  if (lower.includes("warranty")) return "warranty";
+  if (lower.includes("repair")) return "repair";
+  if (lower.includes("maintenance") || lower.includes("service")) return "maintenance";
+  if (lower.includes("recall")) return "recall";
+  return null;
+};
+
+const extractServiceDescription = (msg) => {
+  // Extract service description (e.g., "oil change", "brake check")
+  const serviceKeywords = ["oil", "brake", "tire", "battery", "engine", "transmission", "ac", "heating"];
+  const lower = msg.toLowerCase();
+  return serviceKeywords.find(kw => lower.includes(kw)) || null;
+};
+
+const extractUrgency = (msg) => {
+  const lower = msg.toLowerCase();
+  if (lower.includes("urgent") || lower.includes("emergency") || lower.includes("asap")) return "urgent";
+  if (lower.includes("normal") || lower.includes("routine")) return "normal";
+  return null;
+};
+
+const extractDate = (msg) => {
+  // Match dates like "January 15", "15/01", "next Monday"
+  const dateMatch = msg.match(/(?:next\s+)?(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)|(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2}|\d{1,2}\/\d{1,2}/i);
+  return dateMatch ? dateMatch[0] : null;
+};
+
+const extractTime = (msg) => {
+  // Match times like "9am", "2pm", "morning", "afternoon"
+  const timeMatch = msg.match(/\d{1,2}(?::\d{2})?\s*(?:am|pm)|morning|afternoon|evening/i);
+  return timeMatch ? timeMatch[0] : null;
+};
+```
+
+**Key Memory Points**:
+- ✅ Customer and vehicle information
+- ✅ Service type and description
+- ✅ Preferred appointment dates/times
+- ✅ Previous service history
+- ✅ Urgency level
+
+---
+
+### 4. Recall Information Agent
+**Agent ID**: `0XxfI0000003MjxSAE` (Default Service Agent)
+**Color**: Purple (#8B5CF6)
+**Memory Context Requirements**:
+
+```javascript
+const buildRecallInfoContext = (message, context) => {
+  const extracted = {
+    customer: {
+      name: extractName(message) || context.customer?.name,
+      email: extractEmail(message) || context.customer?.email,
+      phone: extractPhone(message) || context.customer?.phone,
+      registration: extractRego(message) || context.customer?.registration
+    },
+    vehicle: {
+      make: extractMake(message) || context.customer?.vehicle?.make,
+      model: extractModel(message) || context.customer?.vehicle?.model,
+      year: extractYear(message) || context.customer?.vehicle?.year,
+      vin: extractVIN(message) || context.customer?.vehicle?.vin
+    },
+    recall: {
+      campaignId: extractCampaignId(message) || context.recall?.campaignId,
+      affectedVehicles: context.recall?.affectedVehicles || [],
+      status: context.recall?.status || null,
+      actionRequired: context.recall?.actionRequired || false
+    }
+  };
+  
+  let promptContext = "Recall information context: ";
+  
+  if (extracted.customer.registration) {
+    promptContext += `Vehicle Registration: ${extracted.customer.registration}. `;
+  }
+  if (extracted.vehicle.model) {
+    promptContext += `Vehicle: ${extracted.vehicle.make || "VW"} ${extracted.vehicle.model} ${extracted.vehicle.year || ""}. `;
+  }
+  if (extracted.vehicle.vin) {
+    promptContext += `VIN: ${extracted.vehicle.vin}. `;
+  }
+  if (extracted.recall.campaignId) {
+    promptContext += `Recall Campaign: ${extracted.recall.campaignId}. `;
+  }
+  
+  // Remember if recall was previously checked
+  if (context.recall?.lastChecked) {
+    promptContext += `Last recall check: ${context.recall.lastChecked}. `;
+  }
+  
+  return {
+    prompt: `${promptContext}\n\nCustomer request: ${message}`,
+    context: { ...context, ...extracted }
+  };
+};
+
+const extractCampaignId = (msg) => {
+  // Match recall campaign IDs (e.g., "REC-2024-001")
+  const match = msg.match(/REC[-\s]?\d{4}[-\s]?\d{3}/i);
+  return match ? match[0] : null;
+};
+
+const extractVIN = (msg) => {
+  // Match VIN (17 alphanumeric characters)
+  const match = msg.match(/\b[A-HJ-NPR-Z0-9]{17}\b/);
+  return match ? match[0] : null;
+};
+
+const extractYear = (msg) => {
+  // Match year (2000-2025)
+  const match = msg.match(/\b(20[0-2][0-9]|19[89][0-9])\b/);
+  return match ? match[1] : null;
+};
+```
+
+**Key Memory Points**:
+- ✅ Vehicle registration, VIN, make, model, year
+- ✅ Recall campaign IDs
+- ✅ Recall status and action required
+- ✅ Previous recall checks
+
+---
+
+### 5. Warranty Claims Agent
+**Agent ID**: `0XxfI0000003NCzSAM` (VWI Service Agent)
+**Color**: Purple (#8B5CF6)
+**Memory Context Requirements**:
+
+```javascript
+const buildWarrantyClaimsContext = (message, context) => {
+  const extracted = {
+    customer: {
+      name: extractName(message) || context.customer?.name,
+      email: extractEmail(message) || context.customer?.email,
+      phone: extractPhone(message) || context.customer?.phone,
+      registration: extractRego(message) || context.customer?.registration
+    },
+    vehicle: {
+      make: extractMake(message) || context.customer?.vehicle?.make,
+      model: extractModel(message) || context.customer?.vehicle?.model,
+      year: extractYear(message) || context.customer?.vehicle?.year,
+      vin: extractVIN(message) || context.customer?.vehicle?.vin
+    },
+    warranty: {
+      status: extractWarrantyStatus(message) || context.warranty?.status,
+      expiryDate: context.warranty?.expiryDate || null,
+      coverage: context.warranty?.coverage || [],
+      claims: context.warranty?.claims || []
+    },
+    service: {
+      type: "warranty",
+      description: extractServiceDescription(message) || context.service?.description
+    }
+  };
+  
+  let promptContext = "Warranty claim context: ";
+  
+  if (extracted.customer.name) {
+    promptContext += `Customer: ${extracted.customer.name}. `;
+  }
+  if (extracted.customer.registration) {
+    promptContext += `Vehicle Registration: ${extracted.customer.registration}. `;
+  }
+  if (extracted.vehicle.model) {
+    promptContext += `Vehicle: ${extracted.vehicle.make || "VW"} ${extracted.vehicle.model} ${extracted.vehicle.year || ""}. `;
+  }
+  if (extracted.warranty.status) {
+    promptContext += `Warranty Status: ${extracted.warranty.status}. `;
+  }
+  if (extracted.warranty.expiryDate) {
+    promptContext += `Warranty Expiry: ${extracted.warranty.expiryDate}. `;
+  }
+  if (extracted.service.description) {
+    promptContext += `Claim Description: ${extracted.service.description}. `;
+  }
+  
+  // Remember previous warranty claims
+  if (context.warranty?.claims?.length > 0) {
+    promptContext += `Previous claims: ${context.warranty.claims.length} claim(s) on file. `;
+  }
+  
+  return {
+    prompt: `${promptContext}\n\nCustomer request: ${message}`,
+    context: { ...context, ...extracted }
+  };
+};
+
+const extractWarrantyStatus = (msg) => {
+  const lower = msg.toLowerCase();
+  if (lower.includes("active") || lower.includes("valid")) return "active";
+  if (lower.includes("expired") || lower.includes("expiry")) return "expired";
+  if (lower.includes("transferable")) return "transferable";
+  return null;
+};
+```
+
+**Key Memory Points**:
+- ✅ Customer and vehicle details
+- ✅ Warranty status and expiry date
+- ✅ Warranty coverage details
+- ✅ Previous warranty claims
+- ✅ Claim description and documentation
+
+---
+
+## MIDDLE OFFICE AGENTS (Coordination)
+
+### 6. Quality Control Agent
+**Agent ID**: `0XxfI0000003MjxSAE` (Default Service Agent)
+**Color**: Blue (#3B82F6)
+**Memory Context Requirements**:
+
+```javascript
+const buildQualityControlContext = (message, context) => {
+  const extracted = {
+    customer: {
+      name: context.customer?.name,
+      email: context.customer?.email,
+      registration: context.customer?.registration
+    },
+    vehicle: {
+      make: context.customer?.vehicle?.make,
+      model: context.customer?.vehicle?.model,
+      year: context.customer?.vehicle?.year,
+      vin: context.customer?.vehicle?.vin
+    },
+    quality: {
+      issue: extractQualityIssue(message) || context.quality?.issue,
+      severity: extractSeverity(message) || context.quality?.severity,
+      component: extractComponent(message) || context.quality?.component,
+      batchNumber: extractBatchNumber(message) || context.quality?.batchNumber
+    },
+    recall: {
+      campaignId: context.recall?.campaignId,
+      status: context.recall?.status
+    }
+  };
+  
+  let promptContext = "Quality control context: ";
+  
+  if (extracted.vehicle.model) {
+    promptContext += `Vehicle: ${extracted.vehicle.make || "VW"} ${extracted.vehicle.model} ${extracted.vehicle.year || ""}. `;
+  }
+  if (extracted.quality.issue) {
+    promptContext += `Quality Issue: ${extracted.quality.issue}. `;
+  }
+  if (extracted.quality.severity) {
+    promptContext += `Severity: ${extracted.quality.severity}. `;
+  }
+  if (extracted.quality.component) {
+    promptContext += `Component: ${extracted.quality.component}. `;
+  }
+  if (extracted.recall.campaignId) {
+    promptContext += `Related Recall: ${extracted.recall.campaignId}. `;
+  }
+  
+  return {
+    prompt: `${promptContext}\n\nInquiry: ${message}`,
+    context: { ...context, ...extracted }
+  };
+};
+
+const extractQualityIssue = (msg) => {
+  const issues = ["defect", "malfunction", "failure", "non-compliance", "recall"];
+  const lower = msg.toLowerCase();
+  return issues.find(issue => lower.includes(issue)) || null;
+};
+
+const extractSeverity = (msg) => {
+  const lower = msg.toLowerCase();
+  if (lower.includes("critical") || lower.includes("urgent")) return "critical";
+  if (lower.includes("high") || lower.includes("serious")) return "high";
+  if (lower.includes("medium") || lower.includes("moderate")) return "medium";
+  if (lower.includes("low") || lower.includes("minor")) return "low";
+  return null;
+};
+
+const extractComponent = (msg) => {
+  const components = ["engine", "brake", "transmission", "airbag", "steering", "suspension", "electrical"];
+  const lower = msg.toLowerCase();
+  return components.find(comp => lower.includes(comp)) || null;
+};
+
+const extractBatchNumber = (msg) => {
+  const match = msg.match(/\bBATCH[-\s]?[A-Z0-9]{6,10}\b/i);
+  return match ? match[0] : null;
+};
+```
+
+**Key Memory Points**:
+- ✅ Vehicle information (passed from Front Office)
+- ✅ Quality issue details and severity
+- ✅ Component affected
+- ✅ Related recall campaigns
+- ✅ Batch numbers and manufacturing data
+
+---
+
+### 7. Factory Efficiency Agent
+**Agent ID**: `0XxfI0000003MjxSAE` (Default Service Agent)
+**Color**: Blue (#3B82F6)
+**Memory Context Requirements**:
+
+```javascript
+const buildFactoryEfficiencyContext = (message, context) => {
+  const extracted = {
+    production: {
+      orderId: extractOrderId(message) || context.production?.orderId,
+      partNumbers: extractPartNumbers(message) || context.production?.partNumbers || [],
+      quantities: extractQuantities(message) || context.production?.quantities || [],
+      deliveryDate: extractDate(message) || context.production?.deliveryDate,
+      efficiency: extractEfficiencyMetrics(message) || context.production?.efficiency
+    },
+    quality: {
+      issue: context.quality?.issue,
+      severity: context.quality?.severity
+    }
+  };
+  
+  let promptContext = "Factory efficiency context: ";
+  
+  if (extracted.production.orderId) {
+    promptContext += `Order ID: ${extracted.production.orderId}. `;
+  }
+  if (extracted.production.partNumbers.length > 0) {
+    promptContext += `Parts: ${extracted.production.partNumbers.join(", ")}. `;
+  }
+  if (extracted.production.deliveryDate) {
+    promptContext += `Delivery Date: ${extracted.production.deliveryDate}. `;
+  }
+  if (extracted.production.efficiency) {
+    promptContext += `Efficiency Metrics: ${extracted.production.efficiency}. `;
+  }
+  
+  return {
+    prompt: `${promptContext}\n\nInquiry: ${message}`,
+    context: { ...context, ...extracted }
+  };
+};
+
+const extractOrderId = (msg) => {
+  const match = msg.match(/\b(?:ORDER|ORD)[-\s]?[A-Z0-9]{6,10}\b/i);
+  return match ? match[0] : null;
+};
+
+const extractPartNumbers = (msg) => {
+  // Match part numbers (e.g., "1H0-123-456-A", "P/N: ABC123")
+  const matches = msg.match(/\b(?:[A-Z0-9]{2,4}[-\s])?[A-Z0-9]{3,6}(?:[-\s][A-Z0-9]{1,3})?\b/g);
+  return matches || [];
+};
+
+const extractQuantities = (msg) => {
+  const matches = msg.match(/\b(\d+)\s*(?:units?|pcs?|pieces?)\b/i);
+  return matches ? [parseInt(matches[1])] : [];
+};
+
+const extractEfficiencyMetrics = (msg) => {
+  const metrics = [];
+  const lower = msg.toLowerCase();
+  if (lower.includes("throughput") || lower.includes("output")) metrics.push("throughput");
+  if (lower.includes("downtime") || lower.includes("uptime")) metrics.push("downtime");
+  if (lower.includes("cycle time")) metrics.push("cycle_time");
+  return metrics.length > 0 ? metrics.join(", ") : null;
+};
+```
+
+**Key Memory Points**:
+- ✅ Production order IDs
+- ✅ Part numbers and quantities
+- ✅ Delivery dates and timelines
+- ✅ Efficiency metrics (throughput, downtime)
+- ✅ Quality issues affecting production
+
+---
+
+### 8. Operations Coordinator (Central Hub)
+**Agent ID**: `0XxfI0000003MjxSAE` (Default Service Agent)
+**Color**: Orange (#F59E0B) - Special emphasis
+**Memory Context Requirements**:
+
+```javascript
+const buildOperationsCoordinatorContext = (message, context) => {
+  // Operations Coordinator has access to ALL context from all agents
+  const extracted = {
+    // Customer context (from Front Office)
+    customer: {
+      name: context.customer?.name,
+      email: context.customer?.email,
+      phone: context.customer?.phone,
+      registration: context.customer?.registration,
+      vehicle: context.customer?.vehicle
+    },
+    
+    // Service context (from Service Scheduling)
+    service: {
+      type: context.service?.type,
+      description: context.service?.description,
+      urgency: context.service?.urgency,
+      appointmentNeeded: context.service?.appointmentNeeded
+    },
+    
+    // Sales context (from Sales Agent)
+    sales: {
+      interest: context.sales?.interest,
+      model: context.sales?.model,
+      budget: context.sales?.budget
+    },
+    
+    // Quality context (from Quality Control)
+    quality: {
+      issue: context.quality?.issue,
+      severity: context.quality?.severity,
+      component: context.quality?.component
+    },
+    
+    // Production context (from Factory Efficiency)
+    production: {
+      orderId: context.production?.orderId,
+      partNumbers: context.production?.partNumbers,
+      deliveryDate: context.production?.deliveryDate
+    },
+    
+    // Agent handoff history
+    handoffs: context.handoffs || []
+  };
+  
+  // Build comprehensive context summary
+  let promptContext = "Operations Coordinator - Complete Context Summary:\n\n";
+  
+  // Customer Information
+  if (extracted.customer.name || extracted.customer.registration) {
+    promptContext += "CUSTOMER:\n";
+    if (extracted.customer.name) promptContext += `  Name: ${extracted.customer.name}\n`;
+    if (extracted.customer.registration) promptContext += `  Registration: ${extracted.customer.registration}\n`;
+    if (extracted.customer.vehicle?.model) {
+      promptContext += `  Vehicle: ${extracted.customer.vehicle.make || "VW"} ${extracted.customer.vehicle.model}\n`;
+    }
+    promptContext += "\n";
+  }
+  
+  // Service Information
+  if (extracted.service.type || extracted.service.description) {
+    promptContext += "SERVICE:\n";
+    if (extracted.service.type) promptContext += `  Type: ${extracted.service.type}\n`;
+    if (extracted.service.description) promptContext += `  Description: ${extracted.service.description}\n`;
+    if (extracted.service.urgency) promptContext += `  Urgency: ${extracted.service.urgency}\n`;
+    promptContext += "\n";
+  }
+  
+  // Quality Issues
+  if (extracted.quality.issue) {
+    promptContext += "QUALITY:\n";
+    promptContext += `  Issue: ${extracted.quality.issue}\n`;
+    if (extracted.quality.severity) promptContext += `  Severity: ${extracted.quality.severity}\n`;
+    promptContext += "\n";
+  }
+  
+  // Production Orders
+  if (extracted.production.orderId) {
+    promptContext += "PRODUCTION:\n";
+    promptContext += `  Order ID: ${extracted.production.orderId}\n`;
+    if (extracted.production.deliveryDate) {
+      promptContext += `  Delivery: ${extracted.production.deliveryDate}\n`;
+    }
+    promptContext += "\n";
+  }
+  
+  // Agent Handoffs
+  if (extracted.handoffs.length > 0) {
+    promptContext += "AGENT HANDOFFS:\n";
+    extracted.handoffs.forEach(h => {
+      promptContext += `  ${h.from} → ${h.to} (${h.reason})\n`;
+    });
+    promptContext += "\n";
+  }
+  
+  return {
+    prompt: `${promptContext}Current Request: ${message}`,
+    context: { ...context, ...extracted }
+  };
+};
+```
+
+**Key Memory Points**:
+- ✅ **COMPLETE CONTEXT** from all Front Office agents
+- ✅ Service requests and scheduling needs
+- ✅ Quality issues and production impacts
+- ✅ Agent handoff history
+- ✅ Coordination requirements between departments
+
+---
+
+### 9. Production Planning Agent
+**Agent ID**: `0XxfI0000003MjxSAE` (Default Service Agent)
+**Color**: Blue (#3B82F6)
+**Memory Context Requirements**:
+
+```javascript
+const buildProductionPlanningContext = (message, context) => {
+  const extracted = {
+    production: {
+      orderId: extractOrderId(message) || context.production?.orderId,
+      partNumbers: extractPartNumbers(message) || context.production?.partNumbers || [],
+      quantities: extractQuantities(message) || context.production?.quantities || [],
+      deliveryDate: extractDate(message) || context.production?.deliveryDate,
+      priority: extractPriority(message) || context.production?.priority
+    },
+    service: {
+      type: context.service?.type,
+      urgency: context.service?.urgency
+    },
+    quality: {
+      issue: context.quality?.issue
+    }
+  };
+  
+  let promptContext = "Production planning context: ";
+  
+  if (extracted.production.orderId) {
+    promptContext += `Order ID: ${extracted.production.orderId}. `;
+  }
+  if (extracted.production.partNumbers.length > 0) {
+    promptContext += `Required Parts: ${extracted.production.partNumbers.join(", ")}. `;
+  }
+  if (extracted.production.quantities.length > 0) {
+    promptContext += `Quantities: ${extracted.production.quantities.join(", ")}. `;
+  }
+  if (extracted.production.deliveryDate) {
+    promptContext += `Target Delivery: ${extracted.production.deliveryDate}. `;
+  }
+  if (extracted.production.priority) {
+    promptContext += `Priority: ${extracted.production.priority}. `;
+  }
+  if (extracted.service.urgency) {
+    promptContext += `Service Urgency: ${extracted.service.urgency}. `;
+  }
+  
+  return {
+    prompt: `${promptContext}\n\nPlanning Request: ${message}`,
+    context: { ...context, ...extracted }
+  };
+};
+
+const extractPriority = (msg) => {
+  const lower = msg.toLowerCase();
+  if (lower.includes("urgent") || lower.includes("high priority")) return "urgent";
+  if (lower.includes("normal") || lower.includes("standard")) return "normal";
+  if (lower.includes("low priority")) return "low";
+  return null;
+};
+```
+
+**Key Memory Points**:
+- ✅ Production order IDs and requirements
+- ✅ Part numbers and quantities needed
+- ✅ Delivery dates and timelines
+- ✅ Priority levels (urgent/normal/low)
+- ✅ Service urgency affecting production
+
+---
+
+### 10. Technical Service Agent
+**Agent ID**: `0XxfI0000003NCzSAM` (VWI Service Agent)
+**Color**: Blue (#3B82F6)
+**Memory Context Requirements**:
+
+```javascript
+const buildTechnicalServiceContext = (message, context) => {
+  const extracted = {
+    customer: {
+      name: context.customer?.name,
+      registration: context.customer?.registration,
+      vehicle: context.customer?.vehicle
+    },
+    service: {
+      type: context.service?.type,
+      description: extractServiceDescription(message) || context.service?.description,
+      technicalDetails: extractTechnicalDetails(message) || context.service?.technicalDetails
+    },
+    warranty: {
+      status: context.warranty?.status,
+      coverage: context.warranty?.coverage
+    },
+    quality: {
+      issue: context.quality?.issue,
+      component: context.quality?.component
+    }
+  };
+  
+  let promptContext = "Technical service context: ";
+  
+  if (extracted.customer.registration) {
+    promptContext += `Vehicle: ${extracted.customer.registration}. `;
+  }
+  if (extracted.customer.vehicle?.model) {
+    promptContext += `Model: ${extracted.customer.vehicle.make || "VW"} ${extracted.customer.vehicle.model}. `;
+  }
+  if (extracted.service.description) {
+    promptContext += `Service Issue: ${extracted.service.description}. `;
+  }
+  if (extracted.service.technicalDetails) {
+    promptContext += `Technical Details: ${extracted.service.technicalDetails}. `;
+  }
+  if (extracted.quality.component) {
+    promptContext += `Affected Component: ${extracted.quality.component}. `;
+  }
+  if (extracted.warranty.status) {
+    promptContext += `Warranty: ${extracted.warranty.status}. `;
+  }
+  
+  return {
+    prompt: `${promptContext}\n\nTechnical Request: ${message}`,
+    context: { ...context, ...extracted }
+  };
+};
+
+const extractTechnicalDetails = (msg) => {
+  const technicalKeywords = ["error code", "diagnostic", "fault", "sensor", "module", "ecu", "dtc"];
+  const lower = msg.toLowerCase();
+  const found = technicalKeywords.find(kw => lower.includes(kw));
+  return found ? msg.substring(Math.max(0, msg.toLowerCase().indexOf(found) - 50), msg.length) : null;
+};
+```
+
+**Key Memory Points**:
+- ✅ Vehicle information and registration
+- ✅ Service issue description
+- ✅ Technical details (error codes, diagnostics)
+- ✅ Affected components
+- ✅ Warranty coverage status
+
+---
+
+## BACK OFFICE AGENTS (Processing)
+
+### 11. Manufacturing Operations Agent
+**Agent ID**: `0XxfI0000003MjxSAE` (Default Service Agent)
+**Color**: Teal (#14B8A6)
+**Memory Context Requirements**:
+
+```javascript
+const buildManufacturingOpsContext = (message, context) => {
+  const extracted = {
+    production: {
+      orderId: extractOrderId(message) || context.production?.orderId,
+      partNumbers: extractPartNumbers(message) || context.production?.partNumbers || [],
+      quantities: extractQuantities(message) || context.production?.quantities || [],
+      deliveryDate: extractDate(message) || context.production?.deliveryDate,
+      status: extractProductionStatus(message) || context.production?.status
+    },
+    quality: {
+      issue: context.quality?.issue,
+      severity: context.quality?.severity
+    },
+    supply: {
+      availability: context.supply?.availability,
+      leadTime: context.supply?.leadTime
+    }
+  };
+  
+  let promptContext = "Manufacturing operations context: ";
+  
+  if (extracted.production.orderId) {
+    promptContext += `Order ID: ${extracted.production.orderId}. `;
+  }
+  if (extracted.production.partNumbers.length > 0) {
+    promptContext += `Parts: ${extracted.production.partNumbers.join(", ")}. `;
+  }
+  if (extracted.production.status) {
+    promptContext += `Status: ${extracted.production.status}. `;
+  }
+  if (extracted.production.deliveryDate) {
+    promptContext += `Delivery Target: ${extracted.production.deliveryDate}. `;
+  }
+  if (extracted.quality.severity) {
+    promptContext += `Quality Impact: ${extracted.quality.severity}. `;
+  }
+  
+  return {
+    prompt: `${promptContext}\n\nOperations Request: ${message}`,
+    context: { ...context, ...extracted }
+  };
+};
+
+const extractProductionStatus = (msg) => {
+  const lower = msg.toLowerCase();
+  if (lower.includes("in progress") || lower.includes("manufacturing")) return "in_progress";
+  if (lower.includes("completed") || lower.includes("finished")) return "completed";
+  if (lower.includes("pending") || lower.includes("waiting")) return "pending";
+  if (lower.includes("on hold") || lower.includes("delayed")) return "on_hold";
+  return null;
+};
+```
+
+**Key Memory Points**:
+- ✅ Production order IDs and status
+- ✅ Part numbers and quantities
+- ✅ Delivery dates
+- ✅ Quality issues affecting production
+- ✅ Supply chain availability
+
+---
+
+### 12. Supply Chain Management Agent
+**Agent ID**: `0XxfI0000003MjxSAE` (Default Service Agent)
+**Color**: Teal (#14B8A6)
+**Memory Context Requirements**:
+
+```javascript
+const buildSupplyChainContext = (message, context) => {
+  const extracted = {
+    production: {
+      orderId: context.production?.orderId,
+      partNumbers: extractPartNumbers(message) || context.production?.partNumbers || [],
+      quantities: extractQuantities(message) || context.production?.quantities || [],
+      deliveryDate: extractDate(message) || context.production?.deliveryDate
+    },
+    supply: {
+      supplier: extractSupplier(message) || context.supply?.supplier,
+      availability: extractAvailability(message) || context.supply?.availability,
+      leadTime: extractLeadTime(message) || context.supply?.leadTime,
+      cost: extractCost(message) || context.supply?.cost
+    },
+    inventory: {
+      partNumbers: context.inventory?.partNumbers || [],
+      quantities: context.inventory?.quantities || []
+    }
+  };
+  
+  let promptContext = "Supply chain context: ";
+  
+  if (extracted.production.orderId) {
+    promptContext += `Order ID: ${extracted.production.orderId}. `;
+  }
+  if (extracted.production.partNumbers.length > 0) {
+    promptContext += `Required Parts: ${extracted.production.partNumbers.join(", ")}. `;
+  }
+  if (extracted.supply.supplier) {
+    promptContext += `Supplier: ${extracted.supply.supplier}. `;
+  }
+  if (extracted.supply.availability) {
+    promptContext += `Availability: ${extracted.supply.availability}. `;
+  }
+  if (extracted.supply.leadTime) {
+    promptContext += `Lead Time: ${extracted.supply.leadTime}. `;
+  }
+  if (extracted.production.deliveryDate) {
+    promptContext += `Target Delivery: ${extracted.production.deliveryDate}. `;
+  }
+  
+  return {
+    prompt: `${promptContext}\n\nSupply Chain Request: ${message}`,
+    context: { ...context, ...extracted }
+  };
+};
+
+const extractSupplier = (msg) => {
+  // Match supplier names or codes
+  const match = msg.match(/\b(?:SUPPLIER|SUP)[-\s]?[A-Z0-9]{3,8}\b/i);
+  return match ? match[0] : null;
+};
+
+const extractAvailability = (msg) => {
+  const lower = msg.toLowerCase();
+  if (lower.includes("in stock") || lower.includes("available")) return "in_stock";
+  if (lower.includes("out of stock") || lower.includes("unavailable")) return "out_of_stock";
+  if (lower.includes("backorder") || lower.includes("back order")) return "backorder";
+  return null;
+};
+
+const extractLeadTime = (msg) => {
+  // Match lead times like "2 weeks", "14 days", "1 month"
+  const match = msg.match(/\b(\d+)\s*(?:week|day|month|day)s?\b/i);
+  return match ? match[0] : null;
+};
+
+const extractCost = (msg) => {
+  const match = msg.match(/\$?\s*(\d{1,3}(?:[,\s]\d{3})*(?:\.\d{2})?)/);
+  return match ? match[0] : null;
+};
+```
+
+**Key Memory Points**:
+- ✅ Production order requirements
+- ✅ Supplier information
+- ✅ Part availability and lead times
+- ✅ Cost information
+- ✅ Inventory levels
+
+---
+
+### 13. Logistics Coordinator Agent
+**Agent ID**: `0XxfI0000003MjxSAE` (Default Service Agent)
+**Color**: Teal (#14B8A6)
+**Memory Context Requirements**:
+
+```javascript
+const buildLogisticsCoordinatorContext = (message, context) => {
+  const extracted = {
+    production: {
+      orderId: context.production?.orderId,
+      deliveryDate: extractDate(message) || context.production?.deliveryDate,
+      destination: extractDestination(message) || context.production?.destination
+    },
+    service: {
+      appointmentNeeded: context.service?.appointmentNeeded,
+      preferredDate: context.service?.preferredDate
+    },
+    logistics: {
+      shippingMethod: extractShippingMethod(message) || context.logistics?.shippingMethod,
+      trackingNumber: extractTrackingNumber(message) || context.logistics?.trackingNumber,
+      status: extractLogisticsStatus(message) || context.logistics?.status
+    }
+  };
+  
+  let promptContext = "Logistics coordination context: ";
+  
+  if (extracted.production.orderId) {
+    promptContext += `Order ID: ${extracted.production.orderId}. `;
+  }
+  if (extracted.production.deliveryDate) {
+    promptContext += `Delivery Date: ${extracted.production.deliveryDate}. `;
+  }
+  if (extracted.production.destination) {
+    promptContext += `Destination: ${extracted.production.destination}. `;
+  }
+  if (extracted.logistics.shippingMethod) {
+    promptContext += `Shipping Method: ${extracted.logistics.shippingMethod}. `;
+  }
+  if (extracted.logistics.trackingNumber) {
+    promptContext += `Tracking: ${extracted.logistics.trackingNumber}. `;
+  }
+  if (extracted.logistics.status) {
+    promptContext += `Status: ${extracted.logistics.status}. `;
+  }
+  
+  return {
+    prompt: `${promptContext}\n\nLogistics Request: ${message}`,
+    context: { ...context, ...extracted }
+  };
+};
+
+const extractDestination = (msg) => {
+  // Match addresses, cities, or location codes
+  const match = msg.match(/\b(?:to|deliver to|ship to)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/i);
+  return match ? match[1] : null;
+};
+
+const extractShippingMethod = (msg) => {
+  const methods = ["standard", "express", "overnight", "ground", "air", "freight"];
+  const lower = msg.toLowerCase();
+  return methods.find(m => lower.includes(m)) || null;
+};
+
+const extractTrackingNumber = (msg) => {
+  // Match tracking numbers (various formats)
+  const match = msg.match(/\b(?:TRACK|TRK)[-\s]?[A-Z0-9]{8,15}\b/i);
+  return match ? match[0] : null;
+};
+
+const extractLogisticsStatus = (msg) => {
+  const lower = msg.toLowerCase();
+  if (lower.includes("shipped") || lower.includes("in transit")) return "in_transit";
+  if (lower.includes("delivered")) return "delivered";
+  if (lower.includes("pending") || lower.includes("processing")) return "pending";
+  if (lower.includes("delayed")) return "delayed";
+  return null;
+};
+```
+
+**Key Memory Points**:
+- ✅ Production order IDs
+- ✅ Delivery dates and destinations
+- ✅ Shipping methods and tracking
+- ✅ Logistics status
+- ✅ Service appointment coordination
+
+---
+
+### 14. Engineering Support Agent
+**Agent ID**: `0XxfI0000003MjxSAE` (Default Service Agent)
+**Color**: Teal (#14B8A6)
+**Memory Context Requirements**:
+
+```javascript
+const buildEngineeringSupportContext = (message, context) => {
+  const extracted = {
+    customer: {
+      vehicle: context.customer?.vehicle
+    },
+    service: {
+      description: context.service?.description,
+      technicalDetails: context.service?.technicalDetails
+    },
+    quality: {
+      issue: context.quality?.issue,
+      component: context.quality?.component,
+      severity: context.quality?.severity
+    },
+    engineering: {
+      technicalIssue: extractTechnicalIssue(message) || context.engineering?.technicalIssue,
+      designChange: extractDesignChange(message) || context.engineering?.designChange,
+      documentation: context.engineering?.documentation
+    }
+  };
+  
+  let promptContext = "Engineering support context: ";
+  
+  if (extracted.customer.vehicle?.model) {
+    promptContext += `Vehicle: ${extracted.customer.vehicle.make || "VW"} ${extracted.customer.vehicle.model} ${extracted.customer.vehicle.year || ""}. `;
+  }
+  if (extracted.service.description) {
+    promptContext += `Service Issue: ${extracted.service.description}. `;
+  }
+  if (extracted.quality.component) {
+    promptContext += `Component: ${extracted.quality.component}. `;
+  }
+  if (extracted.engineering.technicalIssue) {
+    promptContext += `Technical Issue: ${extracted.engineering.technicalIssue}. `;
+  }
+  if (extracted.engineering.designChange) {
+    promptContext += `Design Change: ${extracted.engineering.designChange}. `;
+  }
+  
+  return {
+    prompt: `${promptContext}\n\nEngineering Request: ${message}`,
+    context: { ...context, ...extracted }
+  };
+};
+
+const extractTechnicalIssue = (msg) => {
+  const issues = ["design flaw", "manufacturing defect", "specification", "compatibility", "performance"];
+  const lower = msg.toLowerCase();
+  return issues.find(issue => lower.includes(issue)) || null;
+};
+
+const extractDesignChange = (msg) => {
+  const match = msg.match(/\b(?:DESIGN|CHANGE|REV)[-\s]?[A-Z0-9]{3,8}\b/i);
+  return match ? match[0] : null;
+};
+```
+
+**Key Memory Points**:
+- ✅ Vehicle information and specifications
+- ✅ Technical service issues
+- ✅ Component details and quality issues
+- ✅ Design changes and engineering documentation
+- ✅ Technical specifications and compatibility
+
+---
+
+### 15. Supplier Relations Agent
+**Agent ID**: `0XxfI0000003MjxSAE` (Default Service Agent)
+**Color**: Teal (#14B8A6)
+**Memory Context Requirements**:
+
+```javascript
+const buildSupplierRelationsContext = (message, context) => {
+  const extracted = {
+    supply: {
+      supplier: extractSupplier(message) || context.supply?.supplier,
+      contact: extractContact(message) || context.supply?.contact,
+      partNumbers: extractPartNumbers(message) || context.supply?.partNumbers || [],
+      cost: extractCost(message) || context.supply?.cost,
+      contract: extractContract(message) || context.supply?.contract
+    },
+    production: {
+      orderId: context.production?.orderId,
+      deliveryDate: context.production?.deliveryDate
+    },
+    quality: {
+      issue: context.quality?.issue,
+      severity: context.quality?.severity
+    }
+  };
+  
+  let promptContext = "Supplier relations context: ";
+  
+  if (extracted.supply.supplier) {
+    promptContext += `Supplier: ${extracted.supply.supplier}. `;
+  }
+  if (extracted.supply.contact) {
+    promptContext += `Contact: ${extracted.supply.contact}. `;
+  }
+  if (extracted.supply.partNumbers.length > 0) {
+    promptContext += `Parts: ${extracted.supply.partNumbers.join(", ")}. `;
+  }
+  if (extracted.supply.cost) {
+    promptContext += `Cost: ${extracted.supply.cost}. `;
+  }
+  if (extracted.supply.contract) {
+    promptContext += `Contract: ${extracted.supply.contract}. `;
+  }
+  if (extracted.quality.issue) {
+    promptContext += `Quality Issue: ${extracted.quality.issue}. `;
+  }
+  
+  return {
+    prompt: `${promptContext}\n\nSupplier Relations Request: ${message}`,
+    context: { ...context, ...extracted }
+  };
+};
+
+const extractContact = (msg) => {
+  // Match email or phone
+  const emailMatch = msg.match(/[\w.-]+@[\w.-]+\.\w+/);
+  if (emailMatch) return emailMatch[0];
+  const phoneMatch = msg.match(/\b(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/);
+  return phoneMatch ? phoneMatch[0] : null;
+};
+
+const extractContract = (msg) => {
+  const match = msg.match(/\b(?:CONTRACT|CT)[-\s]?[A-Z0-9]{6,10}\b/i);
+  return match ? match[0] : null;
+};
+```
+
+**Key Memory Points**:
+- ✅ Supplier information and contacts
+- ✅ Part numbers and costs
+- ✅ Contract details
+- ✅ Quality issues with suppliers
+- ✅ Delivery requirements
+
+---
+
+### 16. Parts Inventory Agent
+**Agent ID**: `0XxfI0000003MjxSAE` (Default Service Agent)
+**Color**: Teal (#14B8A6)
+**Memory Context Requirements**:
+
+```javascript
+const buildPartsInventoryContext = (message, context) => {
+  const extracted = {
+    inventory: {
+      partNumbers: extractPartNumbers(message) || context.inventory?.partNumbers || [],
+      quantities: extractQuantities(message) || context.inventory?.quantities || [],
+      location: extractLocation(message) || context.inventory?.location,
+      status: extractInventoryStatus(message) || context.inventory?.status
+    },
+    production: {
+      orderId: context.production?.orderId,
+      partNumbers: context.production?.partNumbers
+    },
+    service: {
+      description: context.service?.description,
+      partNumbers: extractPartNumbers(message) || []
+    }
+  };
+  
+  let promptContext = "Parts inventory context: ";
+  
+  if (extracted.inventory.partNumbers.length > 0) {
+    promptContext += `Parts: ${extracted.inventory.partNumbers.join(", ")}. `;
+  }
+  if (extracted.inventory.quantities.length > 0) {
+    promptContext += `Quantities: ${extracted.inventory.quantities.join(", ")}. `;
+  }
+  if (extracted.inventory.location) {
+    promptContext += `Location: ${extracted.inventory.location}. `;
+  }
+  if (extracted.inventory.status) {
+    promptContext += `Status: ${extracted.inventory.status}. `;
+  }
+  if (extracted.production.orderId) {
+    promptContext += `Related Order: ${extracted.production.orderId}. `;
+  }
+  
+  return {
+    prompt: `${promptContext}\n\nInventory Request: ${message}`,
+    context: { ...context, ...extracted }
+  };
+};
+
+const extractLocation = (msg) => {
+  // Match warehouse codes, locations (e.g., "WH-001", "Warehouse A")
+  const match = msg.match(/\b(?:WH|WAREHOUSE|LOC)[-\s]?[A-Z0-9]{2,6}\b/i);
+  return match ? match[0] : null;
+};
+
+const extractInventoryStatus = (msg) => {
+  const lower = msg.toLowerCase();
+  if (lower.includes("in stock") || lower.includes("available")) return "in_stock";
+  if (lower.includes("out of stock") || lower.includes("unavailable")) return "out_of_stock";
+  if (lower.includes("low stock") || lower.includes("running low")) return "low_stock";
+  if (lower.includes("reserved") || lower.includes("allocated")) return "reserved";
+  return null;
+};
+```
+
+**Key Memory Points**:
+- ✅ Part numbers and quantities
+- ✅ Inventory locations
+- ✅ Stock status (in stock/out of stock/low)
+- ✅ Related production orders
+- ✅ Service part requirements
+
+---
+
+## Unified Context Injection Function
+
+**Complete implementation that routes to appropriate agent and builds context:**
+
+```javascript
+const buildAgentContext = (agentName, message, conversationContext) => {
+  const agentContextBuilders = {
+    'customer-service': buildCustomerServiceContext,
+    'sales-agent': buildSalesAgentContext,
+    'service-scheduling': buildServiceSchedulingContext,
+    'recall-information': buildRecallInfoContext,
+    'warranty-claims': buildWarrantyClaimsContext,
+    'quality-control': buildQualityControlContext,
+    'factory-efficiency': buildFactoryEfficiencyContext,
+    'operations-coordinator': buildOperationsCoordinatorContext,
+    'production-planning': buildProductionPlanningContext,
+    'technical-service': buildTechnicalServiceContext,
+    'manufacturing-ops': buildManufacturingOpsContext,
+    'supply-chain': buildSupplyChainContext,
+    'logistics-coordinator': buildLogisticsCoordinatorContext,
+    'engineering-support': buildEngineeringSupportContext,
+    'supplier-relations': buildSupplierRelationsContext,
+    'parts-inventory': buildPartsInventoryContext
+  };
+  
+  const builder = agentContextBuilders[agentName.toLowerCase().replace(/\s+/g, '-')];
+  
+  if (builder) {
+    return builder(message, conversationContext);
+  }
+  
+  // Default context builder
+  return {
+    prompt: message,
+    context: conversationContext
+  };
+};
+
+// Usage in sendMessage
+const sendMessage = async (userMessage, agentName) => {
+  // Build agent-specific context
+  const { prompt, context } = buildAgentContext(agentName, userMessage, conversationContext);
+  
+  // Send to Salesforce with enriched context
+  const response = await fetch('/execute', {
+    method: 'POST',
+    body: JSON.stringify({
+      task_id: `chat-${Date.now()}`,
+      prompt: prompt,
+      context: {
+        session_id: sessionId,
+        agent_id: currentAgentId,
+        ...context  // Include all agent-specific context
+      }
+    })
+  });
+  
+  // Update conversation context
+  setConversationContext(context);
+  
+  return response;
+};
+```
+
+---
+
+## Summary: Agent Memory Context Requirements
+
+| Agent | Key Memory Points | Context Priority |
+|-------|------------------|------------------|
+| **Customer Service** | Name, email, phone, registration | High |
+| **Sales Agent** | Contact, model interest, budget, timeline | High |
+| **Service Scheduling** | Vehicle, service type, dates/times | High |
+| **Recall Information** | Registration, VIN, recall campaign IDs | Medium |
+| **Warranty Claims** | Vehicle, warranty status, claims history | High |
+| **Quality Control** | Vehicle, quality issues, severity | Medium |
+| **Factory Efficiency** | Order IDs, parts, efficiency metrics | Medium |
+| **Operations Coordinator** | **ALL CONTEXT** (central hub) | **Critical** |
+| **Production Planning** | Orders, parts, delivery dates | Medium |
+| **Technical Service** | Vehicle, technical details, components | High |
+| **Manufacturing Ops** | Orders, status, delivery dates | Medium |
+| **Supply Chain** | Parts, suppliers, availability | Medium |
+| **Logistics Coordinator** | Orders, shipping, tracking | Medium |
+| **Engineering Support** | Vehicle specs, technical issues | Low |
+| **Supplier Relations** | Suppliers, contracts, costs | Low |
+| **Parts Inventory** | Part numbers, quantities, locations | Medium |
+
+---

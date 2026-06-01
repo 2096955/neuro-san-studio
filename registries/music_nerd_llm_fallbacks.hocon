@@ -10,16 +10,14 @@
 #
 # END COPYRIGHT
 {
+    # >>> category-tag (managed by tag_registries.py) <<<
+    metadata { tags = ["Basic"] }
+
     "llm_config": {
         "fallbacks": [
-            {
-                # Try OpenAI first
-                "model_name": "gpt-4o",
-            },
-            {
-                # Fall back to Anthropic Claude if OpenAI is unavailable.
-                "model_name": "claude-3-7-sonnet",
-            }
+            {"class": "ollama", "model_name": "qwen3.6:35b-a3b", "reasoning": false},
+            {"class": "ollama", "model_name": "qwen3.6:27b"},
+            {"class": "ollama", "model_name": "qwen3.6:35b-a3b-ctx65k", "reasoning": false}
         ]
     },
     "tools": [

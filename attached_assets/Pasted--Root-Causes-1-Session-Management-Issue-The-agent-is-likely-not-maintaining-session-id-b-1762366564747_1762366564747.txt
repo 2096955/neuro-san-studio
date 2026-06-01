@@ -1,0 +1,327 @@
+## Root Causes
+
+### 1. Session Management Issue
+The agent is likely **not maintaining session_id** between messages, causing it to lose conversation history.
+
+### 2. Agent Routing Not Working
+The UI switches to "Sales Agent" but the backend is still using the default "Customer Service" agent.
+
+### 3. No CRM Integration
+The agent asks for details but doesn't actually query Salesforce for warranty information.
+
+### 4. No Structured Data Parser
+The system doesn't recognize structured formats like `✓ name: "value"` with checkmarks.
+
+### 5. No Brand Detection Logic
+The system doesn't identify which brand (VWI/Volkswagen, Ford, BMW) the customer is inquiring about.
+
+### 6. Brand-Aware Routing Missing
+Agents are not brand-aware, causing cross-contamination (mentioning Ford to VW customers).
+
+---
+
+## Replit Fix Prompt
+
+Copy this to Replit AI:
+
+---
+
+**Fix the following issues in the chat agent system:**
+
+## Issue 0: Brand Detection & Structured Data Extraction (CRITICAL)
+
+**Problem:** Agent doesn't extract structured data (✓ checkmarks) and mentions wrong brands (Ford instead of VWI).
+
+**Fix Required:**
+1. Extract structured data from checkmark format: `✓ name: "value"`
+2. Detect brand (VWI/Volkswagen, Ford, BMW) from vehicle registration, model, or context
+3. Route to brand-specific agents to prevent cross-contamination
+4. NEVER mention the wrong brand to customers
+
+**Implementation:**
+
+```javascript
+// Enhanced extraction function for structured data with checkmarks
+const extractStructuredData = (message) => {
+  const extracted = {};
+  
+  // Pattern: ✓ name: "value" or ✓ name: value
+  const patterns = {
+    name: /✓\s*name\s*:\s*["']?([^"'\n]+)["']?/i,
+    email: /✓\s*email\s*:\s*["']?([^"'\n]+)["']?/i,
+    phone: /✓\s*phone\s*:\s*["']?([^"'\n]+)["']?/i,
+    rego: /✓\s*rego\s*:\s*["']?([^"'\n]+)["']?/i,
+    registration: /✓\s*registration\s*:\s*["']?([^"'\n]+)["']?/i,
+    vehicle: /✓\s*vehicle\s*:\s*["']?([^"'\n]+)["']?/i,
+    model: /✓\s*model\s*:\s*["']?([^"'\n]+)["']?/i
+  };
+  
+  // Extract from structured format
+  Object.keys(patterns).forEach(key => {
+    const match = message.match(patterns[key]);
+    if (match && match[1]) {
+      extracted[key] = match[1].trim();
+    }
+  });
+  
+  // Also extract from natural language (fallback)
+  if (!extracted.name) {
+    const nameMatch = message.match(/(?:name is|I'm|I am)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/i);
+    if (nameMatch) extracted.name = nameMatch[1];
+  }
+  
+  if (!extracted.email) {
+    const emailMatch = message.match(/[\w.-]+@[\w.-]+\.\w+/);
+    if (emailMatch) extracted.email = emailMatch[0];
+  }
+  
+  if (!extracted.phone) {
+    const phoneMatch = message.match(/04\d{8}|\+614\d{8}/);
+    if (phoneMatch) extracted.phone = phoneMatch[0];
+  }
+  
+  if (!extracted.rego && !extracted.registration) {
+    const regoMatch = message.match(/\b([A-Z0-9]{6,7})\s+(?:is the rego|rego)/i);
+    if (regoMatch) extracted.rego = regoMatch[1];
+  }
+  
+  return extracted;
+};
+
+// Brand detection function
+const detectBrand = (message, context = {}) => {
+  const lowerMessage = message.toLowerCase();
+  const contextBrand = context.brand; // Check if brand already detected
+  
+  // VWI/Volkswagen indicators
+  const vwiKeywords = [
+    'vw', 'volkswagen', 'vwi', 'tiguan', 'golf', 'passat', 'arteon', 
+    'polo', 'id.4', 'id.3', 'id4', 'id3', 'touareg', 't-roc', 
+    'amarok', 'caddy', 'crafter', 'transporter'
+  ];
+  
+  // Ford indicators
+  const fordKeywords = [
+    'ford', 'mustang', 'f-150', 'f150', 'ranger', 'explorer', 
+    'escape', 'focus', 'fiesta', 'edge', 'bronco', 'expedition'
+  ];
+  
+  // BMW indicators
+  const bmwKeywords = [
+    'bmw', '3 series', '5 series', '7 series', 'x1', 'x3', 'x5', 
+    'x7', 'm3', 'm5', 'i3', 'i4', 'i8', 'z4', '1 series', '2 series'
+  ];
+  
+  // Check registration patterns (Australian format)
+  // VWI registrations often have specific patterns
+  if (context.rego || context.registration) {
+    const rego = (context.rego || context.registration).toUpperCase();
+    // This is a placeholder - you'd need actual registration database lookup
+    // For now, we'll use vehicle model as primary indicator
+  }
+  
+  // Check message for brand keywords
+  if (vwiKeywords.some(keyword => lowerMessage.includes(keyword))) {
+    return 'VWI';
+  }
+  
+  if (fordKeywords.some(keyword => lowerMessage.includes(keyword))) {
+    return 'FORD';
+  }
+  
+  if (bmwKeywords.some(keyword => lowerMessage.includes(keyword))) {
+    return 'BMW';
+  }
+  
+  // Check context for previously detected brand
+  if (contextBrand) {
+    return contextBrand;
+  }
+  
+  // Default to VWI if no indicators found (based on your setup)
+  return 'VWI';
+};
+
+// Brand-aware agent routing
+const getBrandSpecificAgent = (brand, agentType = 'service') => {
+  const agentMap = {
+    'VWI': {
+      'service': '0XxfI0000003NCzSAM', // VWI Service Agent
+      'sales': '0XxfI0000003NEbSAM',   // VWI Sales Agent
+      'default': '0XxfI0000003MjxSAE'  // Default Service Agent (VWI)
+    },
+    'FORD': {
+      'service': '0XxfI0000003MjxSAE', // Use default or configure Ford agent ID
+      'sales': '0XxfI0000003N1hSAE',   // Sales Agent
+      'default': '0XxfI0000003MjxSAE'
+    },
+    'BMW': {
+      'service': '0XxfI0000003MjxSAE', // Use default or configure BMW agent ID
+      'sales': '0XxfI0000003N1hSAE',   // Sales Agent
+      'default': '0XxfI0000003MjxSAE'
+    }
+  };
+  
+  const brandConfig = agentMap[brand] || agentMap['VWI'];
+  return brandConfig[agentType] || brandConfig['default'];
+};
+
+// Brand-aware prompt builder (prevents cross-contamination)
+const buildBrandAwarePrompt = (userMessage, context) => {
+  const brand = context.brand || 'VWI';
+  const extracted = extractStructuredData(userMessage);
+  
+  // Build context string with brand awareness
+  let promptContext = `You are a ${brand} customer service agent. `;
+  
+  // Add brand-specific instructions
+  if (brand === 'VWI') {
+    promptContext += `You specialize in Volkswagen (VW) vehicles including Tiguan, Golf, ID.4, Passat, and other VW models. `;
+  } else if (brand === 'FORD') {
+    promptContext += `You specialize in Ford vehicles including Mustang, F-150, Ranger, Explorer, and other Ford models. `;
+  } else if (brand === 'BMW') {
+    promptContext += `You specialize in BMW vehicles including 3 Series, 5 Series, X Series, and other BMW models. `;
+  }
+  
+  // CRITICAL: Never mention other brands
+  promptContext += `IMPORTANT: Never mention ${brand === 'VWI' ? 'Ford or BMW' : brand === 'FORD' ? 'Volkswagen or BMW' : 'Volkswagen or Ford'} brands. Only discuss ${brand} products and services. `;
+  
+  // Add customer information
+  if (extracted.name) {
+    promptContext += `Customer Name: ${extracted.name}. `;
+  }
+  if (extracted.email) {
+    promptContext += `Email: ${extracted.email}. `;
+  }
+  if (extracted.phone) {
+    promptContext += `Phone: ${extracted.phone}. `;
+  }
+  if (extracted.rego || extracted.registration) {
+    promptContext += `Vehicle Registration: ${extracted.rego || extracted.registration}. `;
+  }
+  
+  // Add vehicle model if mentioned
+  if (extracted.model || extracted.vehicle) {
+    promptContext += `Vehicle Model: ${extracted.model || extracted.vehicle}. `;
+  }
+  
+  // Remember previous context
+  if (context.customer?.name) {
+    promptContext += `(Previously provided: Name: ${context.customer.name}). `;
+  }
+  if (context.customer?.registration) {
+    promptContext += `(Previously provided: Registration: ${context.customer.registration}). `;
+  }
+  
+  return {
+    prompt: `${promptContext}\n\nCustomer request: ${userMessage}`,
+    context: {
+      ...context,
+      customer: {
+        ...context.customer,
+        name: extracted.name || context.customer?.name,
+        email: extracted.email || context.customer?.email,
+        phone: extracted.phone || context.customer?.phone,
+        registration: extracted.rego || extracted.registration || context.customer?.registration
+      },
+      brand: brand
+    }
+  };
+};
+
+// Updated sendMessage function with brand detection
+const sendMessage = async (userMessage) => {
+  // Extract structured data
+  const extracted = extractStructuredData(userMessage);
+  
+  // Detect brand from message and context
+  const brand = detectBrand(userMessage, conversationContext);
+  
+  // Update conversation context
+  const updatedContext = {
+    ...conversationContext,
+    customer: {
+      ...conversationContext.customer,
+      name: extracted.name || conversationContext.customer?.name,
+      email: extracted.email || conversationContext.customer?.email,
+      phone: extracted.phone || conversationContext.customer?.phone,
+      registration: extracted.rego || extracted.registration || conversationContext.customer?.registration
+    },
+    brand: brand
+  };
+  
+  // Build brand-aware prompt
+  const { prompt, context } = buildBrandAwarePrompt(userMessage, updatedContext);
+  
+  // Route to brand-specific agent
+  const agentId = getBrandSpecificAgent(brand, 'service');
+  
+  // Show brand in UI
+  setCurrentBrand(brand);
+  addSystemMessage(`Connected to ${brand} Customer Service`);
+  
+  // Send to Salesforce with brand-aware context
+  const response = await fetch('/execute', {
+    method: 'POST',
+    body: JSON.stringify({
+      task_id: `chat-${Date.now()}`,
+      prompt: prompt,
+      context: {
+        session_id: sessionId,
+        agent_id: agentId,
+        brand: brand,
+        ...context
+      }
+    })
+  });
+  
+  const data = await response.json();
+  
+  // Save session ID
+  if (!sessionId && data.context.session_id) {
+    setSessionId(data.context.session_id);
+  }
+  
+  // Update conversation context
+  setConversationContext(context);
+  
+  return response;
+};
+```
+
+**Key Features:**
+- ✅ Extracts structured data from `✓ name: "value"` format
+- ✅ Detects brand (VWI/Ford/BMW) from vehicle models, keywords, or context
+- ✅ Routes to brand-specific agents
+- ✅ **NEVER mentions wrong brand** - strict brand isolation in prompts
+- ✅ Maintains brand context throughout conversation
+
+**Expected Result:**
+
+```
+System: Connected to VWI Customer Service
+
+User: "I would like to schedule a service for my car"
+
+VWI Agent: "I'd be happy to help you schedule a service for your VW vehicle.
+Could you please provide your contact details (name, email, phone) and 
+vehicle registration number?"
+
+User: "✓ name: "Anthony Lui"   ✓ email: "Anthony.lui@cognizant.com"     
+     ✓ phone: "0745128601"   ✓ rego: "GD23JSV""
+
+VWI Agent: "Thank you, Anthony! I have your details:
+- Name: Anthony Lui
+- Email: Anthony.lui@cognizant.com
+- Phone: 0745128601
+- Vehicle Registration: GD23JSV
+
+I can help you schedule a service for your VW vehicle. What type of service 
+do you need? (e.g., routine maintenance, repair, warranty service)"
+
+[No mention of Ford or other brands!]
+```
+
+---
+
+**Fix the following issues in the chat agent system:**

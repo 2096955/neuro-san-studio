@@ -9,6 +9,9 @@
 #
 # END COPYRIGHT
 {
+    # >>> category-tag (managed by tag_registries.py) <<<
+    metadata { tags = ["Industry"] }
+
     # This "aaosa.hocon" file contains key-value pairs used for substitution.
     # Specifically, it provides values for the following keys:
     #   - aaosa_call
@@ -23,7 +26,10 @@
     include "registries/aaosa.hocon"
     
     "llm_config": {
-        "model_name": "gpt-4o",
+        "fallbacks": [
+            {"class": "ollama", "model_name": "qwen3.6:35b-a3b", "reasoning": false},
+            {"class": "ollama", "model_name": "qwen3.6:27b"}
+        ]
     },
     "demo_mode": """You are part of a demo system, so when queried, make up a realistic response as if you are actually grounded in real data or you are operating 
     a real application API or microservice.""",

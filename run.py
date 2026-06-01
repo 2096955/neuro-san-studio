@@ -37,20 +37,36 @@ class NeuroSanRunner:
 
         # Load environment variables from .env file
         self.load_env_variables()
+        
+        # Ensure AWS Bedrock environment variables are set for bearer token authentication
+        if os.getenv("AWS_BEDROCK_API_KEY"):
+            os.environ["AWS_BEARER_TOKEN_BEDROCK"] = os.getenv("AWS_BEDROCK_API_KEY")
+            print("✓ AWS Bedrock Bearer Token configured")
 
-        # Default Configuration
+        # Default Configuration - Separate external (frontend) from internal (binding) config
+        replit_domain = os.getenv("REPLIT_DEV_DOMAIN", "localhost")
+        is_replit = replit_domain != "localhost"
+        
+        # External config (what NSFlow advertises to frontend)
+        external_host = replit_domain if is_replit else "localhost"
+        external_grpc_port = 3000 if is_replit else 30011
+        
+        # Internal binding config (what server actually binds to)
+        self.bind_host = "0.0.0.0"
+        self.bind_grpc_port = 30011  # Always bind to internal port
+        
         self.args: Dict[str, Any] = {
-            "server_host": os.getenv("NEURO_SAN_SERVER_HOST", "localhost"),
-            "server_grpc_port": int(os.getenv("NEURO_SAN_SERVER_GRPC_PORT", "30011")),
+            "server_host": os.getenv("NEURO_SAN_SERVER_HOST", external_host),
+            "server_grpc_port": int(os.getenv("NEURO_SAN_SERVER_GRPC_PORT", str(external_grpc_port))),
             "server_http_port": int(os.getenv("NEURO_SAN_SERVER_HTTP_PORT", "8080")),
             "server_connection": str(os.getenv("NEURO_SAN_SERVER_CONNECTION", "grpc")),
             "manifest_update_period_seconds": int(os.getenv("AGENT_MANIFEST_UPDATE_PERIOD_SECONDS", "5")),
             "default_sly_data": str(os.getenv("DEFAULT_SLY_DATA", "")),
-            "nsflow_host": os.getenv("NSFLOW_HOST", "localhost"),
-            "nsflow_port": int(os.getenv("NSFLOW_PORT", "4173")),
+            "nsflow_host": os.getenv("NSFLOW_HOST", "0.0.0.0"),
+            "nsflow_port": int(os.getenv("NSFLOW_PORT", "5000")),
             "nsflow_log_level": os.getenv("NSFLOW_LOG_LEVEL", "info"),
-            "vite_api_protocol": os.getenv("VITE_API_PROTOCOL", "http"),
-            "vite_ws_protocol": os.getenv("VITE_WS_PROTOCOL", "ws"),
+            "vite_api_protocol": os.getenv("VITE_API_PROTOCOL", ""),
+            "vite_ws_protocol": os.getenv("VITE_WS_PROTOCOL", ""),
             "neuro_san_web_client_port": int(os.getenv("NEURO_SAN_WEB_CLIENT_PORT", "5003")),
             "thinking_file": os.getenv("THINKING_FILE", self.thinking_file),
             "thinking_dir": os.getenv("THINKING_DIR", self.thinking_dir),
@@ -191,9 +207,25 @@ class NeuroSanRunner:
 
         # Server-only env variables
         if not self.args["client_only"]:
+            # Set internal config for NSFlow backend (server-to-server connections)
+            os.environ["INTERNAL_NS_SERVER_HOST"] = "127.0.0.1"
+            os.environ["INTERNAL_NS_SERVER_PORT"] = "30011"
+            
+            # Set external config for NSFlow API (what browser connects to)
+            os.environ["EXTERNAL_NS_SERVER_HOST"] = self.args["server_host"]
+            os.environ["EXTERNAL_NS_SERVER_PORT"] = str(self.args["server_grpc_port"])
+            
+            # Legacy environment variables for compatibility
             os.environ["NEURO_SAN_SERVER_HOST"] = self.args["server_host"]
             os.environ["NEURO_SAN_SERVER_GRPC_PORT"] = str(self.args["server_grpc_port"])
             os.environ["NEURO_SAN_SERVER_HTTP_PORT"] = str(self.args["server_http_port"])
+            
+            # Quick fix: Force NSFlow to return external config in get_ns_config
+            if os.getenv("REPLIT_DEV_DOMAIN"):
+                # Override all port variables to external port for Replit
+                os.environ["NS_SERVER_PORT"] = str(self.args["server_grpc_port"])
+                os.environ["NS_SERVER_GRPC_PORT"] = str(self.args["server_grpc_port"])
+                os.environ["NEURO_SAN_SERVER_PORT"] = str(self.args["server_grpc_port"])
 
             print(f"NEURO_SAN_SERVER_HOST set to: {os.environ['NEURO_SAN_SERVER_HOST']}")
             print(f"NEURO_SAN_SERVER_GRPC_PORT set to: {os.environ['NEURO_SAN_SERVER_GRPC_PORT']}\n")
@@ -267,13 +299,14 @@ class NeuroSanRunner:
             "-m",
             "neuro_san.service.main_loop.server_main_loop",
             "--port",
-            str(self.args["server_grpc_port"]),
+            str(self.bind_grpc_port),  # Use internal binding port
             "--http_port",
             str(self.args["server_http_port"]),
         ]
         self.server_process = self.start_process(command, "NeuroSan", "logs/server.log")
-        print("NeuroSan server grpc started on port: ", self.args["server_grpc_port"])
+        print("NeuroSan server grpc started on internal port: ", self.bind_grpc_port)
         print("NeuroSan server http started on port: ", self.args["server_http_port"])
+        print(f"Frontend will connect to: {self.args['server_host']}:{self.args['server_grpc_port']}")
 
     def start_nsflow(self):
         """Start nsflow client."""
@@ -284,9 +317,11 @@ class NeuroSanRunner:
             "-m",
             "uvicorn",
             "nsflow.backend.main:app",
+            "--host",
+            "0.0.0.0",
             "--port",
             str(self.args["nsflow_port"]),
-            "--reload",
+            "--workers", "2",
         ]
 
         self.nsflow_process = self.start_process(command, "nsflow", "logs/nsflow.log")
@@ -400,6 +435,9 @@ class NeuroSanRunner:
             print("=" * 50 + "\nExiting due to port conflicts.\n")
             sys.exit(1)
 
+        # Set environment variables right before starting services
+        self.set_environment_variables()
+        
         # Start services only if ports are free
         if not server_only:
             if use_flask:
@@ -419,9 +457,6 @@ class NeuroSanRunner:
     def run(self):
         """Run the Neuro SAN server and a client."""
         print("\nInitial Run Config:\n" + "\n".join(f"{key}: {value}" for key, value in self.args.items()) + "\n")
-
-        # Set environment variables
-        self.set_environment_variables()
 
         # Ensure logs directory exists
         os.makedirs("logs", exist_ok=True)

@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat with {{ agent_name }} - Neuro SAN Studio</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            font-size: 1.8rem;
+            margin-bottom: 5px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 0.9rem;
+        }
+        
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            max-width: 800px;
+            margin: 20px auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            max-height: 500px;
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .message.user {
+            align-items: flex-end;
+        }
+        
+        .message.agent {
+            align-items: flex-start;
+        }
+        
+        .message-content {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            word-wrap: break-word;
+            line-height: 1.4;
+        }
+        
+        .message.user .message-content {
+            background: #3498db;
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+        
+        .message.agent .message-content {
+            background: #ecf0f1;
+            color: #2c3e50;
+            border-bottom-left-radius: 4px;
+        }
+        
+        .message-meta {
+            font-size: 0.7rem;
+            color: #7f8c8d;
+            margin-top: 4px;
+            padding: 0 8px;
+        }
+        
+        .input-container {
+            padding: 20px;
+            background: #f8f9fa;
+            border-top: 1px solid #ecf0f1;
+        }
+        
+        .input-form {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .message-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #ecf0f1;
+            border-radius: 25px;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+        
+        .message-input:focus {
+            border-color: #3498db;
+        }
+        
+        .send-button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s ease;
+        }
+        
+        .send-button:hover:not(:disabled) {
+            background: #2980b9;
+        }
+        
+        .send-button:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+        }
+        
+        .typing-indicator {
+            display: none;
+            padding: 12px 16px;
+            background: #ecf0f1;
+            border-radius: 18px;
+            border-bottom-left-radius: 4px;
+            max-width: 70%;
+            color: #7f8c8d;
+            font-style: italic;
+        }
+        
+        .typing-indicator.show {
+            display: block;
+        }
+        
+        .back-button {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+            padding: 8px 16px;
+            border-radius: 20px;
+            text-decoration: none;
+            transition: background 0.3s ease;
+        }
+        
+        .back-button:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #2ecc71;
+            border-radius: 50%;
+            margin-right: 6px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <a href="/" class="back-button">← Back to Networks</a>
+    
+    <div class="header">
+        <h1>🤖 {{ agent_name }}</h1>
+        <p><span class="status-indicator"></span>AWS Bedrock Claude Sonnet 4 • Real-time Chat</p>
+    </div>
+    
+    <div class="chat-container">
+        <div class="messages" id="messages">
+            <div class="message agent">
+                <div class="message-content">
+                    Hello! I'm {{ agent_name }}, powered by AWS Bedrock Claude Sonnet 4. How can I help you today?
+                </div>
+                <div class="message-meta">{{ agent_name }} • Just now</div>
+            </div>
+        </div>
+        
+        <div class="typing-indicator" id="typing-indicator">
+            {{ agent_name }} is thinking...
+        </div>
+        
+        <div class="input-container">
+            <form class="input-form" id="message-form">
+                <input 
+                    type="text" 
+                    class="message-input" 
+                    id="message-input" 
+                    placeholder="Type your message..." 
+                    required
+                    autocomplete="off"
+                >
+                <button type="submit" class="send-button" id="send-button">Send</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        const messagesContainer = document.getElementById('messages');
+        const messageForm = document.getElementById('message-form');
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+        const typingIndicator = document.getElementById('typing-indicator');
+        
+        const agentName = '{{ agent_name }}';
+        const sessionId = 'session_' + Date.now();
+        
+        // Auto-focus on input
+        messageInput.focus();
+        
+        // Handle form submission
+        messageForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            sendMessage();
+        });
+        
+        function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message) return;
+            
+            // Add user message to chat
+            addMessage('user', message, 'You');
+            
+            // Clear input and disable send button
+            messageInput.value = '';
+            sendButton.disabled = true;
+            sendButton.textContent = 'Sending...';
+            
+            // Show typing indicator
+            typingIndicator.classList.add('show');
+            scrollToBottom();
+            
+            // Send message via Socket.IO
+            socket.emit('send_message', {
+                agent_name: agentName,
+                message: message,
+                session_id: sessionId
+            });
+        }
+        
+        // Handle agent response
+        socket.on('message_response', function(data) {
+            // Hide typing indicator
+            typingIndicator.classList.remove('show');
+            
+            // Add agent response to chat
+            if (data.response) {
+                addMessage('agent', data.response, agentName, data.model);
+            } else if (data.error) {
+                addMessage('agent', `Error: ${data.error}`, agentName);
+            }
+            
+            // Re-enable send button
+            sendButton.disabled = false;
+            sendButton.textContent = 'Send';
+            messageInput.focus();
+        });
+        
+        // Handle errors
+        socket.on('error', function(data) {
+            typingIndicator.classList.remove('show');
+            addMessage('agent', `Error: ${data.message}`, 'System');
+            sendButton.disabled = false;
+            sendButton.textContent = 'Send';
+            messageInput.focus();
+        });
+        
+        function addMessage(type, content, sender, model = null) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            
+            const timestamp = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            const modelInfo = model ? ` • ${model}` : '';
+            
+            messageDiv.innerHTML = `
+                <div class="message-content">${content}</div>
+                <div class="message-meta">${sender} • ${timestamp}${modelInfo}</div>
+            `;
+            
+            messagesContainer.appendChild(messageDiv);
+            scrollToBottom();
+        }
+        
+        function scrollToBottom() {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+        
+        // Handle Enter key
+        messageInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>

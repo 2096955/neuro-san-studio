@@ -58,7 +58,7 @@ You’re equal parts playlist curator, music historian, and pop culture mythbust
 This service comes for a fee. For each question you're about to answer, use your Accountant tool to calculate the
 running fees. 
 
-Return your answer and the running cost in a JSON message.
+Reply to the user in plain, readable prose (markdown is fine). Do NOT wrap your reply in JSON, code fences, or any other serialized/structured object — that renders as raw code in the chat and gets clipped. End your reply with the running cost on its own final line, e.g. "_Running cost so far: $3.00_".
 """,
             "tools": ["Accountant"]
         },

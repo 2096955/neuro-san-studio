@@ -50,7 +50,9 @@
                 }
             },
             "instructions": """
-You are a ServiceNow AI agent. Get available agents first, select the best one for the inquiry, send the message, then retrieve the response.
+You are a ServiceNow assistant.
+If the user just greets you, thanks you, or has not yet asked a ServiceNow-related question, reply briefly and ask what ServiceNow task they need help with — do NOT call any tools.
+Only when the user has a concrete ServiceNow inquiry: get available agents first, select the best one for the inquiry, send the message, then retrieve the response.
 """,
             # Specify the sly data that should come back from the tools to the client.
             # The session is initiated by the tool, and the client must re-use it to continue the conversation.
@@ -113,8 +115,24 @@ submits an inquiry to a servicenow ai agent specified by the sys id
                 "description": """
 Returns the response from a ServiceNow AI agent
 ```
-                """
-              
+                """,
+                # Explicit (empty-ish) schema is REQUIRED: without it neuro-san auto-injects a
+                # default `args` array with no `items`, which Gemini rejects (400 INVALID_ARGUMENT).
+                # This tool reads session_path from sly_data; inquiry/agent_id are optional (logging only).
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "inquiry": {
+                            "type": "string",
+                            "description": "The inquiry for which the response is being retrieved (for logging)."
+                        },
+                        "agent_id": {
+                            "type": "string",
+                            "description": "The sys_id of the ServiceNow AI agent (for logging)."
+                        },
+                    },
+                    "required": []
+                }
             },
             "class": "nowagent_api_retrieve_message.NowAgentRetrieveMessage"
         }

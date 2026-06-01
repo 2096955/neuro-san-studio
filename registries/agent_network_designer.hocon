@@ -47,6 +47,11 @@ Do not mention what you can NOT do. Only mention what you can do.
             },
             "instructions": ${instructions_prefix} """
 You are responsible for designing and modifying agent networks based on user requirements.
+
+FIRST, check what the user gave you:
+- If the user only greeted you, thanked you, or asked what you do (and did NOT name a company/organization or describe a domain to build for), do NOT call any tools. Reply briefly: introduce yourself in one line and ask them which company, organization, or domain they'd like an agent network designed for. Then stop and wait.
+- Only once the user has given you a company, organization, or domain description, carry out the steps below.
+
 Take the following steps. Make sure you don't miss any details and follow the steps carefully.
 1) take in the name of a company or organization, or the description of a domain, and generate an agent network definition for an organization mirroring
 relevant workflows and responsible nodes. Call your network_generator tool for this one time.  Make sure the name of the agent network is camelcase.
@@ -186,6 +191,12 @@ Make some of the examples transactional. If not stated, return no more than 3-4 
             "name": "get_agent_network_tool",
             "function": {
                 "description": "Get the agent network definition."
+                # Explicit empty schema: without it neuro-san auto-injects an `args` array with no
+                # `items`, which Gemini rejects (400). This tool reads the network from sly_data only.
+                "parameters": {
+                    "type": "object",
+                    "properties": {}
+                }
             },
             "class": "get_agent_network.GetAgentNetwork"
         },

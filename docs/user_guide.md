@@ -18,6 +18,7 @@
     * [Bedrock](#bedrock)
       * [Default Bedrock models](#default-bedrock-models)
     * [Gemini](#gemini)
+    * [Vertex AI (Gemini on GCP)](#vertex-ai-gemini-on-gcp)
     * [Ollama](#ollama)
       * [Prerequisites](#prerequisites)
       * [Configuration](#configuration)
@@ -197,6 +198,15 @@ For a full description of the fields, please refer to the [Agent Network HOCON F
 
 ## LLM configuration
 
+> **🚀 This fork:** The categorized Multi-Agent Accelerator in this fork defaults to **Ollama (local)** and
+> **Gemini (cloud)** — **OpenAI is NOT required.** Run everything **locally** by pinning enabled agent networks to a
+> local Ollama model (e.g. `qwen3.6:35b-a3b`, fallback `qwen3.6:27b`), or run in the **cloud** on Google Cloud Run with
+> the neuro-san `gemini` class (`ChatGoogleGenerativeAI`, auth via `GOOGLE_API_KEY` — the deploy script takes `GEMINI_API_KEY` and forwards it as `GOOGLE_API_KEY`; model
+> configurable via `GEMINI_MODEL`). See the **"🚀 This fork"** section of the [README](../README.md) and the cloud
+> deploy scripts in [`deploy/cloud-maa/`](../deploy/cloud-maa/). The provider reference sections below (OpenAI, Azure,
+> Anthropic, Bedrock, etc.) remain valid upstream reference — see [Ollama](#ollama) and [Gemini](#gemini) for this
+> fork's recommended paths.
+
 The `llm_config` section in the agent network configuration file defines which LLM should be used by the agents.
 
 You can specify it at two levels:
@@ -214,6 +224,9 @@ A full list of available models and parameters can be found in the
 The following sections provide details for each supported provider, including required parameters and setup instructions.
 
 ### OpenAI
+
+> **Note (this fork):** OpenAI is optional — this fork uses Ollama (local) / Gemini (cloud) instead. This section is
+> kept as upstream reference for those who do want OpenAI.
 
 To use an OpenAI LLM, set the `OPENAI_API_KEY` environment variable to your OpenAI API key
 and specify which model to use in the `model_name` field:
@@ -402,6 +415,47 @@ and specify which model to use in the `model_name` field of the `llm_config` sec
 ```
 
 You can get an Google Gemini API [key](https://ai.google.dev/gemini-api/docs/api-key) here.
+
+### Vertex AI (Gemini on GCP)
+
+To use **Gemini via Vertex AI** (GCP project, ADC auth) instead of the Google AI Studio API, use the custom `class` key with `langchain_google_vertexai.ChatVertexAI`. This path uses Application Default Credentials (ADC), not `GOOGLE_API_KEY`.
+
+1. **Install the Vertex AI package** (included in this repo's `requirements.txt`):
+
+   ```bash
+   pip install langchain-google-vertexai>=2.0.0
+   ```
+
+2. **Configure GCP credentials** (one of):
+
+   * **Service account JSON** (recommended for servers):
+
+     ```bash
+     export GOOGLE_APPLICATION_CREDENTIALS="/path/to/your-service-account-key.json"
+     ```
+
+   * **User ADC** (local dev):
+
+     ```bash
+     gcloud auth application-default login
+     ```
+
+3. **Set `llm_config`** in your agent network HOCON using the full class path and Vertex parameters:
+
+   ```hocon
+   "llm_config": {
+       "class": "langchain_google_vertexai.chat_models.ChatVertexAI",
+       "model_name": "gemini-2.5-flash",
+       "project": "your-gcp-project-id",
+       "location": "us-central1",
+       "temperature": 0.2,
+       "max_output_tokens": 2048
+   }
+   ```
+
+   Use `model_name` (e.g. `gemini-2.5-flash`, `gemini-2.5-pro`) and your GCP `project` and `location`. Do **not** set `google_api_key` — Vertex uses ADC.
+
+   An example network is provided in `registries/music_nerd_vertex.hocon`. Enable it by setting `"music_nerd_vertex.hocon": true` in your [manifest](https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/manifest_hocon_reference.md) and replacing `project` with your GCP project ID.
 
 ### Ollama
 

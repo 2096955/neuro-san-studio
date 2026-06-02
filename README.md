@@ -138,6 +138,7 @@ time** (`NEXT_PUBLIC_NEURO_SAN_SERVER_URL`). Full details, gotchas, and the exac
 - **Switch cloud models** anytime: `GEMINI_MODEL=gemini-3.5-flash bash deploy/cloud-maa/deploy-backend.sh`. Models neuro-san doesn't know yet are registered via `deploy/cloud-maa/llm_info_extra.hocon` (overlaid through `AGENT_LLM_INFO_FILE`).
 - **Build needs BuildKit** for the UI (`DOCKER_BUILDKIT=1`, already in its `cloudbuild.yaml`).
 - **`GOOGLE_API_KEY`** is passed as a Cloud Run env var (Secret Manager recommended once IAM allows). Never commit it.
+- **Web search keys** — DuckDuckGo is blocked from datacenter egress, so the shared `/web_search` network uses **Tavily** on Cloud Run (`TAVILY_API_KEY`) and a medical literature-search tool uses **Brave** (`BRAVE_API_KEY`); both default to Brave when run locally. `deploy-backend.sh` auto-sources these from `.env` per key — never commit them. Details: [`deploy/cloud-maa/README.md`](deploy/cloud-maa/README.md#web-search-providers).
 - Tool-heavy networks (web scrapers, `pdf_rag`) render their graph but may degrade on chat when their external tools aren't reachable.
 
 ---

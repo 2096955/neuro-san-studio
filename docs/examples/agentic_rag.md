@@ -68,7 +68,7 @@ in the RFP.
 ### Supporting Tools
 
 1. **website_search**
-   - Powered by `ddgs_search`.
+   - Powered by a web-search provider selected at load time — defaults to `brave_search`; set `WEB_SEARCH_TOOLBOX` to `tavily_search` (used on Cloud Run) or `ddgs_search`.
    - Retrieves up-to-date web results based on the query.
    - Additional info on [DDGS Search](https://github.com/deedy5/ddgs).
 

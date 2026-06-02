@@ -24,6 +24,27 @@ UI (in the neuro-san-ui-reference repo, after the backend URL is known):
 bash deploy/cloud-maa/deploy-ui.sh
 ```
 
+## Web search providers
+Web search is a **toolbox-layer provider chosen at load time** (no registry rewrite); callers only
+ever reference `/web_search`. DuckDuckGo (`ddgs_search`) is rate-limited/blocked from datacenter
+egress, so the cloud uses API-key providers that work from Cloud Run:
+
+| Caller | Cloud provider | Local default | Key |
+|---|---|---|---|
+| Shared `/web_search` (and `agentic_rag`) | **Tavily** via `WEB_SEARCH_TOOLBOX=tavily_search` | `brave_search` | `TAVILY_API_KEY` |
+| AEEN `Clinical_Literature_Search` | **Brave** (pinned in the registry) | `brave_search` | `BRAVE_API_KEY` |
+
+- `deploy-backend.sh` sources `TAVILY_API_KEY` and `BRAVE_API_KEY` from `.env` **per key** (it won't
+  clobber a value already exported) and passes both to Cloud Run. `.env` is gitignored and
+  rsync-excluded from the build context — it is never committed or uploaded.
+- The shared provider is switched only via `WEB_SEARCH_TOOLBOX` at deploy time. Without
+  `TAVILY_API_KEY` the shared search falls back to its registry default (`brave_search`); AEEN always
+  uses Brave regardless of that toggle, so its literature search is independent of the shared one.
+- A deploy gate asserts `web_search.hocon` actually **resolves** to `tavily_search` under the
+  override before the image builds, so a typo'd/empty env var can't silently no-op.
+- Brave free tier ≈ 2,000 queries/month at 1 req/sec; heavy multi-agent fan-out can still 429
+  (the tool does one short retry).
+
 ## Identities (gbg-neuro SA keys under ~/SubAgents/GCP-Package)
 - `bfs-gen-ai@gbg-neuro` — can submit Cloud Build **and read build logs** (use for builds).
 - `healthcare-poc-vertexai@gbg-neuro` — can set the public `allUsers` invoker IAM binding.

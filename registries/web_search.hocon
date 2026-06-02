@@ -14,12 +14,12 @@
     metadata { tags = ["Tools"] }
 
     # Web-search backing provider (toolbox-layer implementation), chosen at LOAD TIME.
-    # Default = ddgs_search (DuckDuckGo) for local runs. Datacenter/cloud deploys set
+    # Default = brave_search for local runs (no DuckDuckGo locally). Datacenter/cloud deploys set
     # WEB_SEARCH_TOOLBOX=tavily_search (DDG blocks datacenter egress) — NO registry rewrite needed.
     # This is the single, legitimate provider-swap point; callers only ever reference /web_search.
-    # NOTE: if set, WEB_SEARCH_TOOLBOX must name a real toolbox (ddgs_search | tavily_search); an
-    # empty or unknown value is NOT fail-safe — it disables web search (fails at call time).
-    web_search_toolbox = "ddgs_search"
+    # NOTE: if set, WEB_SEARCH_TOOLBOX must name a real toolbox (ddgs_search | tavily_search | brave_search);
+    # an empty or unknown value is NOT fail-safe — it disables web search (fails at call time).
+    web_search_toolbox = "brave_search"
     web_search_toolbox = ${?WEB_SEARCH_TOOLBOX}
 
     "llm_config": {
@@ -70,8 +70,9 @@ Use your tool to respond to the inquiry.
             "toolbox": ${web_search_toolbox},
             "args": {
                 # --- Optional Arguments ---
-                # max_results is honored by both backing providers (ddgs_search and tavily_search).
-                "max_results": 5
+                # max_results is honored by ddgs_search/tavily_search; brave_search honors count.
+                "max_results": 5,
+                "count": 5
             }
         },
     ]

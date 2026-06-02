@@ -25,17 +25,36 @@ APP=/usr/local/neuro-san/myapp                          # APP_SOURCE inside the 
 # via $WEB_SEARCH_TOOLBOX (no registry rewrite; callers only ever reference /web_search). The key
 # and the provider selection are COUPLED: no key -> stay on ddgs (web search stays blocked on Cloud
 # Run rather than selecting tavily with nothing behind it). Source the key from repo .env if needed.
-if [ -z "${TAVILY_API_KEY:-}" ] && [ -f "$STUDIO/.env" ]; then
-  set -a; . "$STUDIO/.env"; set +a
+# Pull TAVILY_API_KEY / BRAVE_API_KEY from repo .env ONLY when not already set in the environment.
+# (Don't blanket-source .env — that would clobber explicitly-exported values, e.g. an explicit
+# TAVILY_API_KEY when only BRAVE_API_KEY is missing.)
+if [ -f "$STUDIO/.env" ]; then
+  for _k in TAVILY_API_KEY BRAVE_API_KEY; do
+    if [ -z "${!_k:-}" ]; then
+      _v="$(grep -E "^${_k}=" "$STUDIO/.env" | tail -n1 | cut -d= -f2-)"
+      [ -n "$_v" ] && export "${_k}=${_v}"
+    fi
+  done
+  unset _k _v
 fi
 TAVILY_ENV=""
 WEB_SEARCH_ENV=""
 if [ -n "${TAVILY_API_KEY:-}" ]; then
   TAVILY_ENV="@TAVILY_API_KEY=${TAVILY_API_KEY}"
   WEB_SEARCH_ENV="@WEB_SEARCH_TOOLBOX=tavily_search"
-  echo "  TAVILY_API_KEY found -> cloud web search = Tavily (WEB_SEARCH_TOOLBOX=tavily_search)"
+  echo "  TAVILY_API_KEY found -> cloud shared /web_search = Tavily (WEB_SEARCH_TOOLBOX=tavily_search)"
 else
-  echo "  WARNING: TAVILY_API_KEY not set -> web_search stays on ddgs; web search will be blocked on Cloud Run"
+  echo "  WARNING: TAVILY_API_KEY not set -> shared /web_search falls back to its registry default"
+  echo "           (brave_search), so ALL networks' web search would use Brave in cloud, not just AEEN."
+fi
+# AEEN's Clinical_Literature_Search is pinned to brave_search (see agentic_evidence_exchange.hocon),
+# so the Brave key must reach Cloud Run independently of the shared /web_search provider above.
+BRAVE_ENV=""
+if [ -n "${BRAVE_API_KEY:-}" ]; then
+  BRAVE_ENV="@BRAVE_API_KEY=${BRAVE_API_KEY}"
+  echo "  BRAVE_API_KEY found -> AEEN Clinical_Literature_Search = Brave"
+else
+  echo "  WARNING: BRAVE_API_KEY not set -> AEEN clinical literature search will fail on Cloud Run"
 fi
 
 echo "[1/5] copy build context (exclude vcs/caches/heavy dirs + secrets)"
@@ -85,7 +104,7 @@ echo "[5/5] deploy public Cloud Run (Gemini + CORS + dotted AGENT_TOOL_PATH)"
 gcloud run deploy "$SERVICE" --image "$IMAGE" --region "$REGION" --allow-unauthenticated \
   --port 8080 --memory 4Gi --cpu 2 --timeout 600 --max-instances 5 \
   --min-instances 1 --cpu-boost \
-  --set-env-vars "^@^AGENT_ALLOW_CORS_HEADERS=1@AGENT_MANIFEST_FILE=${APP}/registries/manifest.hocon@AGENT_TOOL_PATH=coded_tools@AGENT_TOOLBOX_INFO_FILE=${APP}/toolbox/toolbox_info.hocon@AGENT_LLM_INFO_FILE=${APP}/llm_info_extra.hocon@GOOGLE_API_KEY=${GEMINI_API_KEY}${TAVILY_ENV}${WEB_SEARCH_ENV}"
+  --set-env-vars "^@^AGENT_ALLOW_CORS_HEADERS=1@AGENT_MANIFEST_FILE=${APP}/registries/manifest.hocon@AGENT_TOOL_PATH=coded_tools@AGENT_TOOLBOX_INFO_FILE=${APP}/toolbox/toolbox_info.hocon@AGENT_LLM_INFO_FILE=${APP}/llm_info_extra.hocon@GOOGLE_API_KEY=${GEMINI_API_KEY}${TAVILY_ENV}${WEB_SEARCH_ENV}${BRAVE_ENV}"
 
 gcloud run services describe "$SERVICE" --region "$REGION" --format='value(status.url)'
 rm -rf "$BT"

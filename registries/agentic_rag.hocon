@@ -10,10 +10,10 @@
 #
 # END COPYRIGHT
 {
-    # Web-search backing provider, selected at load time (default ddgs_search; cloud sets
+    # Web-search backing provider, selected at load time (default brave_search; cloud sets
     # WEB_SEARCH_TOOLBOX=tavily_search). Keeps this network's search working from datacenter egress
     # if it is ever enabled in the cloud manifest (currently serve:false). Mirrors web_search.hocon.
-    web_search_toolbox = "ddgs_search"
+    web_search_toolbox = "brave_search"
     web_search_toolbox = ${?WEB_SEARCH_TOOLBOX}
 
     "llm_config": {
@@ -50,7 +50,8 @@
             "name": "website_search",
             "toolbox": ${web_search_toolbox}
             "args": {
-                "num_results": 3
+                "num_results": 3,
+                "count": 3
             }
         },
         # RAG tool that loads data from a PDF URL into an in-memory vectorstore and answers queries.

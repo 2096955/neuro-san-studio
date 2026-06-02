@@ -13,6 +13,15 @@
     # >>> category-tag (managed by tag_registries.py) <<<
     metadata { tags = ["Tools"] }
 
+    # Web-search backing provider (toolbox-layer implementation), chosen at LOAD TIME.
+    # Default = ddgs_search (DuckDuckGo) for local runs. Datacenter/cloud deploys set
+    # WEB_SEARCH_TOOLBOX=tavily_search (DDG blocks datacenter egress) — NO registry rewrite needed.
+    # This is the single, legitimate provider-swap point; callers only ever reference /web_search.
+    # NOTE: if set, WEB_SEARCH_TOOLBOX must name a real toolbox (ddgs_search | tavily_search); an
+    # empty or unknown value is NOT fail-safe — it disables web search (fails at call time).
+    web_search_toolbox = "ddgs_search"
+    web_search_toolbox = ${?WEB_SEARCH_TOOLBOX}
+
     "llm_config": {
         "fallbacks": [
             {"class": "ollama", "model_name": "qwen3.6:35b-a3b", "reasoning": false},
@@ -57,13 +66,12 @@ Use your tool to respond to the inquiry.
         },
         {
             "name": "website_search",
-            "toolbox": "ddgs_search",
+            # Backing provider selected at load time (default ddgs_search; cloud sets WEB_SEARCH_TOOLBOX).
+            "toolbox": ${web_search_toolbox},
             "args": {
                 # --- Optional Arguments ---
+                # max_results is honored by both backing providers (ddgs_search and tavily_search).
                 "max_results": 5
-
-                # For more search parameter options, see:
-                # https://pypi.org/project/ddgs/#1-text
             }
         },
     ]

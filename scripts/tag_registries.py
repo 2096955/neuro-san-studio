@@ -23,6 +23,10 @@ CATEGORY_MAP = {
         "music_nerd_pro_sly_local",
         "music_nerd_llm_fallbacks",
     ],
+    "Healthcare": [
+        "agentic_evidence_exchange",
+        "therapy_vignette_supervisors",
+    ],
     "Industry": [
         "banking_ops",
         "insurance_underwriting_agents",
@@ -33,7 +37,6 @@ CATEGORY_MAP = {
         "macys",
         "consumer_decision_assistant",
         "LinkedInJobSeekerSupportNetwork",
-        "therapy_vignette_supervisors",
         "now_agents",
         "intranet_agents_with_tools",
     ],
@@ -41,7 +44,7 @@ CATEGORY_MAP = {
         "agent_network_designer",
         "agent_network_html_creator",
         "pdf_rag",
-        "ddgs_search",
+        "web_search",
     ],
     "Experimental": [
         "airbnb",

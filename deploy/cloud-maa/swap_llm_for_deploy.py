@@ -37,13 +37,10 @@ def swap(registries_dir: str) -> int:
         # multi-agent network this is the difference between ~50s and ~15s per query.
         t = re.sub(r'"reasoning"\s*:\s*(?:true|false)', '"thinking_budget": 0', t)
         t = re.sub(r"\breasoning\s*=\s*(?:true|false)", "thinking_budget = 0", t)
-        # Optionally swap the DuckDuckGo search tool to Tavily for the cloud, where DDG blocks
-        # datacenter egress IPs (and the lean cloud image omits the `ddgs` package). Gated on
-        # SWAP_DDGS_TO_TAVILY=1 — the deploy script sets this ONLY when a TAVILY_API_KEY is available
-        # to forward, so we never emit tavily_search references without a key behind them.
-        if os.environ.get("SWAP_DDGS_TO_TAVILY") == "1":
-            t = re.sub(r'("toolbox"\s*[:=]\s*)"ddgs_search"', r'\1"tavily_search"', t)
-            t = re.sub(r'(\btoolbox\s*=\s*)"ddgs_search"', r'\1"tavily_search"', t)
+        # NOTE: the cloud web-search provider swap (ddgs -> tavily, because DuckDuckGo blocks
+        # datacenter egress) is intentionally NOT done here. web_search.hocon selects its backing
+        # toolbox at load time from $WEB_SEARCH_TOOLBOX (default ddgs_search), so the deploy just
+        # sets that env var on Cloud Run — no registry rewrite, and callers only reference /web_search.
         if t != original:
             f.write_text(t)
             n += 1

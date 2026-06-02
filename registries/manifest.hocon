@@ -135,7 +135,7 @@
     "airbnb.hocon": true,
     "booking.hocon": true,
     "carmax.hocon": true,
-    "ddgs_search.hocon": true,
+    "web_search.hocon": true,
     "expedia.hocon": true,
     "macys.hocon": true,
     "LinkedInJobSeekerSupportNetwork.hocon": true,

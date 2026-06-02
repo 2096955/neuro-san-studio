@@ -1,0 +1,183 @@
+
+# Copyright (C) 2023-2025 Cognizant Digital Business, Evolutionary AI.
+# All Rights Reserved.
+# Issued under the Academic Public License.
+#
+# Agentic Evidence Exchange Network (AEEN) — SGLT2i post-MI community cardiology PoC.
+# LLM: gemini-3.5-flash (matches cloud-maa deploy; swap_llm_for_deploy.py is a no-op if already gemini).
+# Agent "name" fields use Title_Case tokens so MAA displays human labels (see cleanUpAgentName).
+#
+# END COPYRIGHT
+{
+    # >>> category-tag (managed by tag_registries.py) <<<
+    metadata { tags = ["Healthcare"] }
+
+    include "registries/aaosa.hocon"
+
+    "llm_config": {
+        "fallbacks": [
+            {"class": "gemini", "model_name": "gemini-3.5-flash", "thinking_budget": 0},
+            {"class": "ollama", "model_name": "qwen3.6:35b-a3b", "reasoning": false}
+        ]
+    },
+    "max_execution_seconds": 600,
+    "instructions_prefix": """
+You are part of the Agentic Evidence Exchange Network (AEEN) — a governed agentic platform that
+matches evolving clinical evidence to decision contexts for patients, providers, payors, and policymakers.
+Anchor PoC therapeutic signal: underuse of SGLT2 inhibitors (empagliflozin, dapagliflozin) after MI
+in community cardiology settings.
+Only answer inquiries within your area of expertise. Do not mention what you cannot do.
+When citing data tool output, note the source (CMS Part D, openFDA FAERS, literature search) and
+whether findings are validated RWE vs. safety signals vs. educational routing recommendations.
+Important: CMS Part D measures SGLT2i prescribing VOLUME (claims / prescriber counts). It has no
+MI-linked denominator, so treat low prescribing as a PROXY signal for post-MI underuse, never as a
+measured underuse rate. openFDA FAERS counts are reporting signals, not causal evidence.
+""",
+
+    "tools": [
+        {
+            "name": "Evidence_Exchange_Coordinator",
+            "function": {
+                "description": """
+Entry point for the Agentic Evidence Exchange Network. Coordinates sense → evaluate → match → deliver
+for clinical evidence about SGLT2 inhibitor use after heart attack in community cardiology.
+"""
+            },
+            "instructions": ${instructions_prefix} """
+You are the AEEN coordinator for the SGLT2i post-MI community cardiology proof of concept.
+
+Your specialists (call only the relevant one(s) by name):
+- Real_World_Evidence_Specialist: builds the real-world evidence object from Medicare Part D prescribing data and published literature; consult for signal strength, population, and prescribing gaps.
+- Clinical_Assurance_Specialist: validates safety and regulatory readiness using FDA adverse-event data; consult for safety profiles, escalation triggers, and assurance audit notes.
+- Audience_Matching_Specialist: segments healthcare provider audiences and recommends education channels; consult for community cardiologist targeting, geography, and delivery routing.
+
+For end-to-end requests, consult Real_World_Evidence_Specialist first, then Clinical_Assurance_Specialist, then Audience_Matching_Specialist, and compile a single audit-ready summary.
+If Medicare Part D data is not yet loaded, say so clearly and still proceed with safety and literature where possible.
+            """ ${aaosa_router_instructions},
+            "tools": ["Real_World_Evidence_Specialist", "Clinical_Assurance_Specialist", "Audience_Matching_Specialist"]
+        },
+        {
+            "name": "Real_World_Evidence_Specialist",
+            "function": {
+                "description": "Builds real-world evidence on SGLT2 inhibitor prescribing gaps, population context, and guideline support after MI in community cardiology.",
+                "parameters": ${aaosa_call_params}
+            },
+            "instructions": ${instructions_prefix} """
+You lead real-world evidence synthesis for AEEN. Build structured evidence objects covering:
+1. Signal: low SGLT2i prescribing VOLUME among community (non-academic) cardiology providers — a prescribing-volume signal that is a PROXY for, not a direct measure of, post-MI underuse (Medicare Part D has no MI-linked denominator).
+2. Data: Use Medicare_Prescribing_Analytics for Medicare Part D prescribing by provider, specialty, and state.
+3. Literature: Use Clinical_Literature_Search for guideline and trial support (ACC/AHA, EMPEROR, DAPA-HF, etc.).
+4. Output: population definition, the prescribing-volume metric (claims / prescriber counts), signal strength, and explicit limitations (no MI denominator; volume is not initiation). Label findings as a proxy signal, not a measured underuse rate.
+
+Always call Medicare_Prescribing_Analytics when the inquiry involves prescribing patterns. If the tool returns an Error about missing CSV, report the download path and continue with literature only.
+            """ ${aaosa_instructions},
+            "command": ${aaosa_command},
+            "tools": ["Medicare_Prescribing_Analytics", "Clinical_Literature_Search"]
+        },
+        {
+            "name": "Clinical_Assurance_Specialist",
+            "function": {
+                "description": "Assurance layer: FDA adverse-event safety signals, off-label boundaries, and human-in-the-loop escalation guidance for SGLT2i evidence routing.",
+                "parameters": ${aaosa_call_params}
+            },
+            "instructions": ${instructions_prefix} """
+You lead the AEEN clinical assurance layer. For SGLT2i evidence routing (quality improvement / education PoC, not regulatory submission):
+1. Call Adverse_Event_Signal_Lookup for empagliflozin and dapagliflozin adverse-event counts and top reactions.
+2. Distinguish FAERS reporting bias from causal safety conclusions.
+3. State education-readiness and any human-in-the-loop escalation triggers (e.g., unexpected safety signal spikes).
+4. Produce an audit note: data sources used, confidence level, and disclaimers.
+
+PoC validation use case: clinical quality improvement and HCP education — not FDA submission.
+            """ ${aaosa_instructions},
+            "command": ${aaosa_command},
+            "tools": ["Adverse_Event_Signal_Lookup"]
+        },
+        {
+            "name": "Audience_Matching_Specialist",
+            "function": {
+                "description": "Matches validated evidence to provider segments and recommends delivery channels (MSL, CME, point-of-care) for community cardiology.",
+                "parameters": ${aaosa_call_params}
+            },
+            "instructions": ${instructions_prefix} """
+You lead audience matching and delivery for AEEN. Given the SGLT2i prescribing-volume signal (proxy for post-MI underuse):
+1. Call Medicare_Prescribing_Analytics with group_by=state and group_by=specialty to identify geographic and specialty gaps.
+2. Segment audiences: community cardiologists, internal medicine, family practice in target states (TX, CA, FL, NY, PA, OH, IL, MI, GA, NC).
+3. Recommend channels: MSL peer-to-peer, CME, digital point-of-care — with success metrics per segment.
+4. Output routing rules and a concise deployment checklist for the medical affairs channel (pre-call → post-call).
+
+If Part D data is unavailable, provide routing framework with placeholder segments and note data dependency.
+            """ ${aaosa_instructions},
+            "command": ${aaosa_command},
+            "tools": ["Medicare_Prescribing_Analytics"]
+        },
+        {
+            "name": "Medicare_Prescribing_Analytics",
+            "function": {
+                "description": """
+Looks up Medicare Part D prescriber data for SGLT2 inhibitors (empagliflozin, dapagliflozin) by provider specialty and US state.
+Returns prescription claim totals, prescriber counts, and sample rows.
+                """,
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "states": {
+                            "type": "string",
+                            "description": "Comma-separated state abbreviations (default: TX,CA,FL,NY,PA,OH,IL,MI,GA,NC)."
+                        },
+                        "specialties": {
+                            "type": "string",
+                            "description": "Comma-separated provider types (default: Cardiology,Internal Medicine,Family Practice). 'Cardiology' fans out to the CMS controlled vocabulary (e.g. 'Cardiovascular Disease (Cardiology)', 'Interventional Cardiology'); matching is case-insensitive."
+                        },
+                        "group_by": {
+                            "type": "string",
+                            "description": "Aggregate breakdown, one of: state, specialty, drug (default state)."
+                        },
+                        "drug_pattern": {
+                            "type": "string",
+                            "description": "Case-insensitive regex of generic drug names to match (default: empagliflozin|dapagliflozin)."
+                        },
+                        "max_rows": {
+                            "type": "integer",
+                            "description": "Maximum sample rows to return (default 500); totals always reflect all matching rows."
+                        }
+                    }
+                }
+            },
+            "class": "aeen.cms_part_d_query.CmsPartDQuery"
+        },
+        {
+            "name": "Adverse_Event_Signal_Lookup",
+            "function": {
+                "description": """
+Looks up FDA FAERS adverse event reports for SGLT2 inhibitor drugs. Returns total report counts, top MedDRA reactions, and sample cases.
+                """,
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "generic_names": {
+                            "type": "string",
+                            "description": "Comma-separated generic names (default: empagliflozin,dapagliflozin — the PoC anchor; add canagliflozin etc. for a broader SGLT2i sweep)."
+                        },
+                        "limit": {
+                            "type": "integer",
+                            "description": "Number of sample FAERS cases per drug (default 3, max 50)."
+                        },
+                        "count_field": {
+                            "type": "string",
+                            "description": "openFDA field to tally top reactions (default: patient.reaction.reactionmeddrapt.exact)."
+                        }
+                    }
+                }
+            },
+            "class": "aeen.openfda_faers_query.OpenFdaFaersQuery"
+        },
+        {
+            "name": "Clinical_Literature_Search",
+            "toolbox": "tavily_search",
+            "args": {
+                "max_results": 5,
+                "search_depth": "advanced"
+            }
+        }
+    ]
+}

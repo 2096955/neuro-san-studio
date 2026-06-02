@@ -130,6 +130,7 @@
     "retail_ops_and_customer_service.hocon": true,
     "telco_network_support.hocon": true,
     "therapy_vignette_supervisors.hocon": true,
+    "agentic_evidence_exchange.hocon": true,
     "consumer_decision_assistant.hocon": true,
     # The following agent networks are used as sub-networkds by consumer_decision_assistant.hocon
     "airbnb.hocon": true,

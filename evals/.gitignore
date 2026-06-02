@@ -1,0 +1,4 @@
+# Generated eval artifacts (run outputs, not source)
+report.md
+results.csv
+__pycache__/

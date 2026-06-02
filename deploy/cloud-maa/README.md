@@ -45,6 +45,29 @@ egress, so the cloud uses API-key providers that work from Cloud Run:
 - Brave free tier ≈ 2,000 queries/month at 1 req/sec; heavy multi-agent fan-out can still 429
   (the tool does one short retry).
 
+## Observability — Arize AX (traces + evals)
+neuro-san runs on LangChain, so a single OpenInference instrumentor captures the whole AAOSA graph
+(coordinator → specialists → tools → LLM) with **no registry/agent changes**.
+
+- **How it's wired:** both launch paths go through `deploy/otel_bootstrap.py`, which instruments
+  LangChain *before* importing neuro-san and then execs the real server. It is a **no-op** unless both
+  `ARIZE_SPACE_ID` and `ARIZE_API_KEY` are set, so the server runs identically when tracing is off.
+- **Enable it:** add `ARIZE_SPACE_ID` and `ARIZE_API_KEY` to `.env` (or export them) before
+  `deploy-backend.sh`. The script sources them per-key (same pattern as the web-search keys) and passes
+  them to Cloud Run; spans go to the Arize project `ARIZE_PROJECT_NAME` (default `neuro-san-maa`) over
+  gRPC to `otlp.arize.com`. `.env` is gitignored / rsync-excluded — keys are never committed.
+- **Deps:** the cloud image adds `arize-otel` + `openinference-instrumentation-langchain`
+  (`requirements-cloud.txt`). Locally: `pip install -r requirements-observability.txt`.
+- **Local runs** use the same path: `python run.py` with the two ARIZE vars set traces to the same AX
+  space (Gemini *and* Ollama LLM calls are both captured via the LangChain callback layer).
+- **Evaluations:** `python evals/run_evals.py` drives the questions in
+  `evals/aeen_eval_questions.jsonl` through the backend (`BACKEND_URL`, default localhost:8080), then
+  runs LLM-as-judge evals (correctness + relevance) over the resulting AX spans and logs the scores
+  back onto the traces (`spans.update_evaluations`). The judge auto-selects OpenAI → Gemini → local
+  Ollama from whatever key is present. A local `evals/report.md` + `results.csv` is always written.
+  Use `--no-drive` to evaluate spans already in AX.
+- **Note:** if gRPC export is ever blocked from Cloud Run, switch to HTTP OTLP (Arize supports both).
+
 ## Identities (gbg-neuro SA keys under ~/SubAgents/GCP-Package)
 - `bfs-gen-ai@gbg-neuro` — can submit Cloud Build **and read build logs** (use for builds).
 - `healthcare-poc-vertexai@gbg-neuro` — can set the public `allUsers` invoker IAM binding.

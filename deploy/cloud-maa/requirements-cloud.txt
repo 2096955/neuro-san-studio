@@ -10,3 +10,7 @@ aiofiles
 python-dotenv
 # Used by the tavily_search coded tool (cloud web search; DDG is blocked from datacenter egress).
 requests>=2
+# Optional Arize AX tracing (active only when ARIZE_SPACE_ID+ARIZE_API_KEY are set; see
+# deploy/otel_bootstrap.py). Tracing deps only — eval packages run offline/locally, not in the image.
+arize-otel
+openinference-instrumentation-langchain

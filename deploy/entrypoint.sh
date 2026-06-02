@@ -38,6 +38,10 @@ PACKAGE_INSTALL=${PACKAGE_INSTALL:-.}
 echo "PACKAGE_INSTALL is ${PACKAGE_INSTALL}"
 
 echo "Starting service with args '$1'..."
-${PYTHON} "${PACKAGE_INSTALL}"/neuro_san/service/main_loop/server_main_loop.py "$@"
+# Launch via the tracing bootstrap (sits next to this script in deploy/). It is a no-op unless
+# ARIZE_SPACE_ID+ARIZE_API_KEY are set; otherwise it instruments LangChain BEFORE importing neuro_san
+# and then execs the real server entrypoint with the same args.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+${PYTHON} "${SCRIPT_DIR}/otel_bootstrap.py" "$@"
 
 echo "Done."

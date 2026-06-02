@@ -29,7 +29,7 @@ APP=/usr/local/neuro-san/myapp                          # APP_SOURCE inside the 
 # (Don't blanket-source .env — that would clobber explicitly-exported values, e.g. an explicit
 # TAVILY_API_KEY when only BRAVE_API_KEY is missing.)
 if [ -f "$STUDIO/.env" ]; then
-  for _k in TAVILY_API_KEY BRAVE_API_KEY; do
+  for _k in TAVILY_API_KEY BRAVE_API_KEY ARIZE_SPACE_ID ARIZE_API_KEY ARIZE_PROJECT_NAME; do
     if [ -z "${!_k:-}" ]; then
       _v="$(grep -E "^${_k}=" "$STUDIO/.env" | tail -n1 | cut -d= -f2-)"
       [ -n "$_v" ] && export "${_k}=${_v}"
@@ -55,6 +55,15 @@ if [ -n "${BRAVE_API_KEY:-}" ]; then
   echo "  BRAVE_API_KEY found -> AEEN Clinical_Literature_Search = Brave"
 else
   echo "  WARNING: BRAVE_API_KEY not set -> AEEN clinical literature search will fail on Cloud Run"
+fi
+# Optional observability: send backend traces to Arize AX. The image always launches via
+# deploy/otel_bootstrap.py, which is a NO-OP unless both ARIZE_SPACE_ID and ARIZE_API_KEY are present.
+ARIZE_ENV=""
+if [ -n "${ARIZE_SPACE_ID:-}" ] && [ -n "${ARIZE_API_KEY:-}" ]; then
+  ARIZE_ENV="@ARIZE_SPACE_ID=${ARIZE_SPACE_ID}@ARIZE_API_KEY=${ARIZE_API_KEY}@ARIZE_PROJECT_NAME=${ARIZE_PROJECT_NAME:-neuro-san-maa}"
+  echo "  ARIZE keys found -> backend traces -> Arize AX (project=${ARIZE_PROJECT_NAME:-neuro-san-maa})"
+else
+  echo "  ARIZE_* not set -> backend runs WITHOUT tracing (otel_bootstrap is a no-op)"
 fi
 
 echo "[1/5] copy build context (exclude vcs/caches/heavy dirs + secrets)"
@@ -90,6 +99,8 @@ m = 'COPY ./coded_tool[s] ${APP_SOURCE}/coded_tools'
 extra = ''
 if 'COPY ./toolbox' not in t: extra += '\nCOPY ./toolbox ${APP_SOURCE}/toolbox'
 if 'llm_info_extra' not in t: extra += '\nCOPY ./deploy/cloud-maa/llm_info_extra.hocon ${APP_SOURCE}/llm_info_extra.hocon'
+# Ship the tracing bootstrap (the patched entrypoint launches the server through it).
+if 'otel_bootstrap' not in t: extra += '\nCOPY ./deploy/otel_bootstrap.py ${APP_SOURCE}/deploy/otel_bootstrap.py'
 if extra: t = t.replace(m, m + extra)
 a = 'RUN if [ -f ${APP_SOURCE}/requirements.txt ]; \\'
 if 'build-essential' not in t:
@@ -104,7 +115,7 @@ echo "[5/5] deploy public Cloud Run (Gemini + CORS + dotted AGENT_TOOL_PATH)"
 gcloud run deploy "$SERVICE" --image "$IMAGE" --region "$REGION" --allow-unauthenticated \
   --port 8080 --memory 4Gi --cpu 2 --timeout 600 --max-instances 5 \
   --min-instances 1 --cpu-boost \
-  --set-env-vars "^@^AGENT_ALLOW_CORS_HEADERS=1@AGENT_MANIFEST_FILE=${APP}/registries/manifest.hocon@AGENT_TOOL_PATH=coded_tools@AGENT_TOOLBOX_INFO_FILE=${APP}/toolbox/toolbox_info.hocon@AGENT_LLM_INFO_FILE=${APP}/llm_info_extra.hocon@GOOGLE_API_KEY=${GEMINI_API_KEY}${TAVILY_ENV}${WEB_SEARCH_ENV}${BRAVE_ENV}"
+  --set-env-vars "^@^AGENT_ALLOW_CORS_HEADERS=1@AGENT_MANIFEST_FILE=${APP}/registries/manifest.hocon@AGENT_TOOL_PATH=coded_tools@AGENT_TOOLBOX_INFO_FILE=${APP}/toolbox/toolbox_info.hocon@AGENT_LLM_INFO_FILE=${APP}/llm_info_extra.hocon@GOOGLE_API_KEY=${GEMINI_API_KEY}${TAVILY_ENV}${WEB_SEARCH_ENV}${BRAVE_ENV}${ARIZE_ENV}"
 
 gcloud run services describe "$SERVICE" --region "$REGION" --format='value(status.url)'
 rm -rf "$BT"

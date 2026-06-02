@@ -137,7 +137,7 @@ Returns prescription claim totals, prescriber counts, and sample rows.
                             "description": "Case-insensitive regex of generic drug names to match (default: empagliflozin|dapagliflozin)."
                         },
                         "max_rows": {
-                            "type": "integer",
+                            "type": "int",
                             "description": "Maximum sample rows to return (default 500); totals always reflect all matching rows."
                         }
                     }
@@ -159,7 +159,7 @@ Looks up FDA FAERS adverse event reports for SGLT2 inhibitor drugs. Returns tota
                             "description": "Comma-separated generic names (default: empagliflozin,dapagliflozin — the PoC anchor; add canagliflozin etc. for a broader SGLT2i sweep)."
                         },
                         "limit": {
-                            "type": "integer",
+                            "type": "int",
                             "description": "Number of sample FAERS cases per drug (default 3, max 50)."
                         },
                         "count_field": {

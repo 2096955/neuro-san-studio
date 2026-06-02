@@ -61,3 +61,54 @@ egress, so the cloud uses API-key providers that work from Cloud Run:
 - **Build deps**: the full repo requirements.txt fails on slim images; use `requirements-cloud.txt`.
 - **Secret Manager** is permission-blocked for the available SAs, so `GOOGLE_API_KEY` is a plain
   Cloud Run env (same posture as the existing services). Migrate to Secret Manager when IAM allows.
+
+## Production deploy discipline
+
+Condensed from [production lessons](../../docs/lessons/README.md). Full context:
+
+- [Architecture lessons](../../docs/lessons/ARCHITECTURE_LESSONS.md)
+- [Production checklist](../../docs/lessons/PRODUCTION_CHECKLIST.md)
+- [Arize evals (in progress)](../../docs/lessons/ARIZE_EVALS.md)
+
+### Before every promote
+
+- **Secrets** — `.env` is gitignored and rsync-excluded; run secret scanning in CI (trufflehog or
+  equivalent). Rotate any key flagged as leaked before redeploy.
+- **Immutable artifact** — Cloud Build produces one image tagged with the git SHA; promote that
+  image to Cloud Run. Do not rebuild with different env for “the same” release.
+- **Web search keys** — confirm `TAVILY_API_KEY` / `BRAVE_API_KEY` are set in `.env` (or exported)
+  before `deploy-backend.sh`; the deploy gate checks Tavily resolution for shared search.
+
+### Model and registry changes (major change)
+
+Treat these like a production release, not a config tweak:
+
+- **`GEMINI_MODEL`** or `llm_info_extra.hocon` changes
+- Registry prompt / rubric edits
+- New or renamed CodedTools on the hot path
+
+Minimum bar:
+
+1. Re-run the **Smoke** golden set (~30 cases) — CI merge gate.
+2. Re-run the **Benchmark** set (N≥300) before promote — block on >2pp regression on the headline
+   metric unless explicitly risk-accepted.
+3. Document rollback: previous image SHA + previous `GEMINI_MODEL` + env snapshot.
+4. Use **Assessor** where available to classify failure modes on the candidate build.
+
+### Operational controls (Phase 2+)
+
+Not required for the public MAA demo, but expected on regulated production:
+
+- **Kill switch** — per-network or per-tool feature flag; disable without redeploy.
+- **Provider circuit breaker** — pause consumption on sustained LLM 429/5xx rather than DLQ-flooding
+  on provider outages.
+- **Configuration snapshot** — pin prompt hash, rubric hash, model id, and tool definitions with the
+  release artefact so audit replay is evidential, not documentary.
+
+### MCP and tool boundaries
+
+When exposing networks as MCP servers:
+
+- Hard depth / breadth / cardinality limits on tool calls (no raw query passthrough).
+- Structured MCP error responses (`errorCategory`, `isRetryable`) so agents recover locally.
+- Specialists never call data stores directly — retrieval goes through validated CodedTool boundaries.

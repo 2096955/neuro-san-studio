@@ -1,0 +1,13 @@
+# Optional observability stack for the neuro-san MAA backend (Arize AX tracing + evals).
+# NOT required to run the server — install only when you want traces/evals:
+#   pip install -r requirements-observability.txt
+# Tracing is a no-op unless ARIZE_SPACE_ID + ARIZE_API_KEY are set (see deploy/otel_bootstrap.py).
+#
+# Tracing (also added to deploy/cloud-maa/requirements-cloud.txt for the Cloud Run image):
+arize-otel                       # arize.otel.register() -> Arize AX tracer provider
+openinference-instrumentation-langchain  # auto-traces the whole LangChain/AAOSA agent graph (incl. Gemini)
+#
+# Evals (run locally/offline only — NOT shipped in the cloud image):
+arize                            # AX span export (spans.export_to_df) + spans.update_evaluations
+arize-phoenix-evals>=2.8.0       # LLM-as-judge evaluators
+litellm                          # lets the judge use the existing Gemini key (no OpenAI key needed)

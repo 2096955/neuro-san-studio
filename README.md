@@ -141,6 +141,51 @@ time** (`NEXT_PUBLIC_NEURO_SAN_SERVER_URL`). Full details, gotchas, and the exac
 - **Web search keys** — DuckDuckGo is blocked from datacenter egress, so the shared `/web_search` network uses **Tavily** on Cloud Run (`TAVILY_API_KEY`) and a medical literature-search tool uses **Brave** (`BRAVE_API_KEY`); both default to Brave when run locally. `deploy-backend.sh` auto-sources these from `.env` per key — never commit them. Details: [`deploy/cloud-maa/README.md`](deploy/cloud-maa/README.md#web-search-providers).
 - Tool-heavy networks (web scrapers, `pdf_rag`) render their graph but may degrade on chat when their external tools aren't reachable.
 
+### Building for production
+
+The MAA demo stack above is **Phase 0–1** scope (sync HTTP, local + Cloud Run). For auditable,
+production-grade systems, Neuro SAN is the **substrate**; contracts, validators, and eval
+discipline are **application-layer** work you build on top.
+
+**Framework vs application**
+
+| Neuro SAN gives you | You still build |
+|---|---|
+| HOCON-declared agent topology | Orchestrator / Specialist / Verifier *roles* in registry design |
+| [`sly_data`](docs/examples/music_nerd_pro_sly.md) — private channel off the LLM stream | PII sanitisation policy, token vault, egress checks |
+| [`CodedTool`](docs/user_guide.md#coded-tools) — deterministic Python at agent boundaries | Context assembly, validators, retrieval bounds |
+| Per-agent LLM spec + fallbacks | Verifier rubric; treat model upgrades as major changes |
+| MCP-server-by-default | Cross-network auth, TTLs, deployment wiring |
+| [OpenFGA](https://github.com/cognizant-ai-lab/neuro-san) support | Bundle-level access policy / entitlements |
+| Assessor + tracing hooks (upstream Neuro SAN) | Smoke (~30) vs Benchmark (N≥300) golden sets, drift monitoring |
+
+**Seven production contracts** (conceptual — full schemas in the architectural blueprint):
+
+1. **Sanitisation** — adversarial-input guardrails and PII tokenisation *before* reasoning.
+2. **Retrieval** — deterministic context assembly (`CodedTool`), not LLM-driven fetch.
+3. **Bundle** — typed context with token budgets and entitlement checks at the boundary.
+4. **Quality** — verifier on every output returned to the orchestrator.
+5. **Feedback** — quarantined precedents; no auto-promotion into canonical context.
+6. **Runtime** — async pipeline with terminal status (for serious prod; not the sync MAA demo).
+7. **Multi-pipeline** — MCP composition across trust boundaries when scale demands it.
+
+**Registry habits that survive audit**
+
+- One specialist per business role — resist merging similar-looking agents.
+- Put deterministic work in **CodedTools**, not prompts (`AGENT_TOOL_PATH=coded_tools`).
+- Run **Smoke** cases in CI; re-run **Benchmark** before changing `GEMINI_MODEL` or prompts.
+- Use **Assessor** for structured failure-mode classification on golden sets.
+
+**Before Cloud Run promote** — see also [`deploy/cloud-maa/README.md`](deploy/cloud-maa/README.md#production-deploy-discipline):
+
+- Never commit API keys; secret-scan in CI; rotate leaked keys immediately.
+- Immutable container image (git SHA tag); promote, don't rebuild per environment.
+- Model / prompt changes = major change: benchmark re-run + rollback plan.
+
+Full lesson docs, sanitized checklist, and Arize eval path:
+**[`docs/lessons/`](docs/lessons/README.md)** (architecture lessons, ~400-row checklist, eval integration in progress).
+Summary index: [`docs/PRODUCTION_READINESS.md`](docs/PRODUCTION_READINESS.md).
+
 ---
 
 ## What is Neuro SAN?

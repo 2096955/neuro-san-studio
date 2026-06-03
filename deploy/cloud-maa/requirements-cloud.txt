@@ -3,7 +3,9 @@
 # pymupdf, langchain-ollama) and fails to build on python:3.11-slim without build tools.
 # The cloud backend only needs the neuro-san server + the Gemini LLM binding + HOCON + the
 # coded_tools' runtime deps. Tool-heavy networks (pdf_rag/ddgs/web-scrapers) degrade gracefully.
-neuro-san==0.6.23
+neuro-san==0.6.57
+beautifulsoup4>=4.12.0
+leaf-common>=1.2.40
 langchain-google-genai>=4,<5
 pyhocon>=0.3.60
 aiofiles
@@ -12,5 +14,6 @@ python-dotenv
 requests>=2
 # Optional Arize AX tracing (active only when ARIZE_SPACE_ID+ARIZE_API_KEY are set; see
 # deploy/otel_bootstrap.py). Tracing deps only — eval packages run offline/locally, not in the image.
-arize-otel
-openinference-instrumentation-langchain
+# Pinned to the verified-working versions to reduce rebuild drift.
+arize-otel>=0.12,<1
+openinference-instrumentation-langchain==0.1.66

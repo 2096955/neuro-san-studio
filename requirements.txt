@@ -1,7 +1,12 @@
 # Neuro SAN
-neuro-san==0.5.55
+# 0.6.x switched to langchain 1.x; companion packages bumped to match.
+# 0.6.57 aligns with upstream cognizant-ai-lab/neuro-san-studio (Phase 1 sync).
+# langchain-ollama pin below is project-level (local MAA Ollama).
+neuro-san==0.6.57
 neuro-san-web-client==0.1.12
-nsflow==0.5.16
+nsflow==0.6.15
+leaf-common>=1.2.40
+beautifulsoup4>=4.12.0
 
 # For the airline_policy demo and agentic rag, to extract text from documents
 pypdf>=5.4.0
@@ -15,8 +20,17 @@ aiofiles>=24.1.0
 
 # For MCP servers and clients
 langchain-mcp-adapters>=0.1.7
-flask
-flask-socketio
+# Vertex AI (Gemini on GCP) - only needed if using llm_config with class langchain_google_vertexai.ChatVertexAI
+langchain-google-vertexai>=2.0.0
+flask>=3.0.0
+flask-cors>=6.0.0
+flask-socketio>=5.4.0
+python-socketio>=5.11.0
 grpcio
-python-socketio
 aiohttp
+pyhocon>=0.3.60
+# Bounded pin for reproducible Ollama behavior. 0.3.4+ exposes ChatOllama(reasoning=...)
+# which neuro-san's OllamaLlmPolicy passes through; older versions silently ignore it and
+# qwen3.6/Qwen-thinking models will burn extra tokens generating reasoning per turn.
+# Smoke-tested combo: neuro-san 0.6.57 + langchain-ollama 0.3.x (local MAA).
+langchain-ollama>=0.3.4,<0.4.0

@@ -400,4 +400,68 @@
         }
     },
 
+    # ---------- Web Fetch Tool (upstream neuro-san-studio) ----------
+    # Requires: beautifulsoup4, aiohttp, pypdf (via langchain-community)
+    "web_fetch": {
+        "class": "web_fetch.WebFetch",
+        "description": "Fetches the content of a URL and returns its plain-text body along with metadata. Supports HTML pages and PDF documents.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "url": {
+                    "type": "string",
+                    "description": "The URL to fetch. Must use http or https scheme and be at most 250 characters."
+                },
+                "allowed_domains": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Optional list of domains to allow. If set, only URLs whose domain matches one of these will be fetched."
+                },
+                "blocked_domains": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Optional list of domains to block. URLs whose domain matches one of these will be rejected."
+                },
+                "max_content_chars": {
+                    "type": "int",
+                    "description": "Maximum number of characters to return from the fetched content. Defaults to 20000."
+                }
+            },
+            "required": ["url"]
+        }
+    },
+
+    # ---------- File Management (upstream neuro-san-studio) ----------
+    # Operator must set allowed_paths via tool args in registry hocon (deny-by-default).
+    "read_file": {
+        "class": "file_management.read_file.ReadFile",
+        "description": "Reads the contents of a local text file (with optional line range and char cap) and returns the text plus metadata. Access is restricted by operator-configured allow/block lists for paths and extensions; the LLM cannot influence those lists.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "file_path": {
+                    "type": "string",
+                    "description": "Absolute or relative path to the file to read."
+                },
+                "start_line": {
+                    "type": "int",
+                    "description": "1-based line number to start reading from. Defaults to 1."
+                },
+                "end_line": {
+                    "type": "int",
+                    "description": "1-based line number to stop reading at (inclusive). Defaults to end of file."
+                },
+                "max_content_chars": {
+                    "type": "int",
+                    "description": "Maximum number of characters to return. Defaults to 20000."
+                }
+            },
+            "required": ["file_path"]
+        }
+    },
+
 }

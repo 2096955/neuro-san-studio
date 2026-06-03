@@ -16,16 +16,14 @@
 """
 Wrapper module that initializes plugins before starting the server.
 
-This module ensures that plugins are initialized in the same Python process as the Neuro SAN server,
-allowing, for instance, proper tracing and observability.
+Plugins run (and may instrument LangChain) before neuro-san is imported, so
+OpenInference / Langfuse hooks apply to the full AAOSA graph.
 """
 
 import logging
 import os
 import signal
 import sys
-
-from neuro_san.service.main_loop.server_main_loop import ServerMainLoop
 
 from neuro_san_studio.plugins.plugin_loader import PluginLoader
 
@@ -34,36 +32,28 @@ class NeuroSanServerWrapper:  # pylint: disable=too-few-public-methods
     """Wrapper that initializes plugins before starting the Neuro SAN server."""
 
     def __init__(self):
-        """Initialize the plugins."""
+        """Load plugins from config/plugins.hocon or the bundled template."""
         self._logger = logging.getLogger(self.__class__.__name__)
-        self.root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-        if self.root_dir not in sys.path:
-            sys.path.insert(0, self.root_dir)
+        self.root_dir = os.getcwd()
 
         plugins_file = PluginLoader.resolve_plugins_file(self.root_dir)
         self.plugin_classes = PluginLoader.load_plugin_classes(plugins_file)
 
-        # Instantiate plugins now that args are fully built
-        self.args = {}  # Placeholder for any args you want to pass to plugins
+        self.args = {}
         self.plugins = [cls(self.args) for cls in self.plugin_classes]
         for plugin in self.plugins:
             self._logger.info("Loaded plugin: %s", plugin)
 
     def run(self):
-        """Initialize Phoenix and Langfuse and run the server main loop."""
+        """Initialize observability plugins, then run the server main loop."""
         for plugin in self.plugins:
             self._logger.info("Initializing plugin: %s", plugin)
             plugin.initialize()
 
-        # Import and run the actual server main loop
-        # Note: ServerMainLoop will parse sys.argv itself, so all command-line
-        # arguments (--port, --http_port, etc.) are automatically passed through
-        # Convert SIGTERM into SystemExit so Python unwinds through
-        # the finally block below, allowing plugins to flush traces.
-        # Tornado does not install a SIGTERM handler, so the default
-        # action would terminate the process immediately.
-        signal.signal(signal.SIGTERM, lambda signum, frame: sys.exit(0))
+        # Import only after plugins may have instrumented LangChain / OTEL.
+        from neuro_san.service.main_loop.server_main_loop import ServerMainLoop
+
+        signal.signal(signal.SIGTERM, lambda _signum, _frame: sys.exit(0))
 
         try:
             ServerMainLoop().main_loop()

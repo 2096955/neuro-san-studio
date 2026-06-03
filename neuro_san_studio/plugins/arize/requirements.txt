@@ -1,0 +1,5 @@
+# Arize AX tracing (fork production path). Install with:
+#   pip install -r neuro_san_studio/plugins/arize/requirements.txt
+# Or use the umbrella file: requirements-observability.txt
+arize-otel>=0.12,<1
+openinference-instrumentation-langchain==0.1.66

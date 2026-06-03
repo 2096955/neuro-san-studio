@@ -92,7 +92,25 @@ Domain coded tools (`aeen/`, `agent_network_designer/`, etc.) remain under root 
 
 | Phase | Scope |
 |-------|--------|
-| 3 | Phoenix/Langfuse plugins — reconcile with Arize |
+| ~~3~~ | ~~Phoenix/Langfuse plugins — reconcile with Arize~~ → **done** (Phase 3) |
+| 4 | Registry/manifest regrouping — preserve fork tags + AEEN |
+| 5 | Upstream `brave_search` diff vs fork implementation |
+
+## Phase 3 (`sync/upstream-phase3-observability`)
+
+Reconciled upstream observability plugins with fork Arize production tracing:
+
+1. **`ArizePlugin`** + shared `init_arize_tracing()` — used by plugin path and `deploy/otel_bootstrap.py`
+2. **`config/plugins.hocon`** — fork defaults (Arize / Phoenix / Langfuse / LogBridge env toggles)
+3. **`neuro_san_server_wrapper`** — lazy-imports neuro-san **after** plugin instrumentation
+4. **`docs/OBSERVABILITY.md`** — one primary tracer rule + entry-point matrix
+
+Cloud Run and legacy `run.py` keep `otel_bootstrap.py` (pre-import instrumentation). `ns run` uses plugins.
+
+## Recommended merge phases (after Phase 3)
+
+| Phase | Scope |
+|-------|--------|
 | 4 | Registry/manifest regrouping — preserve fork tags + AEEN |
 | 5 | Upstream `brave_search` diff vs fork implementation |
 

@@ -73,11 +73,18 @@ Tracing is a **no-op** until both `ARIZE_SPACE_ID` and `ARIZE_API_KEY` are set.
 ## Intended bootstrap flow
 
 ```text
-server start
-  → deploy/otel_bootstrap.py (when present)
-      → arize.otel.register(space_id, api_key)
-      → LangChainInstrumentor().instrument()
+server start (cloud / run.py)
+  → deploy/otel_bootstrap.py
+      → neuro_san_studio.plugins.arize.tracing.init_arize_tracing()
   → neuro-san main loop serves requests
+
+server start (ns run)
+  → neuro_san_studio.runner.neuro_san_server_wrapper
+      → plugins from config/plugins.hocon (Arize / Phoenix / Langfuse)
+  → neuro-san main loop serves requests
+```
+
+See [docs/OBSERVABILITY.md](../OBSERVABILITY.md) for Phoenix/Langfuse vs Arize selection.
   → spans appear in Arize AX UI
 
 offline eval (CI or pre-promote)

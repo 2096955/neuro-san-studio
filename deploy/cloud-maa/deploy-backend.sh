@@ -98,6 +98,7 @@ t = t.replace("/usr/local/lib/python3.13/site-packages", "/usr/local/lib/python3
 m = 'COPY ./coded_tool[s] ${APP_SOURCE}/coded_tools'
 extra = ''
 if 'COPY ./neuro_san_studio' not in t: extra += '\nCOPY ./neuro_san_studio ${APP_SOURCE}/neuro_san_studio'
+if 'COPY ./config' not in t: extra += '\nCOPY ./config ${APP_SOURCE}/config'
 if 'llm_info_extra' not in t: extra += '\nCOPY ./deploy/cloud-maa/llm_info_extra.hocon ${APP_SOURCE}/llm_info_extra.hocon'
 # Ship the tracing bootstrap (the patched entrypoint launches the server through it).
 if 'otel_bootstrap' not in t: extra += '\nCOPY ./deploy/otel_bootstrap.py ${APP_SOURCE}/deploy/otel_bootstrap.py'

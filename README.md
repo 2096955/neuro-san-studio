@@ -98,7 +98,7 @@ pip install -r requirements.txt
 PYTHONPATH="$(pwd)" \
 AGENT_MANIFEST_FILE="$(pwd)/registries/manifest.hocon" \
 AGENT_TOOL_PATH="coded_tools" \
-AGENT_TOOLBOX_INFO_FILE="$(pwd)/toolbox/toolbox_info.hocon" \
+AGENT_TOOLBOX_INFO_FILE="$(pwd)/neuro_san_studio/toolbox/toolbox_info.hocon" \
 AGENT_HTTP_PORT=8080 AGENT_ALLOW_CORS_HEADERS=1 \
 python3 -m neuro_san.service.main_loop.server_main_loop
 

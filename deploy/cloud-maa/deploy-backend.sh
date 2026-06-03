@@ -78,7 +78,7 @@ python3 "$STUDIO/deploy/cloud-maa/swap_llm_for_deploy.py" "$BT/registries"
 # override (loads it through neuro-san's own restorer) — not just that the interpolation text exists,
 # else the env var could silently no-op.
 if [ -n "${WEB_SEARCH_ENV}" ]; then
-  WEB_SEARCH_TOOLBOX=tavily_search AGENT_TOOLBOX_INFO_FILE="$STUDIO/toolbox/toolbox_info.hocon" BT="$BT" \
+  WEB_SEARCH_TOOLBOX=tavily_search AGENT_TOOLBOX_INFO_FILE="$STUDIO/neuro_san_studio/toolbox/toolbox_info.hocon" BT="$BT" \
   python3 -c 'import os,sys
 from neuro_san.internals.graph.persistence.agent_network_restorer import AgentNetworkRestorer as R
 cfg=R().restore(file_reference=os.environ["BT"]+"/registries/web_search.hocon").get_config()
@@ -87,7 +87,7 @@ sys.exit(0 if tb=="tavily_search" else "web_search did not resolve to tavily_sea
     || { echo "deploy gate failed: WEB_SEARCH_TOOLBOX override not honored by web_search.hocon"; exit 1; }
 fi
 
-echo "[3/5] lean requirements + cloud Dockerfile (py3.11 + gcc + toolbox)"
+echo "[3/5] lean requirements + cloud Dockerfile (py3.11 + gcc + neuro_san_studio package)"
 cp "$STUDIO/deploy/cloud-maa/requirements-cloud.txt" "$BT/requirements.txt"
 cp "$BT/deploy/Dockerfile" "$BT/Dockerfile"
 python3 - "$BT/Dockerfile" <<'PY'
@@ -97,7 +97,7 @@ t = t.replace("python:3.13-slim", "python:3.11-slim")
 t = t.replace("/usr/local/lib/python3.13/site-packages", "/usr/local/lib/python3.11/site-packages")
 m = 'COPY ./coded_tool[s] ${APP_SOURCE}/coded_tools'
 extra = ''
-if 'COPY ./toolbox' not in t: extra += '\nCOPY ./toolbox ${APP_SOURCE}/toolbox'
+if 'COPY ./neuro_san_studio' not in t: extra += '\nCOPY ./neuro_san_studio ${APP_SOURCE}/neuro_san_studio'
 if 'llm_info_extra' not in t: extra += '\nCOPY ./deploy/cloud-maa/llm_info_extra.hocon ${APP_SOURCE}/llm_info_extra.hocon'
 # Ship the tracing bootstrap (the patched entrypoint launches the server through it).
 if 'otel_bootstrap' not in t: extra += '\nCOPY ./deploy/otel_bootstrap.py ${APP_SOURCE}/deploy/otel_bootstrap.py'
@@ -115,7 +115,7 @@ echo "[5/5] deploy public Cloud Run (Gemini + CORS + dotted AGENT_TOOL_PATH)"
 gcloud run deploy "$SERVICE" --image "$IMAGE" --region "$REGION" --allow-unauthenticated \
   --port 8080 --memory 4Gi --cpu 2 --timeout 600 --max-instances 5 \
   --min-instances 1 --cpu-boost \
-  --set-env-vars "^@^AGENT_ALLOW_CORS_HEADERS=1@AGENT_MANIFEST_FILE=${APP}/registries/manifest.hocon@AGENT_TOOL_PATH=coded_tools@AGENT_TOOLBOX_INFO_FILE=${APP}/toolbox/toolbox_info.hocon@AGENT_LLM_INFO_FILE=${APP}/llm_info_extra.hocon@GOOGLE_API_KEY=${GEMINI_API_KEY}${TAVILY_ENV}${WEB_SEARCH_ENV}${BRAVE_ENV}${ARIZE_ENV}"
+  --set-env-vars "^@^AGENT_ALLOW_CORS_HEADERS=1@AGENT_MANIFEST_FILE=${APP}/registries/manifest.hocon@AGENT_TOOL_PATH=coded_tools@AGENT_TOOLBOX_INFO_FILE=${APP}/neuro_san_studio/toolbox/toolbox_info.hocon@AGENT_LLM_INFO_FILE=${APP}/llm_info_extra.hocon@GOOGLE_API_KEY=${GEMINI_API_KEY}${TAVILY_ENV}${WEB_SEARCH_ENV}${BRAVE_ENV}${ARIZE_ENV}"
 
 gcloud run services describe "$SERVICE" --region "$REGION" --format='value(status.url)'
 rm -rf "$BT"

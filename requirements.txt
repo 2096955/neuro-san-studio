@@ -33,4 +33,9 @@ pyhocon>=0.3.60
 # which neuro-san's OllamaLlmPolicy passes through; older versions silently ignore it and
 # qwen3.6/Qwen-thinking models will burn extra tokens generating reasoning per turn.
 # Smoke-tested combo: neuro-san 0.6.57 + langchain-ollama 0.3.x (local MAA).
+# For rich logging (ns CLI)
+rich>=14.2.0
+typer>=0.12.0,<1.0
+timedinput>=0.1.1
+
 langchain-ollama>=0.3.4,<0.4.0

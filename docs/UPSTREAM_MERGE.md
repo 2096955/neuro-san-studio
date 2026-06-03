@@ -73,14 +73,25 @@ Cherry-picked without full merge:
 
 1. **Bump** `neuro-san==0.6.57`, `nsflow==0.6.15`
 2. **Import** upstream `web_fetch`, `read_file`, `sly_data_lock` + tests
-3. **Register** tools in `toolbox/toolbox_info.hocon`
+3. **Register** tools in `neuro_san_studio/toolbox/toolbox_info.hocon` (Phase 2 path; was `toolbox/` pre-Phase 2)
 4. **Deps** `leaf-common`, `beautifulsoup4`
 
-## Recommended merge phases (after Phase 1)
+## Phase 2 (`sync/upstream-phase2-package`)
+
+Imported upstream installable package without full merge:
+
+1. **`neuro_san_studio/`** — `ns` / `neuro-san-studio` CLI, runner, plugins loader, bundled toolbox + MCP config
+2. **Toolbox tools** — live in `neuro_san_studio/coded_tools/`; fork `tavily_search` stays at `coded_tools/tavily_search.py`
+3. **`pyproject.toml`** — editable install + entry points (`ns`, `neuro-san-studio`)
+4. **Paths** — `AGENT_TOOLBOX_INFO_FILE` → `neuro_san_studio/toolbox/toolbox_info.hocon`
+5. **Legacy** — root `run.py` retained (Replit/grpc/cloud-maa customizations); prefer `ns run` for upstream parity
+
+Domain coded tools (`aeen/`, `agent_network_designer/`, etc.) remain under root `coded_tools/` with `AGENT_TOOL_PATH=coded_tools`.
+
+## Recommended merge phases (after Phase 2)
 
 | Phase | Scope |
 |-------|--------|
-| 2 | `ns` CLI + `neuro_san_studio/` package layout (migrate `coded_tools/`) |
 | 3 | Phoenix/Langfuse plugins — reconcile with Arize |
 | 4 | Registry/manifest regrouping — preserve fork tags + AEEN |
 | 5 | Upstream `brave_search` diff vs fork implementation |

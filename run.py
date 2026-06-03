@@ -37,7 +37,7 @@ class NeuroSanRunner:
 
         # Load environment variables from .env file
         self.load_env_variables()
-        
+
         # Ensure AWS Bedrock environment variables are set for bearer token authentication
         if os.getenv("AWS_BEDROCK_API_KEY"):
             os.environ["AWS_BEARER_TOKEN_BEDROCK"] = os.getenv("AWS_BEDROCK_API_KEY")
@@ -46,15 +46,15 @@ class NeuroSanRunner:
         # Default Configuration - Separate external (frontend) from internal (binding) config
         replit_domain = os.getenv("REPLIT_DEV_DOMAIN", "localhost")
         is_replit = replit_domain != "localhost"
-        
+
         # External config (what NSFlow advertises to frontend)
         external_host = replit_domain if is_replit else "localhost"
         external_grpc_port = 3000 if is_replit else 30011
-        
+
         # Internal binding config (what server actually binds to)
         self.bind_host = "0.0.0.0"
         self.bind_grpc_port = 30011  # Always bind to internal port
-        
+
         self.args: Dict[str, Any] = {
             "server_host": os.getenv("NEURO_SAN_SERVER_HOST", external_host),
             "server_grpc_port": int(os.getenv("NEURO_SAN_SERVER_GRPC_PORT", str(external_grpc_port))),
@@ -68,15 +68,23 @@ class NeuroSanRunner:
             "vite_api_protocol": os.getenv("VITE_API_PROTOCOL", ""),
             "vite_ws_protocol": os.getenv("VITE_WS_PROTOCOL", ""),
             "neuro_san_web_client_port": int(os.getenv("NEURO_SAN_WEB_CLIENT_PORT", "5003")),
+            "studio_api_port": int(os.getenv("NEURO_SAN_STUDIO_API_PORT", "8000")),
             "thinking_file": os.getenv("THINKING_FILE", self.thinking_file),
             "thinking_dir": os.getenv("THINKING_DIR", self.thinking_dir),
             # Ensure all paths are resolved relative to `self.root_dir`
             "agent_manifest_file": os.getenv(
-                "AGENT_MANIFEST_FILE", os.path.join(self.root_dir, "registries", "manifest.hocon")
+                "AGENT_MANIFEST_FILE",
+                os.path.join(self.root_dir, "registries", "manifest.hocon"),
             ),
             "agent_tool_path": os.getenv("AGENT_TOOL_PATH", os.path.join(self.root_dir, "coded_tools")),
             "agent_toolbox_info_file": os.getenv(
-                "AGENT_TOOLBOX_INFO_FILE", os.path.join(self.root_dir, "toolbox", "toolbox_info.hocon")
+                "AGENT_TOOLBOX_INFO_FILE",
+                os.path.join(
+                    self.root_dir,
+                    "neuro_san_studio",
+                    "toolbox",
+                    "toolbox_info.hocon",
+                ),
             ),
             "logs_dir": self.logs_dir,
         }
@@ -92,6 +100,7 @@ class NeuroSanRunner:
         self.server_process = None
         self.flask_webclient_process = None
         self.nsflow_process = None
+        self.studio_api_process = None
 
     def load_env_variables(self):
         """Load .env file from project root and set variables."""
@@ -110,7 +119,10 @@ class NeuroSanRunner:
         )
 
         parser.add_argument(
-            "--server-host", type=str, default=self.args["server_host"], help="Host address for the Neuro SAN server"
+            "--server-host",
+            type=str,
+            default=self.args["server_host"],
+            help="Host address for the Neuro SAN server",
         )
         parser.add_argument(
             "--server-grpc-port",
@@ -137,17 +149,35 @@ class NeuroSanRunner:
             help="Port number for the web client",
         )
         parser.add_argument(
-            "--thinking-file", type=str, default=self.args["thinking_file"], help="Path to the agent thinking file"
-        )
-        parser.add_argument("--no-html", action="store_true", help="Don't generate html for network diagrams")
-        parser.add_argument(
-            "--client-only", action="store_true", help="Run only the nsflow client without NeuroSan server"
-        )
-        parser.add_argument(
-            "--server-only", action="store_true", help="Run only the NeuroSan server without the default nsflow client"
+            "--thinking-file",
+            type=str,
+            default=self.args["thinking_file"],
+            help="Path to the agent thinking file",
         )
         parser.add_argument(
-            "--use-flask-web-client", action="store_true", help="Use the flask based neuro-san-web-client"
+            "--no-html",
+            action="store_true",
+            help="Don't generate html for network diagrams",
+        )
+        parser.add_argument(
+            "--client-only",
+            action="store_true",
+            help="Run only the nsflow client without NeuroSan server",
+        )
+        parser.add_argument(
+            "--server-only",
+            action="store_true",
+            help="Run only the NeuroSan server without the default nsflow client",
+        )
+        parser.add_argument(
+            "--use-flask-web-client",
+            action="store_true",
+            help="Use the flask based neuro-san-web-client",
+        )
+        parser.add_argument(
+            "--no-studio-api",
+            action="store_true",
+            help="Do not start the Studio API (app.py) on port 8000 used by the Vite frontend",
         )
 
         args, _ = parser.parse_known_args()
@@ -210,16 +240,16 @@ class NeuroSanRunner:
             # Set internal config for NSFlow backend (server-to-server connections)
             os.environ["INTERNAL_NS_SERVER_HOST"] = "127.0.0.1"
             os.environ["INTERNAL_NS_SERVER_PORT"] = "30011"
-            
+
             # Set external config for NSFlow API (what browser connects to)
             os.environ["EXTERNAL_NS_SERVER_HOST"] = self.args["server_host"]
             os.environ["EXTERNAL_NS_SERVER_PORT"] = str(self.args["server_grpc_port"])
-            
+
             # Legacy environment variables for compatibility
             os.environ["NEURO_SAN_SERVER_HOST"] = self.args["server_host"]
             os.environ["NEURO_SAN_SERVER_GRPC_PORT"] = str(self.args["server_grpc_port"])
             os.environ["NEURO_SAN_SERVER_HTTP_PORT"] = str(self.args["server_http_port"])
-            
+
             # Quick fix: Force NSFlow to return external config in get_ns_config
             if os.getenv("REPLIT_DEV_DOMAIN"):
                 # Override all port variables to external port for Replit
@@ -240,7 +270,13 @@ class NeuroSanRunner:
             if os.path.basename(file) != "manifest.hocon":
                 print(f"Generating .html file for: {file}")
                 result = subprocess.run(
-                    [sys.executable, "-m", "neuro_san_web_client.agents_diagram_builder", "--input_file", file],
+                    [
+                        sys.executable,
+                        "-m",
+                        "neuro_san_web_client.agents_diagram_builder",
+                        "--input_file",
+                        file,
+                    ],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     universal_newlines=True,
@@ -296,8 +332,9 @@ class NeuroSanRunner:
         command = [
             sys.executable,
             "-u",
-            "-m",
-            "neuro_san.service.main_loop.server_main_loop",
+            # Launch via the Arize tracing bootstrap (no-op unless ARIZE_SPACE_ID+ARIZE_API_KEY are set);
+            # it instruments LangChain then execs neuro_san.service.main_loop.server_main_loop.
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "deploy", "otel_bootstrap.py"),
             "--port",
             str(self.bind_grpc_port),  # Use internal binding port
             "--http_port",
@@ -321,7 +358,8 @@ class NeuroSanRunner:
             "0.0.0.0",
             "--port",
             str(self.args["nsflow_port"]),
-            "--workers", "2",
+            "--workers",
+            "2",
         ]
 
         self.nsflow_process = self.start_process(command, "nsflow", "logs/nsflow.log")
@@ -346,6 +384,42 @@ class NeuroSanRunner:
         ]
         self.flask_webclient_process = self.start_process(command, "FlaskWebClient", "logs/webclient.log")
         print("Flask web client started on port: ", self.args["web_client_port"])
+
+    def start_studio_api(self):
+        """Start the Studio API (app.py) used by the Vite frontend (/api/networks, /api/topology, /api/chat)."""
+        print("Starting Studio API (Vite frontend backend)...")
+        port = self.args["studio_api_port"]
+        env = os.environ.copy()
+        env["PORT"] = str(port)
+        command = [sys.executable, "-u", "-m", "app"]
+        creation_flags = subprocess.CREATE_NEW_PROCESS_GROUP if self.is_windows else 0
+        log_file = os.path.join(self.logs_dir, "studio_api.log")
+        with open(log_file, "w", encoding="utf-8") as log:
+            log.write("Starting StudioAPI...\n")
+        self.studio_api_process = subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            bufsize=1,
+            universal_newlines=True,
+            start_new_session=not self.is_windows,
+            creationflags=creation_flags,
+            env=env,
+            cwd=self.root_dir,
+        )
+        print(f"Started StudioAPI with PID {self.studio_api_process.pid}")
+        stdout_thread = threading.Thread(
+            target=self.stream_output,
+            args=(self.studio_api_process.stdout, log_file, "StudioAPI"),
+        )
+        stderr_thread = threading.Thread(
+            target=self.stream_output,
+            args=(self.studio_api_process.stderr, log_file, "StudioAPI"),
+        )
+        stdout_thread.start()
+        stderr_thread.start()
+        print(f"Studio API started on port {port} (Vite frontend: set VITE_API_BASE_URL=http://localhost:{port})")
 
     # pylint: disable=unused-argument
     def signal_handler(self, signum, frame):
@@ -372,6 +446,13 @@ class NeuroSanRunner:
                 self.nsflow_process.terminate()
             else:
                 os.killpg(os.getpgid(self.nsflow_process.pid), signal.SIGKILL)
+
+        if self.studio_api_process:
+            print(f"Stopping Studio API (PID {self.studio_api_process.pid})...")
+            if self.is_windows:
+                self.studio_api_process.terminate()
+            else:
+                os.killpg(os.getpgid(self.studio_api_process.pid), signal.SIGKILL)
 
         sys.exit(0)
 
@@ -409,6 +490,10 @@ class NeuroSanRunner:
                     f"Flask web client port {self.args['neuro_san_web_client_port']} is already in use."
                 )
 
+        if not self.args.get("no_studio_api", False) and not self.args["client_only"]:
+            if self.is_port_open("localhost", self.args["studio_api_port"]):
+                port_conflicts.append(f"Studio API port {self.args['studio_api_port']} is already in use.")
+
         return port_conflicts
 
     def conditional_start_servers(self):
@@ -437,7 +522,7 @@ class NeuroSanRunner:
 
         # Set environment variables right before starting services
         self.set_environment_variables()
-        
+
         # Start services only if ports are free
         if not server_only:
             if use_flask:
@@ -453,6 +538,9 @@ class NeuroSanRunner:
             self.start_neuro_san()
             time.sleep(3)
             print("Neuro-San server is now running.")
+            if not self.args.get("no_studio_api", False):
+                self.start_studio_api()
+                print("Studio API (Vite frontend backend) is now running.")
 
     def run(self):
         """Run the Neuro SAN server and a client."""
@@ -477,6 +565,8 @@ class NeuroSanRunner:
         # Wait on active processes to finish
         if self.nsflow_process:
             self.nsflow_process.wait()
+        if self.studio_api_process:
+            self.studio_api_process.wait()
         if self.server_process:
             self.server_process.wait()
         if self.flask_webclient_process:

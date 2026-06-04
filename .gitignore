@@ -180,3 +180,34 @@ cython_debug/
 # Google credentials
 credentials.json
 token.json
+
+# Replit-era persisted agent state
+.local/
+
+# AEEN data placeholders (CMS Part D / SynPUF / Synthea / CCW CSVs are
+# downloaded at deploy time, not committed). Keep the dirs but ignore
+# their contents.
+data/aeen/cms_part_d/*
+!data/aeen/cms_part_d/.gitkeep
+data/aeen/processed/*
+!data/aeen/processed/.gitkeep
+data/aeen/synpuf/*
+!data/aeen/synpuf/.gitkeep
+data/aeen/synthea_omop/*
+!data/aeen/synthea_omop/.gitkeep
+data/aeen/ccw/*
+!data/aeen/ccw/.gitkeep
+
+# Bundled Vite/React frontend artifacts (committed source lives under
+# frontend/; node_modules/dist/playwright artifacts are regenerated)
+frontend/node_modules/
+frontend/dist/
+frontend/playwright-report/
+frontend/test-results/
+
+# Python virtualenvs commonly created locally
+.venv/
+venv/
+
+# Cloud Build / gcloud upload artifacts
+.gcloudignore.local

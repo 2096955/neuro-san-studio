@@ -2,7 +2,8 @@ import os
 
 from neuro_san.client.agent_session_factory import AgentSessionFactory
 from neuro_san.client.streaming_input_processor import StreamingInputProcessor
-from pyhocon import ConfigFactory
+
+from neuro_san_studio.utils.manifest_loader import load_public_networks
 
 AGENT_NETWORK_NAME = "cruse_agent"
 
@@ -83,20 +84,18 @@ def tear_down_cruse_assistant(cruse_session):
 
 def get_available_systems():
     """
-    Parses the HOCON manifest file specified by the AGENT_MANIFEST_FILE environment variable
-    and returns a list of enabled system keys.
+    Returns the public agent network names from the manifest, excluding cruse_agent itself.
 
-    Systems explicitly listed in the `excluded` set will be omitted, even if enabled.
+    Uses the shared `load_public_networks` helper (RegistryManifestRestorer-backed)
+    so this stays consistent with the loader the neuro-san server uses. The legacy
+    HOCON parser path is gone — its include-resolution diverged from neuro-san's
+    after Phase 4 introduced grouped sub-manifests, returning an incomplete list.
 
     Returns:
-        List[str]: A list of enabled HOCON filenames (without surrounding quotes)
-                   that are not in the excluded set.
+        List[str]: Sorted public network names (subdir-prefixed where applicable,
+                   e.g. ``basic/music_nerd``) with ``cruse_agent`` excluded.
     """
-    excluded = {"cruse_agent.hocon"}  # Add more filenames as needed
-    config = ConfigFactory.parse_file(os.environ["AGENT_MANIFEST_FILE"])
-    return [
-        key.strip('"').strip() for key, enabled in config.items() if enabled and key.strip('"').strip() not in excluded
-    ]
+    return load_public_networks(excluded={"cruse_agent"})
 
 
 def parse_response_blocks(response: str):

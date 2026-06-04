@@ -165,6 +165,11 @@ class BraveSearch(CodedTool):
             "X-Subscription-Token": self.brave_api_key,
         }
         results: Dict[str, Any] = {}
+        # Initialize so the exception handlers can read response.* even if requests.get
+        # raised before the assignment (e.g. Timeout). Upstream omits this and references
+        # `response.status_code` from the Timeout handler — that path UnboundLocalErrors.
+        # Tracked in docs/UPSTREAM_MERGE.md "Fork divergence" table.
+        response = None
         try:
             # Attaches URL query parameters to the request.
             # Example:
@@ -180,9 +185,12 @@ class BraveSearch(CodedTool):
             response.raise_for_status()
             results = response.json()
         except HTTPError as http_err:
-            logging.error("HTTP error occurred: %s - Status code: %s", http_err, response.status_code)
+            status = getattr(response, "status_code", None)
+            logging.error("HTTP error occurred: %s - Status code: %s", http_err, status)
         except Timeout as time_out_err:
-            logging.error("Timeout error occurred: %s - Status code: %s", time_out_err, response.status_code)
+            # Timeout means the request never returned — `response` may still be None.
+            status = getattr(getattr(time_out_err, "response", None), "status_code", None)
+            logging.error("Timeout error occurred: %s - Status code: %s", time_out_err, status)
         except JSONDecodeError as json_err:
             logging.error("JSON decode error: %s", json_err)
         except RequestException as req_err:

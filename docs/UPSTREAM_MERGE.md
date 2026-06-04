@@ -164,6 +164,25 @@ Reconciled `brave_search` between fork and upstream.
 AEEN clinical search is unaffected — it calls the `brave_search` toolbox tool
 directly through the toolbox layer, not via this registry.
 
+## Fork divergence table
+
+Files where the fork intentionally diverges from upstream. The next sync MUST
+re-apply (or formally drop) each row; do not silently let an upstream change
+revert these.
+
+| File | Upstream behavior | Fork override | Reason |
+|------|------------------|---------------|--------|
+| `neuro_san_studio/coded_tools/brave_search.py` | `Timeout` handler references `response.status_code`, raising `UnboundLocalError` because `response` is unassigned when `requests.get(..., timeout=...)` times out. | Initialize `response = None` before `try`; read `status_code` defensively via `getattr(getattr(time_out_err, "response", None), "status_code", None)`. Same pattern applied to the `HTTPError` handler. | Crash on every Brave timeout in production. Track upstream PR (TBD) and drop the patch once merged. |
+| `apps/cruse/cruse_assistant.py` | Used `pyhocon.ConfigFactory.parse_file(AGENT_MANIFEST_FILE)` to enumerate enabled networks (legacy upstream pattern when manifests were flat). | Uses `neuro_san_studio.utils.manifest_loader.load_public_networks` (RegistryManifestRestorer-backed). | After Phase 4 the root manifest uses grouped `include` directives whose relative-path semantics pyhocon resolves wrong (`registries/registries/...`). Upstream may keep pyhocon since their flat layout still works there; ours needs the neuro-san loader. |
+| `registries/manifest.hocon` | Upstream lays out a flat manifest at root with all `*.hocon` keys at the top level and category tags omitted. | Fork uses 5 grouped sub-manifest `include`s (basic / tools / industry / experimental / generated) plus the designer family + AEEN at root. Each registry carries `metadata.tags = ["<Category>"]` injected by `scripts/tag_registries.py`. | Sidebar categorization for the MAA UI; smaller diff surface for future syncs since sub-manifest groups match upstream's directory groups. |
+| `neuro_san_studio/coded_tools/` (fork-only) | N/A — not in upstream. | `tavily_search.py`, `aeen/*` (AEEN PoC), Cloud Run-only adapters. | Fork-specific tooling (Tavily as Cloud Run search provider; AEEN clinical-evidence agents). |
+| `deploy/cloud-maa/` | N/A. | Cloud Run MAA wiring (Gemini, Tavily/Brave, Arize). | Fork's deploy target. |
+| `evals/`, `requirements-observability.txt`, `deploy/otel_bootstrap.py` | N/A. | Fork-only Arize tracing + LLM-as-judge eval harness. | Production observability the fork relies on; observability deps deliberately excluded from `requirements.cloudrun.txt` to keep image small. |
+| Local Ollama fallbacks in registries | Upstream registries `include "config/llm_config.hocon"` (Gemini-only). | Fork registries embed inline `llm_config` with `qwen3.6:35b-a3b` → `qwen3:27b` Ollama fallbacks alongside cloud configs. | Local-native development without API keys; Phase 4 only adopted upstream's NEW registries (disabled by default) to avoid clobbering these fallbacks. |
+
+When a row's upstream PR lands, drop the row and remove the fork patch in the
+same commit.
+
 ## Recommended merge phases (after Phase 5)
 
 All registry-side work is reconciled. Remaining upstream-merge debt is
@@ -179,6 +198,13 @@ without clobbering Ollama fallbacks. |
 features in deploys that need them. |
 | Cherry-pick `max_iterations` → `max_steps` rename | neuro-san 0.6.x API rename;
 fork registries still use the legacy key in places. |
+| File upstream PR for `brave_search.py` Timeout handler | Send the `getattr` /
+defensive-init fix upstream so the fork patch can be dropped. Tracking row
+in the divergence table above. |
+| Migrate trunk `app.py` + Cloud Run `app.py` to `manifest_loader` helper |
+The shared helper is in place (`neuro_san_studio/utils/manifest_loader.py`)
+and `apps/cruse/cruse_assistant.py` is migrated. Trunk and Cloud Run
+entrypoints to follow once the Cloud Run manifest is restructured. |
 
 ## Re-run dry-run
 

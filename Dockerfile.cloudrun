@@ -37,10 +37,27 @@ COPY toolbox/ ./toolbox/
 # coded_tools.*, already copied; other tools here are framework-package classes
 # and remain inert unless their network is enabled.)
 COPY neuro_san_studio/toolbox/toolbox_info.hocon ./toolbox/toolbox_info.hocon
+# Ship the shared manifest_loader helper so app.py's list_networks() can
+# import `neuro_san_studio.utils.manifest_loader.load_public_networks` —
+# the single RegistryManifestRestorer wrapper used across entrypoints.
+COPY neuro_san_studio/__init__.py ./neuro_san_studio/__init__.py
+COPY neuro_san_studio/utils/ ./neuro_san_studio/utils/
 # api_adapter provides the Next.js-compatible /api/v1/* blueprint that app.py
 # registers when present. Without it the studio loses those endpoints, so it
 # must ship in the image (the prior buildpack build included the whole tree).
 COPY api_adapter/ ./api_adapter/
+
+# Build-time manifest smoke test: refuse to ship an image whose manifest
+# resolves to fewer public networks than expected. This catches the class of
+# bug Phase 4 introduced — flat-path entries silently failing under the new
+# grouped-include layout — at build time instead of post-deploy. Threshold
+# starts at 20 (current count is 36); raise as the cloud surface grows.
+RUN AGENT_MANIFEST_FILE=registries/manifest.hocon python -c "\
+from neuro_san.internals.graph.persistence.registry_manifest_restorer import RegistryManifestRestorer; \
+r = RegistryManifestRestorer(manifest_files='registries/manifest.hocon').restore(); \
+n = len(r.get('public', {})); \
+print(f'manifest smoke: {n} public networks'); \
+assert n >= 20, f'manifest resolved only {n} public networks (threshold 20) — refusing to build'"
 
 # Create logs directory
 RUN mkdir -p logs

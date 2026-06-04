@@ -72,16 +72,19 @@ rsync -a --exclude '.git' --exclude 'node_modules' --exclude '__pycache__' \
 
 echo "[2/5] swap registries ollama -> gemini, then validate"
 python3 "$STUDIO/deploy/cloud-maa/swap_llm_for_deploy.py" "$BT/registries"
-! grep -rnE '"ollama"|qwen3\.6' "$BT/registries"/*.hocon || { echo "ollama still present"; exit 1; }
+# `-r` recurses on its own; the previous shell glob `*.hocon` only matched root-level files,
+# so post-Phase-4 subdir registries (basic/ tools/ industry/ experimental/) escaped the gate.
+# Pass the directory and let grep walk it.
+! grep -rnE '"ollama"|qwen3\.6' "$BT/registries" || { echo "ollama still present"; exit 1; }
 # Web search provider is env-driven (WEB_SEARCH_TOOLBOX, no rewrite). If we intend to select Tavily,
 # FUNCTIONALLY assert the swapped web_search.hocon actually RESOLVES to tavily_search under the env
 # override (loads it through neuro-san's own restorer) — not just that the interpolation text exists,
-# else the env var could silently no-op.
+# else the env var could silently no-op. Path is registries/tools/web_search.hocon after Phase 4.
 if [ -n "${WEB_SEARCH_ENV}" ]; then
   WEB_SEARCH_TOOLBOX=tavily_search AGENT_TOOLBOX_INFO_FILE="$STUDIO/neuro_san_studio/toolbox/toolbox_info.hocon" BT="$BT" \
   python3 -c 'import os,sys
 from neuro_san.internals.graph.persistence.agent_network_restorer import AgentNetworkRestorer as R
-cfg=R().restore(file_reference=os.environ["BT"]+"/registries/web_search.hocon").get_config()
+cfg=R().restore(file_reference=os.environ["BT"]+"/registries/tools/web_search.hocon").get_config()
 tb=next((t.get("toolbox") for t in cfg.get("tools",[]) if t.get("name")=="website_search"),None)
 sys.exit(0 if tb=="tavily_search" else "web_search did not resolve to tavily_search; got "+repr(tb))' \
     || { echo "deploy gate failed: WEB_SEARCH_TOOLBOX override not honored by web_search.hocon"; exit 1; }

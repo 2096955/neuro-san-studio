@@ -1645,38 +1645,22 @@ Respond naturally as {agent_role} would in a real {industry_context} setting."""
         the designer's writable output/fallback dirs, so a network generated
         at runtime shows up alongside the built-in ones.
 
-        Uses neuro-san's RegistryManifestRestorer (the same loader the server
-        uses) rather than parsing the HOCON manually. This matters because
-        the fork's root manifest now uses ``include`` directives to pull in
-        sub-manifests (registries/{basic,tools,industry,experimental,generated}/
-        manifest.hocon) — pyhocon's relative-include base differs from
-        neuro-san's, so a manual parse silently returns 0 entries.
+        Delegates to ``neuro_san_studio.utils.manifest_loader.load_public_networks``
+        (the shared helper wrapping ``RegistryManifestRestorer``). pyhocon's
+        relative-include resolution diverges from neuro-san's after Phase 4
+        introduced grouped sub-manifests, so any manual HOCON parse silently
+        returns an incomplete list — the helper avoids that.
 
         Only the ``public`` state is returned; designer-internal protected
         networks (agent_network_editor / instructions_editor / query_generator)
         are intentionally hidden from the studio dropdown."""
-        try:
-            from neuro_san.internals.graph.persistence.registry_manifest_restorer import RegistryManifestRestorer
-        except Exception as exc:  # pragma: no cover - neuro-san is a hard dep
-            logger.error("RegistryManifestRestorer unavailable for /api/networks: %s", exc)
-            return []
+        from neuro_san_studio.utils.manifest_loader import load_public_networks
 
-        manifest_files = os.environ.get("AGENT_MANIFEST_FILE", "")
-        if not manifest_files:
-            logger.warning("AGENT_MANIFEST_FILE not set; /api/networks empty")
-            return []
-
-        try:
-            result = RegistryManifestRestorer(manifest_files=manifest_files).restore()
-        except Exception as exc:
-            logger.error("Failed to restore manifest %s: %s", manifest_files, exc)
-            return []
-
-        public = sorted(result.get("public", {}).keys())
+        public = load_public_networks()
         logger.info(
             "Found %d public networks across manifest(s): %s",
             len(public),
-            manifest_files,
+            os.environ.get("AGENT_MANIFEST_FILE", "<unset>"),
         )
         return public
 

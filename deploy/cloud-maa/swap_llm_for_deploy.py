@@ -9,14 +9,16 @@ local-native registries:
 
     python3 deploy/cloud-maa/swap_llm_for_deploy.py <path-to-registries-dir>
 
-Validation gate (must print nothing):
-    grep -rnE '"ollama"|qwen3\\.6' <registries>/*.hocon
+Validation gate (must print nothing — recursive, since Phase 4 moved registries
+into subdirs basic/ tools/ industry/ experimental/ generated/):
+
+    grep -rnE '"ollama"|qwen3\\.6' <registries>
 """
 
 import os
+import pathlib
 import re
 import sys
-import pathlib
 
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 
@@ -24,7 +26,11 @@ GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 def swap(registries_dir: str) -> int:
     d = pathlib.Path(registries_dir)
     n = 0
-    for f in d.glob("*.hocon"):
+    # rglob (recursive) so the swap reaches every registry under
+    # basic/ tools/ industry/ experimental/ generated/. Pre-Phase-4 the
+    # tree was flat and a non-recursive glob worked; that silently skipped
+    # subdirs after the regrouping, leaving Ollama configs in the cloud image.
+    for f in d.rglob("*.hocon"):
         t = original = f.read_text()
         # provider class ollama -> gemini (quoted JSON + HOCON `=` styles)
         t = re.sub(r'("class"\s*[:=]\s*)"ollama"', r'\1"gemini"', t)

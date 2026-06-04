@@ -16,10 +16,12 @@ from typing import List
 from typing import Optional
 
 from flask import Flask
+from flask import abort
 from flask import jsonify
 from flask import make_response
 from flask import render_template
 from flask import request
+from flask import send_from_directory
 from flask_cors import CORS
 from flask_socketio import SocketIO
 from flask_socketio import emit
@@ -60,6 +62,18 @@ try:
 except ImportError as e:
     API_ADAPTER_AVAILABLE = False
     print(f"Warning: API adapter not available: {e}")
+
+# Synthetic governance/RAI endpoints for the React Flow UI. Provides
+# shape-correct responses (registry stats, AI systems list, HOCON content)
+# so the React UI mounts and navigates. Anything tagged synthetic=true is
+# stub data — there's no real governance/risk/audit backend in this repo.
+try:
+    from api_adapter.synthetic_endpoints import synthetic_api
+
+    SYNTHETIC_API_AVAILABLE = True
+except ImportError as e:
+    SYNTHETIC_API_AVAILABLE = False
+    print(f"Warning: synthetic governance/RAI endpoints not available: {e}")
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "neuro-san-network-visualization-dev-only")
@@ -1674,6 +1688,11 @@ if API_ADAPTER_AVAILABLE:
     init_adapter(neuro_interface)
     logger.info("✅ Next.js UI API adapter registered at /api/v1/*")
 
+# Register synthetic governance/RAI blueprint for the React Flow UI
+if SYNTHETIC_API_AVAILABLE:
+    app.register_blueprint(synthetic_api)
+    logger.info("✅ Synthetic governance/RAI endpoints registered (synthetic=true)")
+
 
 @app.route("/")
 def index():
@@ -1688,6 +1707,37 @@ def index():
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Content-Security-Policy"] = "frame-ancestors 'none'"
     return response
+
+
+# ---------------------------------------------------------------------------
+# React Flow UI (Vite-built static bundle, served from /v2)
+# ---------------------------------------------------------------------------
+#
+# Lives at /v2 alongside the legacy `/` Flask template so the two UIs can be
+# A/B compared in the same image. The Dockerfile builds frontend/dist via a
+# node:20-alpine stage and copies it to /app/frontend_dist. React Router uses
+# HTML5 history mode, so /v2 and any /v2/<sub-path> both serve index.html;
+# /v2/assets/<file> serves the hashed bundle assets directly.
+
+_REACT_DIST = os.path.join(os.path.dirname(os.path.abspath(__file__)), "frontend_dist")
+
+
+@app.route("/v2", strict_slashes=False)
+@app.route("/v2/<path:subpath>")
+def react_app(subpath: str = ""):
+    """Serve the React UI: assets directly, every other route -> index.html."""
+    if not os.path.isdir(_REACT_DIST):
+        abort(404)
+    if subpath and os.path.isfile(os.path.join(_REACT_DIST, subpath)):
+        return send_from_directory(_REACT_DIST, subpath)
+    return send_from_directory(_REACT_DIST, "index.html")
+
+
+@app.route("/assets/<path:filename>")
+def react_assets(filename: str):
+    """Vite emits `<script src="/assets/...">` from index.html. Serve those
+    relative to the React dist so `/v2` works without rewriting bundle paths."""
+    return send_from_directory(os.path.join(_REACT_DIST, "assets"), filename)
 
 
 @app.route("/api/topology")

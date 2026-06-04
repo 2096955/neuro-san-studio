@@ -1,25 +1,39 @@
 # Cloud Run Dockerfile for Neuro SAN Studio Flask App
-# Use Python 3.11 slim image for smaller size
-FROM python:3.11-slim
+#
+# Multi-stage build:
+#   Stage 1 (builder)  — node 20-alpine; npm ci + vite build of frontend/
+#   Stage 2 (runtime)  — python 3.11-slim Flask app; copies dist/ from builder
 
-# Set working directory
+# ---- Stage 1: build the React Flow frontend ----
+FROM node:20-alpine AS frontend-builder
+WORKDIR /build
+# Copy lockfile first so npm ci is cacheable across source-only edits
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci --no-audit --no-fund
+# Now copy the rest of the source and build
+COPY frontend/ ./
+# Empty VITE_API_BASE_URL -> production bundle uses same-origin relative URLs
+# (the Flask app at runtime serves both the static React assets and the API on
+# the same port, so the bundle should call /api/* not http://localhost:8000/api/*).
+ENV VITE_API_BASE_URL=""
+RUN npm run build && ls -la dist
+
+# ---- Stage 2: Python runtime ----
+FROM python:3.11-slim
 WORKDIR /app
 
-# Install system dependencies
+# System deps for Python wheels
 RUN apt-get update && apt-get install -y \
     gcc \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first for better caching.
 # Cloud Run image uses a trimmed requirements file (no nsflow / web-client, which
 # pin neuro_san<0.6 and are not imported by the Flask app).
 COPY requirements.cloudrun.txt .
-
-# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.cloudrun.txt
 
-# Copy application code
+# Application code
 COPY app.py .
 COPY templates/ ./templates/
 COPY static/ ./static/
@@ -33,9 +47,7 @@ COPY toolbox/ ./toolbox/
 # Repo-root toolbox/ holds only a README; the actual toolbox tool definitions
 # (tavily_search -> coded_tools.tavily_search, etc.) live in the neuro_san_studio
 # package. Bring the info file so AGENT_TOOLBOX_INFO_FILE (set below) resolves and
-# web_search can load its Tavily-backed tool. (Tavily's class is repo-root
-# coded_tools.*, already copied; other tools here are framework-package classes
-# and remain inert unless their network is enabled.)
+# web_search can load its Tavily-backed tool.
 COPY neuro_san_studio/toolbox/toolbox_info.hocon ./toolbox/toolbox_info.hocon
 # Ship the shared manifest_loader helper so app.py's list_networks() can
 # import `neuro_san_studio.utils.manifest_loader.load_public_networks` —
@@ -43,9 +55,14 @@ COPY neuro_san_studio/toolbox/toolbox_info.hocon ./toolbox/toolbox_info.hocon
 COPY neuro_san_studio/__init__.py ./neuro_san_studio/__init__.py
 COPY neuro_san_studio/utils/ ./neuro_san_studio/utils/
 # api_adapter provides the Next.js-compatible /api/v1/* blueprint that app.py
-# registers when present. Without it the studio loses those endpoints, so it
-# must ship in the image (the prior buildpack build included the whole tree).
+# registers when present. Also contains synthetic_endpoints.py — the
+# stubbed governance/RAI endpoints (synthetic=true) the React Flow UI consumes.
 COPY api_adapter/ ./api_adapter/
+
+# Pull in the production-built React Flow frontend from the builder stage.
+# Mounted under frontend_dist/ so app.py can route /v2 -> index.html and
+# /v2/assets/* -> static files alongside the legacy /static/ tree.
+COPY --from=frontend-builder /build/dist ./frontend_dist
 
 # Build-time manifest smoke test: refuse to ship an image whose manifest
 # resolves to fewer public networks than expected. This catches the class of
@@ -59,13 +76,9 @@ n = len(r.get('public', {})); \
 print(f'manifest smoke: {n} public networks'); \
 assert n >= 20, f'manifest resolved only {n} public networks (threshold 20) — refusing to build'"
 
-# Create logs directory
 RUN mkdir -p logs
 
-# Expose the port Cloud Run expects (8080)
 EXPOSE 8080
-
-# Set environment variables
 ENV PORT=8080
 # Toolbox tool definitions (tavily/brave/rag/etc.) live in the repo's
 # toolbox/toolbox_info.hocon. The studio uses DirectAgentSession directly (not
@@ -74,7 +87,4 @@ ENV PORT=8080
 # tavily_search) is undefined at call time. Path matches WORKDIR /app.
 ENV AGENT_TOOLBOX_INFO_FILE=/app/toolbox/toolbox_info.hocon
 
-# Run Flask app on port 8080 (Cloud Run requirement)
-# Use Python directly since SocketIO needs special handling
-CMD python app.py
-
+CMD ["python", "app.py"]

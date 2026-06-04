@@ -1,51 +1,47 @@
-
-# Copyright (C) 2023-2025 Cognizant Digital Business, Evolutionary AI.
+# Copyright (C) 2023-2026 Cognizant Digital Business, Evolutionary AI.
 # All Rights Reserved.
 # Issued under the Academic Public License.
 #
-# You can be released from the terms, and requirements of the Academic Public
-# License by purchasing a commercial license.
-# Purchase of a commercial license is mandatory for any use of the
-# neuro-san SDK Software in commercial settings.
-#
 # END COPYRIGHT
-
+#
 # To use this agent network with Brave Search, obtain an API key from: https://brave.com/search/api/
 # Once you have the API key, set it using the BRAVE_API_KEY environment variable.
 # You can optionally set a custom search URL via the BRAVE_URL environment variable.
-# If BRAVE_URL is not set, the default is: https://api.search.brave.com/res/v1/web/search?q=
-# You can also configure the request timeout (in seconds) using BRAVE_TIMEOUT; the default is 30 seconds.
+# If BRAVE_URL is not set, the default is: https://api.search.brave.com/res/v1/web/search
+# You can also configure the request timeout (in seconds) via BRAVE_TIMEOUT (default: 30s).
+#
+# This network is the literal-Brave demo. The fork's unified web-search entry point is
+# registries/tools/web_search.hocon, which selects the toolbox provider at LOAD TIME via
+# WEB_SEARCH_TOOLBOX (brave_search | tavily_search). AEEN clinical search uses the
+# brave_search toolbox directly. Most callers should reference /tools/web_search instead.
 
 {
+    # >>> category-tag (managed by tag_registries.py) <<<
+    metadata { tags = ["Tools"] }
+
     "llm_config": {
-        "model_name": "gpt-4o",
+        # Local-native default (Ollama). Override per deploy via env / llm_info_extra.hocon.
+        "fallbacks": [
+            {"class": "ollama", "model_name": "qwen3.6:35b-a3b", "reasoning": false},
+            {"class": "ollama", "model_name": "qwen3.6:27b"}
+        ]
     },
+
     "tools": [
-        # This first agent definition is regarded as the "Front Man", which
-        # does all the talking to the outside world/client.
-        #
-        # Some disqualifications from being a front man:
-        #   1) Cannot use a CodedTool "class" definition
-        #   2) Cannot use a Tool "toolbox" definition
-        #
-        # Besides the first agent being the front man, these tool definitions
-        # do not have to be in any particular order. How they are linked and
-        # call each other is defined within their own specs.
-        # This could be a graph, potentially even with cycles.
+        # Front man: front-man cannot use CodedTool class definitions or toolbox tools directly,
+        # so it delegates to the brave_search toolbox tool defined below.
         {
             "name": "searcher",
 
             "function": {
-                "description": "Assist caller with searching a url.",
+                "description": "Assist caller with searching the web via Brave Search.",
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "user_inquiry": {
                             "type": "string",
-                            "description": """
-                            An inquiry from a user.
-                            """
-                        },
+                            "description": "An inquiry from a user."
+                        }
                     },
                     "required": ["user_inquiry"]
                 }
@@ -64,28 +60,23 @@ Use your tool to respond to the inquiry.
 
                 # --- Request Configuration ---
 
-                # Brave Search API endpoint
-                # This will override the env var BRAVE_URL
-                # (defaults to https://api.search.brave.com/res/v1/web/search)
+                # Brave Search API endpoint (overrides env var BRAVE_URL)
                 "brave_url": "https://api.search.brave.com/res/v1/web/search",
 
-                # Request timeout in seconds
-                # This will override the env var BRAVE_TIMEOUT
-                # (default: 30.0)
+                # Request timeout in seconds (overrides env var BRAVE_TIMEOUT)
                 "brave_timeout": 10.0,
 
                 # --- Search Query Parameters ---
 
-                # Search query string
+                # Search query string — if specified, overrides the LLM's query
                 # "q": "<what_to_search_for>"
-                # If specified, this will override the query provided by the LLM
 
                 # Maximum number of search results to return
                 "count": 3,
 
-                # For more query parameter options, see:
+                # For more query parameters, see:
                 # https://api-dashboard.search.brave.com/app/documentation/web-search/query
             }
-        },
+        }
     ]
 }

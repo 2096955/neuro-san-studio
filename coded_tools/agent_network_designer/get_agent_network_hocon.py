@@ -7,7 +7,10 @@
 # Purchase of a commercial license is mandatory for any use of the
 # neuro-san-studio SDK Software in commercial settings.
 #
+import asyncio
 import logging
+import os
+import re
 from typing import Any
 from typing import Dict
 from typing import Union
@@ -15,8 +18,35 @@ from typing import Union
 import aiofiles  # Import for asynchronous file operations
 from neuro_san.interfaces.coded_tool import CodedTool
 
-WRITE_TO_FILE = True
-OUTPUT_PATH = "registries/"
+# Serializes manifest read-modify-write within this process so concurrent tool
+# invocations don't clobber each other's entries. (Cross-instance writes to a
+# shared GCS volume are still racy — see modify_registry docstring.)
+_MANIFEST_LOCK = asyncio.Lock()
+
+# Agent network names become filenames and HOCON manifest keys, and the value is
+# LLM/user-controlled. Restrict to a safe charset to prevent path traversal
+# (e.g. "../../etc") and HOCON injection via quotes/newlines.
+_VALID_NAME_RE = re.compile(r"^[A-Za-z0-9_-]+$")
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    """Parse a boolean environment variable with a default."""
+    val = os.getenv(name)
+    if val is None:
+        return default
+    return val.strip().lower() in ("1", "true", "yes", "on")
+
+
+# These are environment-driven so the same container image works both locally
+# (writable repo) and on read-only serverless filesystems such as Cloud Run,
+# where only /tmp and explicitly mounted volumes are writable.
+#
+#   AGENT_NETWORK_WRITE_TO_FILE  "false" -> return-only mode, never touch disk
+#   AGENT_NETWORK_OUTPUT_PATH    where to persist (e.g. a GCS volume mount path)
+#   AGENT_NETWORK_FALLBACK_PATH  used automatically when OUTPUT_PATH is read-only
+WRITE_TO_FILE = _env_bool("AGENT_NETWORK_WRITE_TO_FILE", True)
+OUTPUT_PATH = os.getenv("AGENT_NETWORK_OUTPUT_PATH", "registries/")
+FALLBACK_OUTPUT_PATH = os.getenv("AGENT_NETWORK_FALLBACK_PATH", "/tmp/registries/")
 AGENT_NETWORK_NAME = "AutomaticallyDesignedAgentNetwork"
 HOCON_HEADER_START = (
     "{\n"
@@ -92,36 +122,120 @@ LEAF_NODE_AGENT_TEMPLATE = (
 )
 
 
-async def modify_registry(the_agent_network_hocon_str, the_agent_network_name):
+async def _update_manifest(output_dir, the_agent_network_name):
     """
-    Writes the agent network to a file and updates the manifest.hocon file.
-    :param the_agent_network_hocon_str: The agent network hocon string
-    :param the_agent_network_name: The file name, without the .hocon extension
-    :return:
+    Adds the agent network to manifest.hocon inside output_dir.
+
+    When writing to a fresh writable location (e.g. the /tmp fallback or a
+    mounted volume) the manifest is seeded EMPTY. The writable manifest only
+    lists networks generated here; bundled networks come from the read-only base
+    registries/manifest.hocon, which readers merge separately (see app.py
+    list_networks() and the space-separated AGENT_MANIFEST_FILE). Seeding empty
+    avoids the writable manifest referencing base files that don't live next to
+    it (which the neuro-san restorer resolves relative to the manifest's dir).
     """
-    # Write the agent network file
-    file_path = OUTPUT_PATH + the_agent_network_name + ".hocon"
+    logger = logging.getLogger("modify_registry")
+    manifest_path = os.path.join(output_dir, "manifest.hocon")
+    manifest_entry = f'    "{the_agent_network_name}.hocon": true,'
+
+    # Serialize the read-modify-write so concurrent invocations in this process
+    # don't overwrite each other's entries.
+    async with _MANIFEST_LOCK:
+        # Seed an empty manifest if it's missing at the target location.
+        if not os.path.isfile(manifest_path):
+            async with aiofiles.open(manifest_path, "w") as file:
+                await file.write("{\n}\n")
+
+        # Read the current manifest content
+        async with aiofiles.open(manifest_path, "r") as file:
+            manifest_content = await file.read()
+        # Check if the entry already exists to avoid duplicates
+        if f'"{the_agent_network_name}.hocon"' in manifest_content:
+            return
+        # Find the position to insert the new entry (before the closing brace)
+        insert_position = manifest_content.rfind("}")
+        if insert_position == -1:
+            # Malformed manifest: don't silently report success. The network
+            # file was still written; only its registration failed.
+            logger.warning(
+                "manifest at %s has no closing brace; network %s written but NOT registered",
+                manifest_path,
+                the_agent_network_name,
+            )
+            return
+        # Insert the new entry
+        updated_content = (
+            manifest_content[:insert_position]
+            + "\n"
+            + manifest_entry
+            + manifest_content[insert_position:]
+        )
+        # Write atomically (temp file + rename) so readers never see a truncated
+        # manifest mid-write.
+        tmp_path = manifest_path + ".tmp"
+        async with aiofiles.open(tmp_path, "w") as file:
+            await file.write(updated_content)
+        os.replace(tmp_path, manifest_path)
+
+
+async def _write_network(
+    output_dir, the_agent_network_hocon_str, the_agent_network_name
+):
+    """
+    Writes the agent network hocon into output_dir and updates its manifest.
+    Returns the path to the written file. Raises OSError if output_dir is not
+    writable (caller is responsible for falling back).
+    """
+    os.makedirs(output_dir, exist_ok=True)
+    file_path = os.path.join(output_dir, the_agent_network_name + ".hocon")
     async with aiofiles.open(file_path, "w") as file:
         await file.write(the_agent_network_hocon_str)
-    # Update the manifest.hocon file
-    manifest_path = OUTPUT_PATH + "manifest.hocon"
-    manifest_entry = f'    "{the_agent_network_name}.hocon": true,'
-    # Read the current manifest content
-    async with aiofiles.open(manifest_path, "r") as file:
-        manifest_content = await file.read()
-    # Find the position to insert the new entry (before the closing brace)
-    insert_position = manifest_content.rfind("}")
-    if insert_position != -1:
-        # Check if the entry already exists to avoid duplicates
-        if f'"{the_agent_network_name}.hocon"' not in manifest_content:
-            # Insert the new entry
-            updated_content = (
-                manifest_content[:insert_position] + "\n" + manifest_entry + manifest_content[insert_position:]
-            )
+    await _update_manifest(output_dir, the_agent_network_name)
+    return file_path
 
-            # Write the updated content back to the manifest file
-            async with aiofiles.open(manifest_path, "w") as file:
-                await file.write(updated_content)
+
+async def modify_registry(the_agent_network_hocon_str, the_agent_network_name):
+    """
+    Persists the agent network to OUTPUT_PATH and updates manifest.hocon.
+
+    If OUTPUT_PATH is not writable (e.g. the read-only image filesystem on
+    Cloud Run), automatically falls back to FALLBACK_OUTPUT_PATH (/tmp by
+    default). Never raises: returns (written_path, error) so the caller can
+    still hand the HOCON back to the user even when persistence fails.
+
+    :param the_agent_network_hocon_str: The agent network hocon string
+    :param the_agent_network_name: The file name, without the .hocon extension
+    :return: A (written_path, error) tuple. written_path is None on failure.
+    """
+    logger = logging.getLogger("modify_registry")
+    try:
+        path = await _write_network(
+            OUTPUT_PATH, the_agent_network_hocon_str, the_agent_network_name
+        )
+        logger.info("Wrote agent network to %s", path)
+        return path, None
+    except Exception as primary_err:  # noqa: BLE001 - persistence must never crash the tool
+        logger.warning(
+            "Could not write agent network to %s (%s); falling back to %s",
+            OUTPUT_PATH,
+            primary_err,
+            FALLBACK_OUTPUT_PATH,
+        )
+    try:
+        path = await _write_network(
+            FALLBACK_OUTPUT_PATH, the_agent_network_hocon_str, the_agent_network_name
+        )
+        logger.warning(
+            "Wrote agent network to ephemeral fallback path %s (lost on restart)", path
+        )
+        return path, None
+    except Exception as fallback_err:  # noqa: BLE001 - return HOCON even if all writes fail
+        logger.error(
+            "Failed to persist agent network to fallback %s: %s",
+            FALLBACK_OUTPUT_PATH,
+            fallback_err,
+        )
+        return None, fallback_err
 
 
 class GetAgentNetworkHocon(CodedTool):
@@ -132,7 +246,9 @@ class GetAgentNetworkHocon(CodedTool):
     def __init__(self):
         self.agents = None
 
-    async def async_invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> Union[Dict[str, Any], str]:
+    async def async_invoke(
+        self, args: Dict[str, Any], sly_data: Dict[str, Any]
+    ) -> Union[Dict[str, Any], str]:
         """
         :param args: An argument dictionary whose keys are the parameters
                 to the coded tool and whose values are the values passed for them
@@ -166,18 +282,68 @@ class GetAgentNetworkHocon(CodedTool):
             return "Error: No network in sly data!"
 
         the_agent_network_name: str = args.get("agent_network_name", "")
-        # Add the agent network name into sly data.
-        sly_data["agent_name"] = the_agent_network_name
         if the_agent_network_name == "":
             return "Error: No agent_name provided."
+        # The name becomes a filename and a HOCON manifest key, and is
+        # LLM/user-controlled. Reject path separators, traversal, quotes and
+        # newlines to prevent writing outside the registry or injecting HOCON.
+        if not _VALID_NAME_RE.match(the_agent_network_name):
+            return (
+                "Error: Invalid agent_network_name "
+                f"'{the_agent_network_name}'. Use only letters, digits, '_' and '-'."
+            )
+        # A generated network with the same name as a bundled (built-in) one
+        # would shadow it once readers merge the writable registry with the base
+        # registry. The write only stays in the base registry when OUTPUT_PATH IS
+        # the base dir AND that dir is actually writable; otherwise it lands in a
+        # separate merged dir (an explicit OUTPUT_PATH, or the /tmp fallback when
+        # the base image is read-only on Cloud Run). Reject the collision unless
+        # the effective write target is the base dir itself (local-dev
+        # regeneration).
+        base_registry_dir = os.path.join(
+            os.path.dirname(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            ),
+            "registries",
+        )
+        base_abs = os.path.abspath(base_registry_dir)
+        effective_is_base = os.path.abspath(OUTPUT_PATH) == base_abs and os.access(
+            base_abs, os.W_OK
+        )
+        if (
+            os.path.isfile(os.path.join(base_abs, f"{the_agent_network_name}.hocon"))
+            and not effective_is_base
+        ):
+            return (
+                f"Error: '{the_agent_network_name}' conflicts with a built-in agent network. "
+                "Choose a different agent_network_name."
+            )
+        # Add the agent network name into sly data.
+        sly_data["agent_name"] = the_agent_network_name
 
         logger = logging.getLogger(self.__class__.__name__)
         logger.info(">>>>>>>>>>>>>>>>>>>GetAgentNetworkHocon>>>>>>>>>>>>>>>>>>")
         logger.info("Agent Network Name: %s", str(the_agent_network_name))
-        the_agent_network_hocon_str = self.get_agent_network_hocon(the_agent_network_name)
-        logger.info("The resulting agent network: \n %s", str(the_agent_network_hocon_str))
+        the_agent_network_hocon_str = self.get_agent_network_hocon(
+            the_agent_network_name
+        )
+        logger.info(
+            "The resulting agent network: \n %s", str(the_agent_network_hocon_str)
+        )
         if WRITE_TO_FILE:
-            await modify_registry(the_agent_network_hocon_str, the_agent_network_name)
+            written_path, write_err = await modify_registry(
+                the_agent_network_hocon_str, the_agent_network_name
+            )
+            if write_err is not None:
+                # Persistence failed everywhere (even /tmp). Don't fail the tool:
+                # the user still receives the generated HOCON below.
+                logger.warning(
+                    "Returning agent network HOCON without persisting it: %s", write_err
+                )
+        else:
+            logger.info(
+                "AGENT_NETWORK_WRITE_TO_FILE is disabled; returning HOCON only."
+            )
         logger.info(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")
         return the_agent_network_hocon_str
 
@@ -192,7 +358,9 @@ class GetAgentNetworkHocon(CodedTool):
         if not has_top_agent:
             self.agents[0]["top_agent"] = "true"
 
-        agent_network_hocon = HOCON_HEADER_START + agent_network_name + HOCON_HEADER_REMAINDER
+        agent_network_hocon = (
+            HOCON_HEADER_START + agent_network_name + HOCON_HEADER_REMAINDER
+        )
         for agent_name, agent in self.agents.items():
             tools = ""
             if agent["down_chains"]:

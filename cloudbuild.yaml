@@ -1,0 +1,54 @@
+# Cloud Build configuration for Cloud Run deployment
+# This file is optional - you can also deploy directly with gcloud run deploy --source .
+
+steps:
+  # Build the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/neuro-san-studio:latest', '-f', 'Dockerfile.cloudrun', '.']
+  
+  # Push the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/neuro-san-studio:latest']
+  
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'neuro-san-studio'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/neuro-san-studio:latest'
+      - '--platform'
+      - 'managed'
+      - '--region'
+      - 'us-central1'
+      - '--allow-unauthenticated'
+      - '--port'
+      - '8080'
+      - '--memory'
+      - '2Gi'
+      - '--cpu'
+      - '2'
+      - '--timeout'
+      - '300'
+      - '--max-instances'
+      - '10'
+      # Agent-network HOCON persistence. Default: writes fall back to /tmp
+      # (ephemeral). To persist, mount a GCS bucket and point the designer at it
+      # by uncommenting the volume flags below and setting AGENT_NETWORK_OUTPUT_PATH.
+      # --update-env-vars (not --set-env-vars) so redeploys don't wipe existing
+      # service env vars such as API keys.
+      - '--update-env-vars'
+      # To enable GCS persistence, set both vars in this one comma-delimited arg:
+      #   'AGENT_NETWORK_WRITE_TO_FILE=true,AGENT_NETWORK_OUTPUT_PATH=/registries/'
+      - 'AGENT_NETWORK_WRITE_TO_FILE=true'
+      # ...and uncomment the matching volume flags:
+      # - '--add-volume'
+      # - 'name=registries,type=cloud-storage,bucket=YOUR_BUCKET'
+      # - '--add-volume-mount'
+      # - 'volume=registries,mount-path=/registries'
+
+images:
+  - 'gcr.io/$PROJECT_ID/neuro-san-studio:latest'
+

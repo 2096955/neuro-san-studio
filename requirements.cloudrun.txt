@@ -1,0 +1,44 @@
+# Cloud Run image requirements for the Flask studio (app.py).
+#
+# Derived from requirements.txt MINUS two packages that the Flask app does not
+# import and that block a clean strict-resolver install:
+#   - neuro-san-web-client==0.1.12  -> pins neuro_san<0.6, conflicts with 0.6.23
+#   - nsflow==0.6.5                 -> local nsflow UI server, unused by app.py
+# Keep this in sync with requirements.txt for everything else, with two
+# deliberate deviations:
+#   - neuro-san is PINNED to 0.6.23 (the version validated for this fix). The
+#     repo's requirements.txt has moved to 0.6.57 ("new back end"); that upgrade
+#     is intentionally NOT bundled into this designer-fix / web-search cutover.
+#   - CLI-only deps (rich/typer/timedinput) are omitted: the image runs the Flask
+#     studio (app.py), not the neuro_san_studio CLI.
+neuro-san==0.6.23
+
+# Explicit core/runtime deps that prod's full-requirements image also has, so we
+# don't regress any served network relative to prod:
+leaf-common>=1.2.40        # neuro-san persistence/util (toolbox + manifest restore)
+beautifulsoup4>=4.12.0     # HTML parsing for RAG / web-fetch coded tools
+
+# For the airline_policy demo and agentic rag, to extract text from documents
+pypdf>=5.4.0
+pymupdf>=1.25.5
+
+# To use a .env file for environment variables
+python-dotenv==1.0.1
+
+# For asynchronous file operations
+aiofiles>=24.1.0
+
+# For MCP servers and clients
+langchain-mcp-adapters>=0.1.7
+# Vertex AI (Gemini on GCP)
+langchain-google-vertexai>=2.0.0
+flask>=3.0.0
+flask-cors>=6.0.0
+flask-socketio>=5.4.0
+python-socketio>=5.11.0
+grpcio
+aiohttp
+# tavily_search.py imports requests directly (web_search -> Tavily on cloud).
+requests>=2.32.0
+pyhocon>=0.3.60
+langchain-ollama>=0.3.4,<0.4.0

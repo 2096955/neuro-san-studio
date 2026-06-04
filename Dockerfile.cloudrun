@@ -1,0 +1,63 @@
+# Cloud Run Dockerfile for Neuro SAN Studio Flask App
+# Use Python 3.11 slim image for smaller size
+FROM python:3.11-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first for better caching.
+# Cloud Run image uses a trimmed requirements file (no nsflow / web-client, which
+# pin neuro_san<0.6 and are not imported by the Flask app).
+COPY requirements.cloudrun.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.cloudrun.txt
+
+# Copy application code
+COPY app.py .
+COPY templates/ ./templates/
+COPY static/ ./static/
+COPY registries/ ./registries/
+# Use the cloud-specific manifest (prod's served set minus ddgs_search, plus the
+# current web_search/Tavily design). Local dev keeps its own Ollama-only
+# manifest.hocon in the repo; only the image is overridden.
+RUN cp registries/manifest.cloudrun.hocon registries/manifest.hocon
+COPY coded_tools/ ./coded_tools/
+COPY toolbox/ ./toolbox/
+# Repo-root toolbox/ holds only a README; the actual toolbox tool definitions
+# (tavily_search -> coded_tools.tavily_search, etc.) live in the neuro_san_studio
+# package. Bring the info file so AGENT_TOOLBOX_INFO_FILE (set below) resolves and
+# web_search can load its Tavily-backed tool. (Tavily's class is repo-root
+# coded_tools.*, already copied; other tools here are framework-package classes
+# and remain inert unless their network is enabled.)
+COPY neuro_san_studio/toolbox/toolbox_info.hocon ./toolbox/toolbox_info.hocon
+# api_adapter provides the Next.js-compatible /api/v1/* blueprint that app.py
+# registers when present. Without it the studio loses those endpoints, so it
+# must ship in the image (the prior buildpack build included the whole tree).
+COPY api_adapter/ ./api_adapter/
+
+# Create logs directory
+RUN mkdir -p logs
+
+# Expose the port Cloud Run expects (8080)
+EXPOSE 8080
+
+# Set environment variables
+ENV PORT=8080
+# Toolbox tool definitions (tavily/brave/rag/etc.) live in the repo's
+# toolbox/toolbox_info.hocon. The studio uses DirectAgentSession directly (not
+# neuro-san's `ns run` launcher), so without this env var only the package-default
+# toolbox (requests/datetime) loads and any "toolbox" tool (e.g. web_search ->
+# tavily_search) is undefined at call time. Path matches WORKDIR /app.
+ENV AGENT_TOOLBOX_INFO_FILE=/app/toolbox/toolbox_info.hocon
+
+# Run Flask app on port 8080 (Cloud Run requirement)
+# Use Python directly since SocketIO needs special handling
+CMD python app.py
+

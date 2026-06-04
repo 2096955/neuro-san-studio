@@ -1,0 +1,19 @@
+# Speed up `gcloud builds submit` uploads: exclude paths the Dockerfile.cloudrun
+# build does not need. Keep: requirements.txt, app.py, templates/, static/,
+# registries/, coded_tools/, toolbox/, api_adapter/, Dockerfile.cloudrun.
+.git/
+**/__pycache__/
+*.pyc
+*.pyo
+**/node_modules/
+frontend/
+logs/
+attached_assets/
+docs/
+.ruff_cache/
+.genkit/
+.cursor/
+.claude/
+.playwright-mcp/
+.superpowers/
+*.png

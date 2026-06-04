@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RAI Dashboard – Wireframe</title>
+  <style>
+    :root {
+      --bg: #0f1216;
+      --panel: #151a21;
+      --panel-2: #0c1016;
+      --border: #212634;
+      --text: #e7ecf3;
+      --muted: #98a2b3;
+      --accent: #7aa2ff;
+      --good: #22c55e;
+      --warn: #f59e0b;
+      --bad: #ef4444;
+      --chip: #1b2330;
+      --radius: 14px;
+      --shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+    * { box-sizing: border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); font: 14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif; }
+    a { color: inherit; text-decoration:none; }
+    .app { display:grid; grid-template-columns: 280px 1fr; min-height:100vh; }
+
+    /* Sidebar */
+    .sidebar { background: linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%); border-right:1px solid var(--border); position:sticky; top:0; height:100vh; padding:18px; }
+    .brand { display:flex; align-items:center; gap:10px; margin:6px 6px 18px; }
+    .logo { width:28px; height:28px; border-radius:8px; background: radial-gradient(60% 60% at 50% 50%, var(--accent) 0%, #3b82f6 60%, transparent 61%), #0b1220; box-shadow: inset 0 0 0 1px #1e293b; }
+    .brand h1 { font-size:16px; letter-spacing:.4px; margin:0; }
+
+    .nav { display:flex; flex-direction:column; gap:6px; }
+    .nav-section { margin:10px 6px; }
+    .nav-title { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.12em; margin: 10px 8px; }
+    .item { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; border-radius:10px; color:#dbe6ff; cursor:pointer; border:1px solid transparent; }
+    .item:hover { background:#0e1624; border-color:#1f2a3d; }
+    .item.active { background:#0f1b2f; border-color:#29406a; }
+    .item .left { display:flex; align-items:center; gap:10px; }
+    .icon { width:18px; height:18px; border-radius:6px; background:#1a2434; display:grid; place-items:center; font-size:10px; opacity:.9; }
+    .chev { opacity:.7; font-size:11px; }
+
+    .submenu { display:none; margin:6px 0 8px 40px; border-left:1px dashed #2a354a; padding-left:10px; }
+    .submenu a { display:block; padding:6px 10px; color:#c9d7f2; border-radius:8px; }
+    .submenu a:hover { background:#0f1b2f; }
+    .submenu a.active { background:#112443; border:1px solid #29406a; }
+
+    /* Header */
+    header { position:sticky; top:0; z-index:10; background: linear-gradient(180deg, rgba(15,18,22,.9) 40%, rgba(15,18,22,.7)); border-bottom:1px solid var(--border); backdrop-filter: blur(8px); }
+    .bar { display:flex; align-items:center; justify-content:space-between; padding:14px 22px; }
+    .path { color:var(--muted); font-size:13px; }
+    .actions { display:flex; gap:10px; }
+    .btn { background:#122038; border:1px solid #243759; color:#dbe6ff; padding:8px 12px; border-radius:10px; cursor:pointer; }
+    .btn:hover { background:#132746; }
+
+    /* Main */
+    main { padding:22px; }
+    .grid { display:grid; gap:16px; }
+    .grid.cols-3 { grid-template-columns: repeat(3, minmax(0,1fr)); }
+    .grid.cols-2 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    .card { background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px; }
+    .card h3 { margin:0 0 8px; font-size:14px; color:#d9e4ff; }
+    .kpi { display:flex; align-items:center; gap:14px; }
+    .kpi .ring { width:64px; height:64px; border-radius:50%; background: conic-gradient(var(--good) 0 270deg, #1f2937 270deg 360deg); display:grid; place-items:center; font-weight:700; }
+    .kpi small { color:var(--muted); display:block; }
+    .chips { display:flex; gap:8px; flex-wrap:wrap; }
+    .chip { background:var(--chip); border:1px solid var(--border); color:#c9d7f2; padding:6px 10px; border-radius:999px; font-size:12px; }
+
+    /* Tables */
+    table { width:100%; border-collapse: collapse; }
+    th, td { border-bottom:1px solid var(--border); padding:10px 8px; text-align:left; font-size:13px; }
+    th { color:#c6d2e8; font-weight:600; }
+    tbody tr:hover { background:#101826; }
+
+    /* Section handling */
+    .section { display:none; }
+    .section.active { display:block; }
+
+    /* Toggles (visual only) */
+    .toggle { display:inline-flex; align-items:center; gap:8px; }
+    .switch { width:42px; height:24px; border-radius:20px; background:#1f2a3d; border:1px solid #2a354a; position:relative; }
+    .dot { position:absolute; top:2px; left:2px; width:20px; height:20px; border-radius:50%; background:#94a3b8; transition: all .2s ease; }
+    .on .switch { background:#173155; }
+    .on .dot { left:20px; background:#60a5fa; }
+
+    /* Footer */
+    footer { color:var(--muted); font-size:12px; padding:16px 22px; border-top:1px solid var(--border); }
+
+    @media (max-width: 1080px) {
+      .app { grid-template-columns: 84px 1fr; }
+      .brand h1, .nav-title, .submenu { display:none; }
+      .item { justify-content:center; }
+      .item .left span { display:none; }
+      .submenu { display:none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
+        <h1>RAI Dashboard</h1>
+      </div>
+
+      <nav class="nav" id="nav">
+        <div class="nav-section">
+          <div class="nav-title">Overview</div>
+          <div class="item" data-target="overview">
+            <div class="left"><div class="icon">🏠</div><span>Dashboard</span></div>
+          </div>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-title">Lifecycle</div>
+
+          <div class="item" data-toggle="submenu-onboard">
+            <div class="left"><div class="icon">🧭</div><span>Onboard</span></div>
+            <div class="chev">▸</div>
+          </div>
+          <div class="submenu" id="submenu-onboard">
+            <a href="#" data-target="onboard-connect">Connect</a>
+            <a href="#" data-target="onboard-register">Register</a>
+            <a href="#" data-target="onboard-policy">Policy Pack</a>
+          </div>
+
+          <div class="item" data-toggle="submenu-observe">
+            <div class="left"><div class="icon">👁️</div><span>Observe</span></div>
+            <div class="chev">▸</div>
+          </div>
+          <div class="submenu" id="submenu-observe">
+            <a href="#" data-target="observe-usage">Usage</a>
+            <a href="#" data-target="observe-mas">MAS Trace</a>
+            <a href="#" data-target="observe-risks">Risk Feed</a>
+          </div>
+
+          <div class="item" data-toggle="submenu-protect">
+            <div class="left"><div class="icon">🛡️</div><span>Protect (Guardrails)</span></div>
+            <div class="chev">▸</div>
+          </div>
+          <div class="submenu" id="submenu-protect">
+            <a href="#" data-target="protect-runtime">Runtime Policies</a>
+            <a href="#" data-target="protect-access">Access & Tools</a>
+            <a href="#" data-target="protect-circuit">Circuit Breakers</a>
+          </div>
+
+          <div class="item" data-toggle="submenu-test">
+            <div class="left"><div class="icon">🧪</div><span>Test (Red Team)</span></div>
+            <div class="chev">▸</div>
+          </div>
+          <div class="submenu" id="submenu-test">
+            <a href="#" data-target="test-packs">Test Packs</a>
+            <a href="#" data-target="test-runs">Runs & Regressions</a>
+            <a href="#" data-target="test-coverage">Coverage</a>
+          </div>
+
+          <div class="item" data-toggle="submenu-improve">
+            <div class="left"><div class="icon">📈</div><span>Improve</span></div>
+            <div class="chev">▸</div>
+          </div>
+          <div class="submenu" id="submenu-improve">
+            <a href="#" data-target="improve-evals">Evals & Win-rate</a>
+            <a href="#" data-target="improve-drift">Drift Watch</a>
+          </div>
+
+          <div class="item" data-toggle="submenu-comply">
+            <div class="left"><div class="icon">📜</div><span>Comply (Audit)</span></div>
+            <div class="chev">▸</div>
+          </div>
+          <div class="submenu" id="submenu-comply">
+            <a href="#" data-target="comply-audit">Audit Log</a>
+            <a href="#" data-target="comply-reports">Reports</a>
+            <a href="#" data-target="comply-retention">Retention</a>
+          </div>
+
+          <div class="item" data-toggle="submenu-settings">
+            <div class="left"><div class="icon">⚙️</div><span>Settings</span></div>
+            <div class="chev">▸</div>
+          </div>
+          <div class="submenu" id="submenu-settings">
+            <a href="#" data-target="settings-project">Project</a>
+            <a href="#" data-target="settings-roles">Roles & Access</a>
+            <a href="#" data-target="settings-integrations">Integrations</a>
+          </div>
+        </div>
+      </nav>
+    </aside>
+
+    <!-- Main -->
+    <div>
+      <header>
+        <div class="bar">
+          <div class="path" id="breadcrumb">Dashboard</div>
+          <div class="actions">
+            <button class="btn">Sandbox</button>
+            <button class="btn">Kill Switch</button>
+            <button class="btn">New Policy</button>
+          </div>
+        </div>
+      </header>
+
+      <main>
+        <!-- OVERVIEW -->
+        <section class="section active" id="overview">
+          <div class="grid cols-3">
+            <div class="card">
+              <h3>Trust Index</h3>
+              <div class="kpi">
+                <div class="ring">75</div>
+                <div>
+                  <b>Overall posture: Good</b>
+                  <small>Composite of safety (30), privacy (25), reliability (15), compliance (5)</small>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <h3>Live Incidents</h3>
+              <div class="chips">
+                <span class="chip">2 × Prompt Injection (blocked)</span>
+                <span class="chip">1 × Tool Misuse (flagged)</span>
+                <span class="chip">0 × PII Egress</span>
+              </div>
+            </div>
+            <div class="card">
+              <h3>Usage Snapshot</h3>
+              <div class="chips">
+                <span class="chip">Requests: 142k</span>
+                <span class="chip">p95: 1.2s</span>
+                <span class="chip">Cost: $1.8k</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid cols-2" style="margin-top:16px;">
+            <div class="card">
+              <h3>Agent Map</h3>
+              <p style="color:var(--muted)">Wireframe placeholder: nodes (Planner, Retriever, Executor) with edges to Tools (Search, DB, Payments) and Model endpoints.</p>
+            </div>
+            <div class="card">
+              <h3>Responsibility Matrix</h3>
+              <table>
+                <thead><tr><th>Layer</th><th>When</th><th>Who</th><th>Output</th></tr></thead>
+                <tbody>
+                  <tr><td>Red Teaming</td><td>CI/CD, pre/post deploy</td><td>DevSec/QA</td><td>Findings, coverage, regressions</td></tr>
+                  <tr><td>Guardrails</td><td>Runtime</td><td>Proxy/SDK</td><td>Blocks, throttles, circuit trips</td></tr>
+                  <tr><td>Observability</td><td>Continuous</td><td>Sidecar/SDK</td><td>Metrics, traces, MAS lineage</td></tr>
+                  <tr><td>Audit & Compliance</td><td>Periodic</td><td>GRC</td><td>Reports, evidence, logs</td></tr>
+                  <tr><td>Controls & Levers</td><td>On-demand</td><td>Ops/Risk</td><td>Overrides, sandboxing</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ONBOARD -->
+        <section class="section" id="onboard-connect">
+          <div class="grid cols-2">
+            <div class="card">
+              <h3>Connect a Source</h3>
+              <p>Pick one: Gateway (reverse proxy), Sidecar Agent, or SDK.</p>
+              <div class="chips">
+                <span class="chip">Gateway URL</span>
+                <span class="chip">Sidecar (K8s)</span>
+                <span class="chip">SDK (Python/Node/JVM)</span>
+              </div>
+            </div>
+            <div class="card">
+              <h3>Environment</h3>
+              <div class="toggle on"><div class="switch"><div class="dot"></div></div> <span>Sandbox</span></div>
+              <div style="height:8px"></div>
+              <div class="toggle"><div class="switch"><div class="dot"></div></div> <span>Production</span></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="onboard-register">
+          <div class="card">
+            <h3>Register Systems, Models, Agents, Tools</h3>
+            <table>
+              <thead><tr><th>Type</th><th>Name</th><th>Version</th><th>Endpoint / Scope</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr><td>System</td><td>Support Bot</td><td>1.4</td><td>api://support</td><td>Connected</td></tr>
+                <tr><td>Model</td><td>Hosted LLM</td><td>gpt-xyz</td><td>https://llm/xyz</td><td>Connected</td></tr>
+                <tr><td>Agent</td><td>Planner</td><td>2.1</td><td>plan-only</td><td>Active</td></tr>
+                <tr><td>Tool</td><td>Payments</td><td>1.0</td><td>charges.create</td><td>Restricted</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="section" id="onboard-policy">
+          <div class="grid cols-2">
+            <div class="card">
+              <h3>Attach Policy Pack</h3>
+              <p>Defaults for safety, privacy, reliability, sustainability. Apply to project or per-agent.</p>
+              <div class="chips">
+                <span class="chip">Default</span>
+                <span class="chip">Strict</span>
+                <span class="chip">Custom…</span>
+              </div>
+            </div>
+            <div class="card">
+              <h3>Key Thresholds</h3>
+              <p>Toxicity ≤ 0.25 • p95 latency ≤ 1.5s • Error rate ≤ 1% • Outbound PII: Block</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- OBSERVE -->
+        <section class="section" id="observe-usage">
+          <div class="grid cols-3">
+            <div class="card"><h3>Requests</h3><p>142,389 (24h)</p></div>
+            <div class="card"><h3>Latency p95</h3><p>1.2s</p></div>
+            <div class="card"><h3>Cost</h3><p>$1,842</p></div>
+          </div>
+        </section>
+
+        <section class="section" id="observe-mas">
+          <div class="grid cols-2">
+            <div class="card"><h3>MAS Trace Explorer</h3><p>Session → Agent (Planner → Executor) → Tool (DB, Search) → Model calls</p></div>
+            <div class="card"><h3>Top Tool Failures</h3>
+              <table>
+                <thead><tr><th>Tool</th><th>Failures</th><th>p95 Latency</th></tr></thead>
+                <tbody>
+                  <tr><td>db.query</td><td>37</td><td>780ms</td></tr>
+                  <tr><td>payments.charge</td><td>14</td><td>1.9s</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="observe-risks">
+          <div class="card">
+            <h3>Risk Feed</h3>
+            <table>
+              <thead><tr><th>Time</th><th>Category</th><th>Agent</th><th>Action</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr><td>10:02</td><td>Prompt Injection</td><td>Planner</td><td>Blocked</td><td style="color:var(--good)">Contained</td></tr>
+                <tr><td>10:15</td><td>Tool Misuse</td><td>Executor</td><td>Flagged</td><td style="color:var(--warn)">Needs review</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- PROTECT (GUARDRAILS) -->
+        <section class="section" id="protect-runtime">
+          <div class="grid cols-2">
+            <div class="card"><h3>Runtime Filters</h3>
+              <ul>
+                <li>PII detector → Redact</li>
+                <li>Toxicity classifier → Block if > 0.25</li>
+                <li>Prompt injection detector → Block</li>
+              </ul>
+            </div>
+            <div class="card"><h3>Moderation Actions</h3>
+              <div class="toggle on"><div class="switch"><div class="dot"></div></div> Output watermark verify</div><br/>
+              <div class="toggle on"><div class="switch"><div class="dot"></div></div> Safe response fallback</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="protect-access">
+          <div class="grid cols-2">
+            <div class="card"><h3>Roles & Rate Limits</h3>
+              <table>
+                <thead><tr><th>Role</th><th>QPM</th><th>Scope</th></tr></thead>
+                <tbody>
+                  <tr><td>researcher</td><td>60</td><td>tools: search, calculator</td></tr>
+                  <tr><td>production_service</td><td>600</td><td>tools: db, payments</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="card"><h3>Tool Gating</h3>
+              <ul>
+                <li>Allow: search, db</li>
+                <li>Deny: shell, net.raw</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="protect-circuit">
+          <div class="grid cols-2">
+            <div class="card"><h3>Circuit Breaker</h3><p>Open after 5% errors (60s window) → fallback model: gpt-baseline-safe</p></div>
+            <div class="card"><h3>Rate Limit</h3><p>Global: 2,000 RPM • Agent override: Planner 300 RPM</p></div>
+          </div>
+        </section>
+
+        <!-- TEST (RED TEAM) -->
+        <section class="section" id="test-packs">
+          <div class="card"><h3>Available Packs</h3>
+            <ul>
+              <li>Jailbreaks</li>
+              <li>Data Exfiltration</li>
+              <li>Policy Evasion</li>
+              <li>Bias Probes</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="section" id="test-runs">
+          <div class="grid cols-2">
+            <div class="card"><h3>Recent Runs</h3>
+              <table>
+                <thead><tr><th>Run</th><th>Status</th><th>Findings</th></tr></thead>
+                <tbody>
+                  <tr><td>#432 (nightly)</td><td>Pass</td><td>0 critical, 3 high</td></tr>
+                  <tr><td>#431</td><td>Pass</td><td>0 critical, 5 high</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="card"><h3>Regressions</h3><p>No new criticals • Highs ↓ 40% week-over-week</p></div>
+          </div>
+        </section>
+
+        <section class="section" id="test-coverage">
+          <div class="card"><h3>Coverage</h3><p>Content harms, privacy, security, fairness, reliability</p></div>
+        </section>
+
+        <!-- IMPROVE -->
+        <section class="section" id="improve-evals">
+          <div class="grid cols-3">
+            <div class="card"><h3>Win-rate</h3><p>71% (A/B vs baseline)</p></div>
+            <div class="card"><h3>Hallucination Rate</h3><p>1.8%</p></div>
+            <div class="card"><h3>Safety Pass Rate</h3><p>99.2%</p></div>
+          </div>
+        </section>
+
+        <section class="section" id="improve-drift">
+          <div class="card"><h3>Drift Watch</h3><p>Embedding drift: stable • Tool success rate: down 3% (DB)</p></div>
+        </section>
+
+        <!-- COMPLY (AUDIT) -->
+        <section class="section" id="comply-audit">
+          <div class="card"><h3>Immutable Audit Log</h3>
+            <table>
+              <thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Trace</th></tr></thead>
+              <tbody>
+                <tr><td>09:14</td><td>proxy</td><td>blocked: injection</td><td>t-29fa…</td></tr>
+                <tr><td>09:20</td><td>policy</td><td>retention set 30d</td><td>—</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="section" id="comply-reports">
+          <div class="grid cols-2">
+            <div class="card"><h3>Compliance Reports</h3><p>GDPR DPIA • EU AI Act • HIPAA</p></div>
+            <div class="card"><h3>Explainability Scorecard</h3><p>83% of decisions carry explanations</p></div>
+          </div>
+        </section>
+
+        <section class="section" id="comply-retention">
+          <div class="card"><h3>Data Retention</h3><p>Prod: 30 days • Sandbox: full capture</p></div>
+        </section>
+
+        <!-- SETTINGS -->
+        <section class="section" id="settings-project">
+          <div class="card"><h3>Project Settings</h3><p>Project: demo • Region: us-east • Keys: ****</p></div>
+        </section>
+        <section class="section" id="settings-roles">
+          <div class="card"><h3>Roles & Access</h3><p>RBAC: admin, operator, viewer</p></div>
+        </section>
+        <section class="section" id="settings-integrations">
+          <div class="card"><h3>Integrations</h3><p>Splunk, Datadog, PagerDuty, Slack</p></div>
+        </section>
+
+        <footer>
+          © YourCo RAI — Wireframe demo. All data is placeholder.
+        </footer>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    // Sidebar interactions: open/close submenus and switch sections
+    const byId = id => document.getElementById(id);
+    const setActive = (id) => {
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      const sec = byId(id);
+      if (sec) sec.classList.add('active');
+      document.querySelectorAll('.submenu a, .item[data-target]').forEach(a => a.classList.remove('active'));
+      document.querySelectorAll(`[data-target="${id}"]`).forEach(a => a.classList.add('active'));
+      byId('breadcrumb').textContent = sec ? sec.querySelector('h3')?.textContent || 'Dashboard' : 'Dashboard';
+    };
+
+    // Click handlers
+    document.querySelectorAll('.item').forEach(el => {
+      const toggle = el.getAttribute('data-toggle');
+      const target = el.getAttribute('data-target');
+      if (toggle) {
+        el.addEventListener('click', () => {
+          const sm = byId(toggle);
+          const open = sm.style.display === 'block';
+          document.querySelectorAll('.submenu').forEach(s => s.style.display = 'none');
+          document.querySelectorAll('.item').forEach(i => i.classList.remove('active'));
+          if (!open) { sm.style.display = 'block'; el.classList.add('active'); }
+        });
+      }
+      if (target) {
+        el.addEventListener('click', () => setActive(target));
+      }
+    });
+
+    document.querySelectorAll('.submenu a').forEach(a => {
+      a.addEventListener('click', (e) => { e.preventDefault(); setActive(a.getAttribute('data-target')); });
+    });
+  </script>
+</body>
+</html>

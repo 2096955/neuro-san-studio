@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Responsible AI Platform – UI Mock</title>
+  <style>
+    :root{
+      --bg:#0f172a;           /* slate-900 */
+      --panel:#0b1225;        /* deep bluish */
+      --card:#111827;         /* slate-800 */
+      --text:#e5e7eb;         /* gray-200 */
+      --muted:#94a3b8;        /* slate-400 */
+      --brand:#7c3aed;        /* violet-600 */
+      --brand-2:#22d3ee;      /* cyan-400 */
+      --ok:#10b981;           /* green */
+      --warn:#f59e0b;         /* amber */
+      --danger:#ef4444;       /* red */
+      --border:#1f2937;       /* slate-700 */
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family:Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, Apple Color Emoji, Segoe UI Emoji;
+      color:var(--text); background:linear-gradient(120deg,#0b1225,#0a1020 45%, #0f172a);
+      display:flex;
+    }
+    /* LEFT SIDEBAR */
+    .sidebar{
+      width:280px; background:linear-gradient(180deg,#0f1530,#0b1225); border-right:1px solid var(--border);
+      padding:18px 14px; position:sticky; left:0; top:0; height:100vh; overflow:auto;
+    }
+    .logo{display:flex;align-items:center;gap:10px;margin:4px 8px 16px 8px}
+    .logo-badge{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--brand),#3b82f6);display:grid;place-items:center;font-weight:700}
+    .brand{font-weight:700;letter-spacing:.2px}
+
+    .nav-section{margin-top:14px}
+    .nav-title{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;padding:8px 12px}
+    .nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;margin:4px 8px;border-radius:10px;color:var(--text);text-decoration:none;border:1px solid transparent}
+    .nav-item:hover{background:#111633;border-color:#1b2540}
+    .nav-item.active{background:linear-gradient(135deg,#131a3d,#111633);border-color:#263159}
+    .nav-item .dot{width:8px;height:8px;border-radius:50%;background:var(--brand-2)}
+
+    details.menu{margin:4px 8px;border-radius:12px;overflow:hidden}
+    details.menu>summary{list-style:none;cursor:pointer;padding:10px 12px;border-radius:10px;border:1px solid transparent;display:flex;align-items:center;gap:10px}
+    details.menu[open]>summary, details.menu>summary:hover{background:#111633;border-color:#1b2540}
+    details.menu .submenu a{display:block;padding:9px 12px 9px 34px;color:var(--muted);text-decoration:none;border-left:2px solid transparent}
+    details.menu .submenu a:hover{color:var(--text);background:#0e1430;border-left-color:var(--brand)}
+
+    /* MAIN LAYOUT */
+    .main{flex:1; display:flex; flex-direction:column; min-width:0}
+    .topbar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:14px; padding:12px 16px; background:rgba(3,6,20,.75); backdrop-filter:saturate(140%) blur(8px); border-bottom:1px solid var(--border)}
+    .search{flex:1; display:flex; align-items:center; gap:10px; background:#0b1120; border:1px solid var(--border); border-radius:12px; padding:8px 12px}
+    .search input{flex:1; background:transparent; border:none; outline:none; color:var(--text)}
+    .pill{padding:6px 10px;border-radius:999px;border:1px solid #283352;color:var(--muted);cursor:pointer}
+    .pill.active{background:linear-gradient(135deg,#1a2250,#121a3e);color:#c7d2fe;border-color:#3b4a7a}
+
+    .content-row{display:grid; grid-template-columns:1fr 340px; gap:18px; padding:18px}
+    .card{background:linear-gradient(180deg,#0b1124,#0b0f22); border:1px solid var(--border); border-radius:16px; padding:16px}
+    .card h3{margin:0 0 10px 0; font-size:14px; color:#cbd5e1; letter-spacing:.02em}
+
+    /* KPI GRID */
+    .kpi-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+    .kpi{padding:14px;border-radius:14px;border:1px solid var(--border);background:linear-gradient(135deg,#0e1430,#0a1024);min-height:84px}
+    .kpi .label{font-size:12px;color:var(--muted)}
+    .kpi .value{margin-top:8px;font-size:22px;font-weight:700}
+    .ok{color:var(--ok)} .warn{color:var(--warn)} .danger{color:var(--danger)}
+
+    /* LIFECYCLE */
+    .lifecycle{display:flex; gap:8px; flex-wrap:wrap}
+    .step{padding:8px 12px;border:1px dashed #334155;border-radius:999px;color:#cbd5e1;display:flex;align-items:center;gap:8px}
+    .step.active{border-style:solid;background:#0f1a42}
+    .step .dot{width:8px;height:8px;border-radius:50%;background:#64748b}
+    .step.active .dot{background:var(--brand-2)}
+
+    /* CHART PLACEHOLDERS */
+    .placeholder{height:180px;border-radius:12px;border:1px dashed #2a355a;display:grid;place-items:center;color:#93c5fd;background:repeating-linear-gradient(45deg,#0b1335,#0b1335 10px,#0d143a 10px,#0d143a 20px)}
+
+    /* RIGHT CONTEXTUAL EDUCATION PANEL */
+    .edu{position:sticky; top:64px; height:calc(100vh - 76px); overflow:auto}
+    .edu .title{display:flex;align-items:center;justify-content:space-between}
+    .edu small{color:var(--muted)}
+    .badge{font-size:11px;padding:4px 8px;border-radius:999px;border:1px solid #334155;color:#cbd5e1}
+    .edu .term{margin:8px 0 12px 0; display:flex; gap:8px}
+    select, button, .btn{background:#0b1120;border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:10px}
+    .btn{cursor:pointer}
+
+    /* INFO CHIPS visible in Learning Mode */
+    .info-chip{display:none;position:absolute;top:10px;right:10px;background:#14204d;border:1px solid #2a3b7a;color:#c7d2fe;padding:4px 8px;border-radius:999px;font-size:12px}
+    body.learning .info-chip{display:inline-flex}
+
+    /* Responsive */
+    @media (max-width:1100px){
+      .kpi-grid{grid-template-columns:repeat(2,1fr)}
+      .content-row{grid-template-columns:1fr}
+      .edu{position:relative; top:auto; height:auto}
+    }
+  </style>
+</head>
+<body>
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-badge">RAI</div>
+      <div class="brand">Trust & Governance</div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-title">Home</div>
+      <a class="nav-item active" href="#">
+        <div class="dot"></div>
+        <span>Dashboard</span>
+      </a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-title">RAI Pillars</div>
+      <details class="menu" open>
+        <summary>Transparency</summary>
+        <div class="submenu">
+          <a href="#" data-panel="registry">Model Registry</a>
+          <a href="#" data-panel="docs">Documentation Hub</a>
+          <a href="#" data-panel="provenance">Content Provenance & Watermarking</a>
+          <a href="#" data-panel="prompts">Prompt & Output Logs</a>
+          <a href="#" data-panel="portal">Public Transparency Portal</a>
+        </div>
+      </details>
+      <details class="menu">
+        <summary>Explainability</summary>
+        <div class="submenu">
+          <a href="#" data-panel="xai">Explainability Center</a>
+          <a href="#" data-panel="hallucination">Hallucination & Factuality</a>
+          <a href="#" data-panel="confidence">Confidence Indicators</a>
+        </div>
+      </details>
+      <details class="menu">
+        <summary>Fairness</summary>
+        <div class="submenu">
+          <a href="#" data-panel="bias-engine">Bias Control Engine</a>
+          <a href="#" data-panel="bias-watch">Bias Watch & Alerts</a>
+          <a href="#" data-panel="culture">Cultural Sensitivity Filters</a>
+        </div>
+      </details>
+      <details class="menu">
+        <summary>AI Safety</summary>
+        <div class="submenu">
+          <a href="#" data-panel="redteam">Red Teaming Hub</a>
+          <a href="#" data-panel="guardrails">Guardrails Engine</a>
+          <a href="#" data-panel="injection">Prompt Injection Defense</a>
+          <a href="#" data-panel="hitl">Human-in-the-Loop Review</a>
+          <a href="#" data-panel="incidents">Incident Response</a>
+        </div>
+      </details>
+      <details class="menu">
+        <summary>Compliance</summary>
+        <div class="submenu">
+          <a href="#" data-panel="policies">Policy Packs & Mapping</a>
+          <a href="#" data-panel="checker">Automated Compliance Checker</a>
+          <a href="#" data-panel="audit">Audit Trail & Evidence</a>
+          <a href="#" data-panel="ip">IP & Copyright Checks</a>
+          <a href="#" data-panel="trainingdata">Training Data Disclosure</a>
+        </div>
+      </details>
+      <details class="menu">
+        <summary>User Centricity</summary>
+        <div class="submenu">
+          <a href="#" data-panel="feedback">Feedback Loops</a>
+          <a href="#" data-panel="roles">Role-Based Views</a>
+          <a href="#" data-panel="flags">User Flagging of Outputs</a>
+          <a href="#" data-panel="accessibility">Accessibility Review</a>
+        </div>
+      </details>
+      <details class="menu">
+        <summary>Sustainability</summary>
+        <div class="submenu">
+          <a href="#" data-panel="carbon">Carbon Footprint</a>
+          <a href="#" data-panel="sustainable">Sustainable Compute Planning</a>
+          <a href="#" data-panel="roi">ROI & Impact</a>
+        </div>
+      </details>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-title">Lifecycle</div>
+      <a class="nav-item" href="#" data-panel="intake"><div class="dot"></div>Intake & Design</a>
+      <a class="nav-item" href="#" data-panel="dev"><div class="dot"></div>Development</a>
+      <a class="nav-item" href="#" data-panel="deploy"><div class="dot"></div>Deployment</a>
+      <a class="nav-item" href="#" data-panel="monitor"><div class="dot"></div>Monitoring</a>
+      <a class="nav-item" href="#" data-panel="retire"><div class="dot"></div>Retirement</a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-title">Reports & Settings</div>
+      <a class="nav-item" href="#" data-panel="reports"><div class="dot"></div>Analytics & Reports</a>
+      <a class="nav-item" href="#" data-panel="settings"><div class="dot"></div>Settings & Integrations</a>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <header class="topbar">
+      <div class="search" role="search">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input placeholder="Search models, incidents, policies, prompts…" />
+      </div>
+      <button class="pill" id="learningToggle">📘 Learning mode</button>
+      <button class="pill">➕ New use case</button>
+      <button class="pill">🔔 3</button>
+      <img src="https://api.dicebear.com/7.x/identicon/svg?seed=rai" alt="avatar" width="28" height="28" style="border-radius:50%;border:1px solid #334155" />
+    </header>
+
+    <div class="content-row">
+      <!-- MAIN CONTENT AREA -->
+      <section>
+        <div class="card">
+          <h3>Lifecycle Tracker</h3>
+          <div class="lifecycle">
+            <div class="step active"><span class="dot"></span>Intake</div>
+            <div class="step"><span class="dot"></span>Design</div>
+            <div class="step"><span class="dot"></span>Development</div>
+            <div class="step"><span class="dot"></span>Deployment</div>
+            <div class="step"><span class="dot"></span>Monitoring</div>
+            <div class="step"><span class="dot"></span>Retirement</div>
+          </div>
+        </div>
+
+        <div class="kpi-grid">
+          <div class="kpi">
+            <div class="label">Governance Coverage</div>
+            <div class="value ok">82%</div>
+          </div>
+          <div class="kpi">
+            <div class="label">Open Incidents</div>
+            <div class="value warn">5</div>
+          </div>
+          <div class="kpi">
+            <div class="label">Guardrail Violations (7d)</div>
+            <div class="value danger">27</div>
+          </div>
+          <div class="kpi">
+            <div class="label">GenAI Factuality</div>
+            <div class="value">92%</div>
+          </div>
+          <div class="kpi">
+            <div class="label">Carbon Impact</div>
+            <div class="value">↓ 14%</div>
+          </div>
+        </div>
+
+        <div class="card" style="position:relative; margin-top:12px">
+          <span class="info-chip">What is this? – Pillar Scorecard</span>
+          <h3>RAI Pillar Scorecard</h3>
+          <div class="placeholder">Chart placeholder</div>
+        </div>
+
+        <div class="card" style="position:relative; margin-top:12px">
+          <span class="info-chip">GenAI – prompt safety events</span>
+          <h3>Safety Events & Guardrails</h3>
+          <div class="placeholder">Time-series placeholder</div>
+        </div>
+
+        <div class="card" style="position:relative; margin-top:12px">
+          <span class="info-chip">Drift detection & explainability</span>
+          <h3>Monitoring Feed</h3>
+          <div class="placeholder" style="height:120px">Live events placeholder</div>
+        </div>
+      </section>
+
+      <!-- EDUCATIONAL / CONTEXT PANEL -->
+      <aside class="edu card" id="eduPanel">
+        <div class="title">
+          <h3 style="margin:0">Contextual Education</h3>
+          <small>Auto-updates to what you're viewing</small>
+        </div>
+        <div class="term">
+          <select id="termSelect">
+            <option value="prompt-injection">Prompt Injection</option>
+            <option value="provenance">Content Provenance</option>
+            <option value="bias">Fairness & Bias</option>
+            <option value="explainability">Explainability</option>
+            <option value="hallucination">Hallucination</option>
+            <option value="hitl">Human-in-the-Loop</option>
+          </select>
+          <button class="btn" id="deepDive">Deep dive</button>
+        </div>
+        <div id="eduBody">
+          <!-- dynamic -->
+        </div>
+        <hr style="border-color:#22304f;border-style:solid;margin:16px 0"/>
+        <div>
+          <span class="badge">Learning Path</span>
+          <ul id="learnPath" style="padding-left:18px; line-height:1.7"></ul>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <script>
+    // Learning mode toggle – shows inline info chips
+    const toggle = document.getElementById('learningToggle');
+    toggle.addEventListener('click', ()=>{
+      document.body.classList.toggle('learning');
+      toggle.classList.toggle('active');
+    });
+
+    // Contextual education content
+    const content = {
+      'prompt-injection': {
+        title:'Prompt Injection',
+        why:'Attackers try to override system instructions to exfiltrate data, execute tools, or bypass policy. Critical for GenAI safety & compliance.',
+        best:[
+          'Isolate tools and restrict system capabilities (principle of least privilege).',
+          'Pre-/post-processing guardrails with pattern checks and allow/deny lists.',
+          'Prompt hardening with input/output filters; log prompts for audit.',
+          'Use sandboxed execution and align with incident response playbooks.'
+        ],
+        pillars:['AI Safety','Compliance','Transparency']
+      },
+      'provenance':{
+        title:'Content Provenance',
+        why:'Ensure origin, integrity, and labeling of AI-generated content to build trust and meet regulatory expectations.',
+        best:[
+          'Apply watermarking or C2PA signatures to generated media.',
+          'Maintain a tamper-evident ledger of generations with metadata.',
+          'Label synthetic outputs and expose provenance in public portals.'
+        ],
+        pillars:['Transparency','Compliance']
+      },
+      'bias':{
+        title:'Fairness & Bias',
+        why:'Bias can harm users and violate policy. Monitor training data, model behavior, and outcomes across groups.',
+        best:[
+          'Define fairness metrics per use case; monitor drift by cohort.',
+          'Use debiasing techniques and human review for flagged cases.',
+          'Provide recourse & appeals; document trade-offs.'
+        ],
+        pillars:['Fairness','User Centricity']
+      },
+      'explainability':{
+        title:'Explainability',
+        why:'Stakeholders need to understand model reasoning to trust outcomes and meet audit requirements.',
+        best:[
+          'Use global + local explainers (feature importance, exemplars).',
+          'Capture prompt reasoning traces for GenAI with citations.',
+          'Expose simple, role-appropriate explanations to end users.'
+        ],
+        pillars:['Explainability','Transparency']
+      },
+      'hallucination':{
+        title:'Hallucination',
+        why:'GenAI can produce fluent but false content; unchecked, this creates legal and reputational risk.',
+        best:[
+          'Retrieval-augmented generation with trusted sources.',
+          'Factuality scoring and confidence indicators.',
+          'Route low-confidence outputs to human review.'
+        ],
+        pillars:['Explainability','AI Safety']
+      },
+      'hitl':{
+        title:'Human-in-the-Loop',
+        why:'Humans provide oversight for sensitive decisions and edge cases, improving safety and accountability.',
+        best:[
+          'Define thresholds that trigger review queues.',
+          'Record decisions and feedback to improve policies.',
+          'Ensure reviewer diversity and training.'
+        ],
+        pillars:['AI Safety','Compliance','User Centricity']
+      }
+    };
+
+    function renderEducation(key){
+      const el = document.getElementById('eduBody');
+      const item = content[key];
+      if(!item) return;
+      el.innerHTML = `
+        <div style="margin:6px 0 10px 0">
+          <span class="badge">Definition</span>
+          <div style="margin-top:8px;color:#cbd5e1">${item.title}</div>
+        </div>
+        <div style="margin:8px 0">
+          <span class="badge">Why it matters</span>
+          <p style="color:#9fb3d8">${item.why}</p>
+        </div>
+        <div style="margin:8px 0">
+          <span class="badge">Best practices</span>
+          <ul style="padding-left:18px; line-height:1.7">${item.best.map(b=>`<li>${b}</li>`).join('')}</ul>
+        </div>
+        <div style="margin:8px 0">
+          <span class="badge">Related Pillars</span>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px">${item.pillars.map(p=>`<span class='badge'>${p}</span>`).join('')}</div>
+        </div>`;
+
+      // Learning path
+      const lp = document.getElementById('learnPath');
+      lp.innerHTML = [
+        'Intro (5 min) → quick primer',
+        'Hands-on (10 min) → try in sandbox',
+        'Checklist (policy) → go/no-go gates',
+        'Deep dive → architecture & examples'
+      ].map(x=>`<li>${x}</li>`).join('');
+    }
+
+    // initialize
+    const select = document.getElementById('termSelect');
+    select.addEventListener('change', e=> renderEducation(e.target.value));
+    renderEducation(select.value);
+
+    // Sidebar submenu click demo: update education panel contextually
+    document.querySelectorAll('[data-panel]').forEach(a=>{
+      a.addEventListener('click', (e)=>{
+        const keyMap={
+          injection:'prompt-injection', prompts:'prompt-injection', portal:'provenance', provenance:'provenance', bias:'bias', 'bias-engine':'bias', xai:'explainability', hallucination:'hallucination', hitl:'hitl'
+        };
+        const k = keyMap[a.dataset.panel];
+        if(k){ select.value = k; renderEducation(k); }
+      });
+    });
+
+    // deep dive (opens a minimal modal substitute)
+    document.getElementById('deepDive').addEventListener('click',()=>{
+      alert('Deep Dive would open the Glossary & Learning Hub with videos, diagrams, and case studies for the selected topic.');
+    });
+  </script>
+</body>
+</html>

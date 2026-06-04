@@ -1,0 +1,30 @@
+@import "tailwindcss";
+
+@theme {
+  /* NeuroSAN Blue/Light Theme - Matching network_pro.html */
+  --color-background: #f5f7fa; /* Light gray background */
+  --color-foreground: #1e293b; /* Dark slate text */
+  --color-card: #ffffff; /* White cards */
+  --color-card-foreground: #1e293b; /* Dark slate text on cards */
+  --color-sidebar: #ffffff; /* White sidebar */
+  --color-sidebar-foreground: #1e293b; /* Dark slate text on sidebar */
+  --color-primary: #2563eb; /* Primary blue */
+  --color-primary-foreground: #ffffff; /* White text on primary */
+  --color-primary-hover: #3b82f6; /* Primary blue hover */
+  --color-secondary: #64748b; /* Slate gray for secondary */
+  --color-secondary-foreground: #ffffff; /* White text on secondary */
+  --color-muted: #f8fafc; /* Very light gray muted background */
+  --color-muted-foreground: #64748b; /* Slate gray muted text */
+  --color-border: #e2e8f0; /* Light slate borders */
+  --color-success: #10b981; /* Green for success */
+  --color-success-foreground: #ffffff; /* White text on success */
+  --color-info: #0ea5e9; /* Sky blue for info */
+  --color-info-foreground: #ffffff; /* White text on info */
+  --color-accent-light: #e0f2fe; /* Light blue accent */
+  --color-accent-medium: #dbeafe; /* Medium light blue */
+  
+  /* Typography: Outfit for UI (frontend-design; avoid Inter) */
+  --font-sans: "Outfit", "Segoe UI", "system-ui", "Avenir", "Helvetica", "Arial", "sans-serif";
+  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}

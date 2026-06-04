@@ -107,12 +107,78 @@ Reconciled upstream observability plugins with fork Arize production tracing:
 
 Cloud Run and legacy `run.py` keep `otel_bootstrap.py` (pre-import instrumentation). `ns run` uses plugins.
 
-## Recommended merge phases (after Phase 3)
+## Phase 4 (`sync/upstream-phase4-5-registries-search`)
 
-| Phase | Scope |
-|-------|--------|
-| 4 | Registry/manifest regrouping — preserve fork tags + AEEN |
-| 5 | Upstream `brave_search` diff vs fork implementation |
+Adopted upstream's flat-to-grouped registry layout while preserving fork-only
+content (Ollama fallbacks, category tags, AEEN, web_search provider switch).
+
+1. **Subdir layout** — `basic/`, `tools/`, `industry/`, `experimental/`,
+   `generated/`. Each gets its own `manifest.hocon`. Root `manifest.hocon`
+   becomes 5 sub-manifest includes plus the designer family + AEEN.
+2. **Moves (50 files via `git mv`)** — fork edits preserved. Aligns paths
+   with upstream so future merges have a smaller surface.
+3. **Cross-network refs rewritten** — `"/web_search"` → `"/tools/web_search"`,
+   `"/macys"` → `"/industry/macys"`, etc. across 8 files / 22 occurrences.
+4. **Adopted from upstream (disabled by default)** — net-new registries in each
+   subdir (book_recommender, coding_assistant, copy_cat, mdap_decomposer,
+   gemini_image_generation, persistent_memory, etc.) plus root infra
+   (`manifest_and.hocon`, `manifest_multiuser_overlay.hocon`,
+   `llm_config.hocon`, `aaosa_basic_debug.hocon`, designer support networks
+   `agent_network_editor / instructions_editor / query_generator /
+   test_generator`, `config/llm_config.hocon`).
+5. **Skipped** — `experimental/cruse_theme_agent`, `cruse_widget_agent` (separate
+   `cruse-agentic-ui` repo at workspace root). Upstream's substantive edits to
+   fork-already-present registries (would clobber Ollama fallbacks); revisit
+   selectively for `metadata.description` / `sample_queries` later.
+6. **Deleted (matches upstream)** — `vc_*.hocon` (8), `vibecoding_evaluator.hocon`,
+   `manifest_deploy.hocon`. `deploy/Dockerfile` default updated to
+   `manifest.hocon` (matches what `deploy/cloud-maa/deploy-backend.sh` already
+   overrides to).
+7. **`scripts/tag_registries.py`** — subdir-aware path lookup (`REG.rglob`).
+   Categories unchanged.
+8. **AEEN cherry-picked** from `feat/aeen` (commits `cce4e1dc` + `5c8ee174`)
+   so the manifest entry has its file. Healthcare sidebar tag preserved.
+
+Restorer smoke test: 32 public + 3 protected = 35 networks served, 0 validation
+errors.
+
+## Phase 5 (`sync/upstream-phase4-5-registries-search`)
+
+Reconciled `brave_search` between fork and upstream.
+
+1. **`neuro_san_studio/coded_tools/brave_search.py`** — full upstream
+   replacement. Pulls in safety fixes:
+   - `results.get("web", {}).get("results", [])` (tolerates missing
+     `"results"` key)
+   - explicit `requests.Timeout` exception handling
+   - clearer comments on headers / params / status-check
+2. **`registries/tools/brave_search.hocon`** — adopt upstream's toolbox-based
+   structure (searcher front-man + `brave_search` toolbox tool with
+   explicit `brave_url` / `brave_timeout` / `count` args) but keep fork's
+   local-native `llm_config` (Ollama `qwen3.6:35b-a3b` → `27b` fallbacks)
+   and `Tools` category tag. Header note clarifies that
+   `registries/tools/web_search.hocon` remains the unified entry point that
+   switches provider via `WEB_SEARCH_TOOLBOX`; this file stays as the
+   literal-Brave demo.
+
+AEEN clinical search is unaffected — it calls the `brave_search` toolbox tool
+directly through the toolbox layer, not via this registry.
+
+## Recommended merge phases (after Phase 5)
+
+All registry-side work is reconciled. Remaining upstream-merge debt is
+incremental and optional:
+
+| Item | Scope |
+|------|-------|
+| Cherry-pick metadata | Adopt upstream's `metadata.description` /
+`sample_queries` per registry to power MAA UI sample-query buttons. Each
+registry needs the per-tool `parameters` schema (Gemini-friendly) folded in
+without clobbering Ollama fallbacks. |
+| Adopt `manifest_and.hocon` runtime | Wire up `manifest_and` / `multiuser_overlay`
+features in deploys that need them. |
+| Cherry-pick `max_iterations` → `max_steps` rename | neuro-san 0.6.x API rename;
+fork registries still use the legacy key in places. |
 
 ## Re-run dry-run
 

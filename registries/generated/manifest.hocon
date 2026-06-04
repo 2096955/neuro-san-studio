@@ -1,0 +1,11 @@
+# Copyright (C) 2023-2026 Cognizant Digital Business, Evolutionary AI.
+# All Rights Reserved.
+# Issued under the Academic Public License.
+#
+# END COPYRIGHT
+{
+    # Sub-manifest for runtime-generated agent networks.
+    # The agent_network_designer writes new <network>.hocon files here at runtime;
+    # entries are added dynamically. Empty by default.
+    # Included from registries/manifest.hocon.
+}

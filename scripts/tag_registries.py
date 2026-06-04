@@ -73,26 +73,31 @@ def inject(path, cat):
     block = f'{MARKER}\nmetadata {{ tags = ["{cat}"] }}\n'
     idx = first_significant_index(text)
     if text[idx : idx + 1] == "{":
-        new = (
-            text[: idx + 1]
-            + "\n    "
-            + block.replace("\n", "\n    ").rstrip()
-            + "\n"
-            + text[idx + 1 :]
-        )
+        new = text[: idx + 1] + "\n    " + block.replace("\n", "\n    ").rstrip() + "\n" + text[idx + 1 :]
     else:
         new = text.rstrip() + "\n\n" + block
     path.write_text(new)
     return "tagged"
 
 
+def find_registry(stem):
+    """Locate <stem>.hocon under registries/ (root or any subdir)."""
+    candidates = list(REG.rglob(f"{stem}.hocon"))
+    if not candidates:
+        return None
+    if len(candidates) > 1:
+        print(f"  WARN multiple matches for {stem}.hocon: {[str(c.relative_to(REG)) for c in candidates]}")
+    return candidates[0]
+
+
 def main():
     for stem, cat in stem_to_cat.items():
-        p = REG / f"{stem}.hocon"
-        if not p.exists():
+        p = find_registry(stem)
+        if p is None:
             print(f"  MISSING {stem}.hocon")
             continue
-        print(f"  {inject(p, cat):24s} {stem} -> {cat}")
+        rel = p.relative_to(REG)
+        print(f"  {inject(p, cat):24s} {rel} -> {cat}")
 
 
 if __name__ == "__main__":

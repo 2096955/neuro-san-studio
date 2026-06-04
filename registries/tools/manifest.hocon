@@ -1,0 +1,79 @@
+# Copyright (C) 2023-2026 Cognizant Digital Business, Evolutionary AI.
+# All Rights Reserved.
+# Issued under the Academic Public License.
+#
+# END COPYRIGHT
+{
+    # Sub-manifest for tool-integration agent networks.
+    # Included from registries/manifest.hocon.
+
+    # Web search — fork web_search.hocon is the unified provider switcher (Tavily/Brave),
+    # selected at LOAD TIME via WEB_SEARCH_TOOLBOX env var.
+    # NOTE: ddgs_search was intentionally removed (DuckDuckGo blocks datacenter egress + AEEN
+    # uses Tavily/Brave). See docs/lessons/.
+    "tools/web_search.hocon": true,
+
+    # Per-provider literal demos (set provider env + API key, then flip to true).
+    # To use brave_search, obtain an API key at https://brave.com/search/api/ and set BRAVE_API_KEY.
+    # Optional: BRAVE_URL (default https://api.search.brave.com/res/v1/web/search?q=), BRAVE_TIMEOUT (30s).
+    "tools/brave_search.hocon": false,
+    # Google CSE: see https://programmablesearchengine.google.com/, then set
+    # GOOGLE_SEARCH_CSE_ID and GOOGLE_SEARCH_API_KEY (optional GOOGLE_SEARCH_URL, GOOGLE_SEARCH_TIMEOUT).
+    "tools/google_search.hocon": false,
+
+    # OpenAI built-in tools — require OPENAI_API_KEY + langchain-openai>=0.3.26
+    "tools/openai_web_search.hocon": false,
+    "tools/openai_code_interpreter.hocon": false,
+    "tools/openai_image_generation.hocon": false,
+    "tools/openai_video_generation.hocon": false,
+
+    # Anthropic built-in tools — require ANTHROPIC_API_KEY + langchain-anthropic>=0.3.13
+    "tools/anthropic_web_search.hocon": false,
+    "tools/anthropic_code_execution.hocon": false,
+
+    # Gemini built-in image generation — requires GOOGLE_API_KEY or Vertex ADC
+    "tools/gemini_image_generation.hocon": false,
+
+    # Demo / showcase networks the fork keeps enabled
+    "tools/agent_network_html_creator.hocon": true,
+    "tools/pdf_rag.hocon": true,
+
+    # Salesforce Agentforce passthrough — Cloud Run URL hardcoded in app.py; off for local-only
+    "tools/agentforce.hocon": false,
+    "tools/agentspace_adapter.hocon": false,
+    "tools/agentic_rag.hocon": false,
+
+    # ServiceNow / Now Platform agents
+    "tools/now_agents.hocon": true,
+
+    # Confluence — pip install atlassian-python-api; JIRA_USERNAME + JIRA_API_TOKEN
+    "tools/confluence_rag.hocon": false,
+
+    # MCP demo: server at servers/MCP/bmi_server.py must be running
+    "tools/mcp_bmi_streamable_http.hocon": false,
+
+    # A2A demo: server at servers/A2A/server.py must be running
+    "tools/a2a_research_report.hocon": false,
+
+    # Gmail — pip install -U langchain-google-community[gmail]; needs credentials.json
+    "tools/gmail.hocon": false,
+
+    # Wikipedia / arxiv knowledge
+    "tools/wikipedia_rag.hocon": false,
+    "tools/wikimedia_search.hocon": false,
+    "tools/arxiv_rag.hocon": false,
+    "tools/arxiv_retriever.hocon": false,
+
+    # You.com search
+    "tools/you_search.hocon": false,
+
+    # Persistent memory
+    "tools/persistent_memory_local.hocon": false,
+    "tools/persistent_memory_mem0.hocon": false,
+
+    # Visual Q&A
+    "tools/visual_question_answering.hocon": false,
+
+    # Google Maps
+    "tools/google_maps.hocon": false,
+}

@@ -1,0 +1,50 @@
+# Copyright (C) 2023-2026 Cognizant Digital Business, Evolutionary AI.
+# All Rights Reserved.
+# Issued under the Academic Public License.
+#
+# END COPYRIGHT
+{
+    # Sub-manifest for industry / vertical agent networks.
+    # Included from registries/manifest.hocon.
+
+    # Banking / Insurance
+    "industry/banking_ops.hocon": true,
+    "industry/insurance_underwriting_agents.hocon": true,
+    # Deprecated by upstream; superseded by insurance_underwriting_agents
+    "industry/insurance_agents.hocon": false,
+    "industry/keybank.hocon": false,
+
+    # Retail / CPG
+    "industry/cpg_agents.hocon": true,
+    "industry/retail_ops_and_customer_service.hocon": true,
+    "industry/macys.hocon": true,
+    "industry/carmax.hocon": true,
+    "industry/consumer_decision_assistant.hocon": true,
+    # Sub-networks used by consumer_decision_assistant
+    "industry/airbnb.hocon": true,
+    "industry/booking.hocon": true,
+    "industry/expedia.hocon": true,
+
+    # Telco
+    "industry/telco_network_support.hocon": true,
+    "industry/telco_network_orchestration.hocon": false,
+
+    # Travel / airline
+    "industry/airline_policy.hocon": true,
+    "industry/airline_policy_web_search.hocon": false,
+
+    # Healthcare — therapy_vignette_supervisors (sidebar tag = Healthcare via tag_registries.py)
+    "industry/therapy_vignette_supervisors.hocon": true,
+
+    # Workplace / intranet
+    "industry/intranet_agents_with_tools.hocon": true,
+    # Deprecated by upstream; superseded by intranet_agents_with_tools
+    "industry/intranet_agents.hocon": false,
+
+    # Other verticals (off until configured)
+    "industry/real_estate.hocon": false,
+    "industry/news_sentiment_analysis.hocon": false,
+
+    # LinkedIn — fork demo
+    "industry/LinkedInJobSeekerSupportNetwork.hocon": true,
+}

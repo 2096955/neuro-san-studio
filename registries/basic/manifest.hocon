@@ -1,0 +1,35 @@
+# Copyright (C) 2023-2026 Cognizant Digital Business, Evolutionary AI.
+# All Rights Reserved.
+# Issued under the Academic Public License.
+#
+# END COPYRIGHT
+{
+    # Sub-manifest for basic example agent networks.
+    # Refer to https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/manifest_hocon_reference.md
+    # Included from registries/manifest.hocon.
+
+    # Music nerd family (fork: Ollama-tuned local-native demos)
+    "basic/music_nerd.hocon": true,
+    "basic/music_nerd_local.hocon": true,
+    "basic/music_nerd_pro.hocon": true,
+    "basic/music_nerd_pro_local.hocon": true,
+    "basic/music_nerd_pro_sly.hocon": true,
+    "basic/music_nerd_pro_sly_local.hocon": true,
+    "basic/music_nerd_llm_fallbacks.hocon": true,
+    # Vertex AI (Gemini on GCP): set GOOGLE_APPLICATION_CREDENTIALS + project before enabling
+    "basic/music_nerd_vertex.hocon": false,
+
+    # Other basic examples
+    "basic/hello_world.hocon": true,
+    "basic/coffee_finder.hocon": true,
+    "basic/smart_home.hocon": true,
+
+    # Upstream-adopted (disabled by default; fork users opt in)
+    "basic/advanced_calculator.hocon": false,
+    "basic/book_recommender_multiple_llm_configs.hocon": false,
+    "basic/coding_assistant.hocon": false,
+    "basic/coffee_finder_advanced.hocon": false,
+    "basic/internal_communication_skill.hocon": false,
+    "basic/job_guessing_skill.hocon": false,
+    "basic/pii_middleware.hocon": false,
+}

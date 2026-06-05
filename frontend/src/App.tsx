@@ -81,9 +81,13 @@ function AppContent() {
 }
 
 function App() {
+  // Read basename from Vite's BASE_URL (set via `vite build --base=/v2/`).
+  // Keeps the React UI mountable both at root (dev: vite serves at /) and
+  // under /v2 in the Cloud Run image without hard-coding the path here.
+  const basename = (import.meta.env.BASE_URL || '/').replace(/\/$/, '') || undefined;
   return (
     <ErrorBoundary>
-      <BrowserRouter>
+      <BrowserRouter basename={basename}>
         <SidebarProvider>
           <PageProvider>
             <BreadcrumbProvider>

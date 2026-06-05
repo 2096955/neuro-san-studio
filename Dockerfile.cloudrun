@@ -16,6 +16,10 @@ COPY frontend/ ./
 # (the Flask app at runtime serves both the static React assets and the API on
 # the same port, so the bundle should call /api/* not http://localhost:8000/api/*).
 ENV VITE_API_BASE_URL=""
+# /v2/ -> the bundle's `<script src="/v2/assets/...">` resolves against
+# Flask's catch-all /v2/<subpath> route. App.tsx reads import.meta.env.BASE_URL
+# to set BrowserRouter's basename so /v2/multi-agent-accelerator etc. routes work.
+ENV VITE_BASE_PATH="/v2/"
 RUN npm run build && ls -la dist
 
 # ---- Stage 2: Python runtime ----

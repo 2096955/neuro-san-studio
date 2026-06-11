@@ -10,7 +10,7 @@ import MultiAgentAcceleratorClean from '../pages/MultiAgentAcceleratorClean';
 export default function AppRouter() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/rai" replace />} />
+      <Route path="/" element={<Navigate to="/multi-agent-accelerator" replace />} />
       <Route path="/integrated-dashboard" element={<IntegratedDashboard />} />
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/guardrails" element={<Guardrails />} />

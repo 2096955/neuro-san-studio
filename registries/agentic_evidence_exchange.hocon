@@ -10,7 +10,7 @@
 # END COPYRIGHT
 {
     # >>> category-tag (managed by tag_registries.py) <<<
-    metadata { tags = ["Healthcare"] }
+    metadata { tags = ["Medical"] }
 
     include "registries/aaosa.hocon"
 

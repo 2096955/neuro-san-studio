@@ -14,9 +14,14 @@
     metadata { tags = ["Tools"] }
 
     "llm_config": {
+        # Cloud-targeted: gpt-4o is the primary (index 0 of "fallbacks" is the active model in
+        # neuro-san; any top-level class/model_name is ignored when a "fallbacks" key is present).
+        # gpt-4o-mini is the runtime fallback. Both use OPENAI_API_KEY, which is present on Cloud Run.
+        # Ollama was removed here: Cloud Run has no local ollama at localhost:11434, so an
+        # ollama-first config makes every request hang until the request timeout.
         "fallbacks": [
-            {"class": "ollama", "model_name": "qwen3.6:35b-a3b", "reasoning": false},
-            {"class": "ollama", "model_name": "qwen3.6:27b"}
+            {"class": "openai", "model_name": "gpt-4o"},
+            {"class": "openai", "model_name": "gpt-4o-mini"}
         ]
     },
     "max_iterations": 40000,
@@ -53,6 +58,8 @@ FIRST, check what the user gave you:
 - Only once the user has given you a company, organization, or domain description, carry out the steps below.
 
 Take the following steps. Make sure you don't miss any details and follow the steps carefully.
+Call only one tool at a time. Wait for each tool's result before calling the next tool.
+Never call network_generator, instruction_refiner, query_generator, and produce_agent_network_hocon in the same assistant turn.
 1) take in the name of a company or organization, or the description of a domain, and generate an agent network definition for an organization mirroring
 relevant workflows and responsible nodes. Call your network_generator tool for this one time.  Make sure the name of the agent network is camelcase.
 
@@ -103,7 +110,9 @@ relevant workflows and responsible nodes. Call your network_generator tool for t
             },
             "instructions": ${instructions_prefix} """
 You generate a complete agent network based on given specifications.
-Use your add_agent tool to create the agent network.
+You must call the add_agent_to_network tool once for each agent you create.
+Do not write add_agent(...) text in your response as a substitute for tool calls.
+After calling add_agent_to_network for all agents, return a concise confirmation only.
 Take in the name of a company or organization, or the description of a domain, and generate an organization mirroring
 relevant workflows and responsible nodes.
 
@@ -130,6 +139,11 @@ Also note, there should only be one top agent.
 Make agents granular so that you have at least a depth of three agents from the top for some chains.
             """,
             "command": "Call to generate an agent network definition.",
+            "allow": {
+                "to_upstream": {
+                    "sly_data": ["AutomaticallyDesignedAgentNetwork", "agent_name"]
+                }
+            },
             "tools": ["add_agent_to_network"]
         },
         {
@@ -191,11 +205,16 @@ Make some of the examples transactional. If not stated, return no more than 3-4 
             "name": "get_agent_network_tool",
             "function": {
                 "description": "Get the agent network definition."
-                # Explicit empty schema: without it neuro-san auto-injects an `args` array with no
-                # `items`, which Gemini rejects (400). This tool reads the network from sly_data only.
+                # This tool reads the network from sly_data only. The optional unused field keeps the
+                # function schema valid for neuro-san versions that reject empty properties dictionaries.
                 "parameters": {
                     "type": "object",
-                    "properties": {}
+                    "properties": {
+                        "unused": {
+                            "type": "string",
+                            "description": "Optional unused value; this tool reads from sly_data only."
+                        }
+                    }
                 }
             },
             "class": "get_agent_network.GetAgentNetwork"
@@ -227,6 +246,11 @@ Do not format your response and keep it as plain text with no other formatting c
 Wrap the lines at around 120 characters. Write it as if you are telling the agent.
             """,
             "command": "Call to refine instructions of an agent."
+            "allow": {
+                "to_upstream": {
+                    "sly_data": ["AutomaticallyDesignedAgentNetwork", "agent_name"]
+                }
+            },
             "tools": ["get_agent_network_tool", "set_agent_instructions_tool"]
         }
         {

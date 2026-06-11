@@ -501,6 +501,7 @@
                         <option value="insurance">Insurance Underwriting</option>
                         <option value="banking">Banking Operations</option>
                         <option value="automotive" selected>Automotive Manufacturing</option>
+                        <option value="rhea">Healthcare — RHEA MCDI</option>
                     </select>
                 </div>
                 <div style="font-size: 0.8rem; color: #6b7280; margin-top: 10px;">
@@ -645,7 +646,8 @@
             const networkNames = {
                 'insurance': 'Insurance Underwriting',
                 'banking': 'Banking Operations',
-                'automotive': 'Automotive Manufacturing'
+                'automotive': 'Automotive Manufacturing',
+                'rhea': 'RHEA MCDI Clinical Decision Support'
             };
             addChatMessage('system', 'System', `Switched to ${networkNames[selectedNetwork] || selectedNetwork} network`);
         }
@@ -818,6 +820,22 @@
                     return 'back_office';
                 }
                 
+                // RHEA MCDI NETWORK ZONES
+                // Front Office: HCP-facing
+                if (['cds_coordinator', 'hcp_priority_capture'].includes(agentId)) {
+                    return 'front_office';
+                }
+                // Middle Office: coordination + core engine
+                if (['evidence_validator', 'strategy_optimizer', 'multi_objective_engine',
+                     'governance_layer', 'learning_loop'].includes(agentId)) {
+                    return 'middle_office';
+                }
+                // Back Office: processing / specialists
+                if (['patient_context', 'outcome_projector', 'tradeoff_explainer',
+                     'safety_checker', 'audit_logger'].includes(agentId)) {
+                    return 'back_office';
+                }
+
                 // Default: Back Office for all other specialists
                 return 'back_office';
             }

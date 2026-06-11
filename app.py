@@ -19,6 +19,7 @@ from flask import Flask
 from flask import abort
 from flask import jsonify
 from flask import make_response
+from flask import redirect
 from flask import render_template
 from flask import request
 from flask import send_from_directory
@@ -205,6 +206,7 @@ _configure_agent_manifest()
 _FRONTMAN_TO_NETWORK: Dict[str, str] = {
     "customer_service_representative": "industry/banking_ops",
     "insurance_agent": "industry/insurance_underwriting_agents",
+    "cds_coordinator": "rhea_clinical_decision_support",
     # automotive_operations_coordinator has no neuro-san network — the
     # automotive demo uses Flask LLM fallback + Salesforce Agentforce instead.
 }
@@ -1189,6 +1191,153 @@ Respond naturally as {agent_role} would in a real {industry_context} setting."""
             ],
         }
 
+    def _get_rhea_topology(self) -> Dict[str, Any]:
+        """Curated topology for the RHEA MCDI clinical decision support network.
+
+        Hand-mapped from registries/rhea_clinical_decision_support.hocon so the demo clearly shows the
+        spec's workflow: the six players, the seven objectives, the Pareto frontier,
+        the priority vector, the governance gates, and the audit trail.
+        """
+        m = self.demo_model_label
+        return {
+            "nodes": [
+                # --- Front Office (HCP-facing) ---
+                {
+                    "id": "cds_coordinator",
+                    "label": "CDS Coordinator",
+                    "type": "frontman",
+                    "status": "active",
+                    "model": m,
+                    "description": "HCP-facing orchestrator for post-MI treatment selection",
+                    "persona": "I am the Clinical Decision Support Coordinator. A doctor brings me a patient who just had a heart attack and needs to choose a treatment. I capture what THIS doctor cares about, orchestrate evidence validation, strategy optimization and governance, and present the set of mathematically optimal treatment strategies on the Pareto frontier. I never decide for the doctor — I make the decision landscape navigable. The doctor makes the final call.",
+                },
+                {
+                    "id": "hcp_priority_capture",
+                    "label": "HCP Priorities",
+                    "type": "domain",
+                    "status": "active",
+                    "model": m,
+                    "description": "Captures the doctor's priorities as a quantitative priority vector",
+                    "persona": "I capture what the doctor cares about for THIS decision — efficacy vs. safety vs. cost vs. speed vs. quality of life vs. guideline alignment — expressed as numbers, comparisons, or plain language, and convert it into a quantitative priority vector. Two doctors with different priorities get different, equally valid recommendations from the same evidence base. I own the doctor's voice in the ranking.",
+                },
+                # --- Middle Office (coordination / core engine) ---
+                {
+                    "id": "evidence_validator",
+                    "label": "Evidence Validation",
+                    "type": "domain",
+                    "status": "active",
+                    "model": m,
+                    "description": "Causal validation and strength grading of the evidence",
+                    "persona": "I validate the evidence behind every treatment before it can be recommended. I check whether each treatment-to-outcome link is actually causal (not just correlated), name the confounders, and grade strength: RCT-supported, observationally plausible, hypothesis-generating, or unsupported. I check bias and transportability to this patient's context, and I am transparent about gaps. Evidence that fails causal validation is blocked or flagged — never silently passed through.",
+                },
+                {
+                    "id": "strategy_optimizer",
+                    "label": "Strategy Optimizer (RHEA)",
+                    "type": "domain",
+                    "status": "active",
+                    "model": m,
+                    "description": "Evolutionary optimization → Pareto frontier of non-dominated strategies",
+                    "persona": "I am the RHEA engine. I treat every doctor's prescribing history as an expert model, distill thousands of prescribing patterns into neural networks, then use evolutionary optimization to recombine them — discovering treatment strategies that outperform any individual expert. My output is the Pareto frontier: the set of non-dominated strategies, each optimal for a different combination of priorities. The clinical use case is SGLT2 inhibitor initiation after myocardial infarction.",
+                },
+                {
+                    "id": "multi_objective_engine",
+                    "label": "7-Objective Scoring",
+                    "type": "domain",
+                    "status": "active",
+                    "model": m,
+                    "description": "Scores strategies on 7 objectives, removes dominated ones, ranks by priority vector",
+                    "persona": "I score every candidate strategy on the seven objectives: (1) out-of-pocket cost, (2) time to treatment initiation, (3) guideline alignment, (4) safety risk, (5) expected clinical benefit, (6) probability of insurance approval, (7) strength of supporting evidence. I remove dominated strategies (strictly worse on everything) to leave the non-dominated frontier, then rank what remains by the doctor's priority vector. No strategy wins on all seven — that is the point. If the ranking diverges from guidelines alone, I say so explicitly; it is informational, never blocking.",
+                },
+                {
+                    "id": "governance_layer",
+                    "label": "Governance Layer",
+                    "type": "domain",
+                    "status": "active",
+                    "model": m,
+                    "description": "Safety gates: block, flag, stop, log, show-why",
+                    "persona": "I keep the system safe for clinical use. I block unsupported evidence from reaching the doctor, flag novel strategies that no guideline has ever published for human clinical review, and trigger an immediate stop on contraindicated recommendations. Every decision is logged with full traceability, and the doctor can always see WHY a strategy was ranked where it was. The doctor's autonomy is absolute; my job is the guardrails around it.",
+                },
+                {
+                    "id": "learning_loop",
+                    "label": "Learning Loop",
+                    "type": "domain",
+                    "status": "active",
+                    "model": m,
+                    "description": "Tracks chosen-vs-ranked, surfaces overrides, feeds outcomes back",
+                    "persona": "I improve the system over time. I track what doctors actually choose versus what the system ranked highest. If doctors consistently override in a specific direction, something is being missed — I surface the pattern rather than bury it. When outcome data is available, I feed it back: did the chosen strategy produce the projected result? All learning is privacy-preserving, consent-based, and doctor-controllable.",
+                },
+                # --- Back Office (processing / specialists) ---
+                {
+                    "id": "patient_context",
+                    "label": "Patient Context",
+                    "type": "specialist",
+                    "status": "active",
+                    "model": m,
+                    "description": "The specific clinical scenario driving the decision",
+                    "persona": "I assemble the patient context that drives the decision: demographics, comorbidities, renal function, cardiac status, current medications; insurance type, formulary position and prior-authorization requirements; practice setting (community vs. academic, rural vs. urban); and the patient's own preferences and constraints. My data directly drives the cost and insurance-approval objectives and personalizes every projection.",
+                },
+                {
+                    "id": "outcome_projector",
+                    "label": "Outcome Projection",
+                    "type": "specialist",
+                    "status": "active",
+                    "model": m,
+                    "description": "Personalized outcome projections with confidence intervals",
+                    "persona": "For each frontier strategy I project personalized outcomes for THIS patient — expected benefit, risk, cost and timeline given these comorbidities and this insurance — with confidence intervals. Where a projection is extrapolated beyond available data, I flag it honestly rather than overstate certainty.",
+                },
+                {
+                    "id": "tradeoff_explainer",
+                    "label": "Tradeoff Explainer",
+                    "type": "specialist",
+                    "status": "active",
+                    "model": m,
+                    "description": "Plain-language gain/lose for each pair of top strategies",
+                    "persona": "I make the tradeoffs visible. For each pair of top strategies I explain, in plain clinical language, what you gain and what you give up by choosing one over the other, how sensitive the ranking is to small changes in priorities, and which patient-specific factors matter most for this decision.",
+                },
+                {
+                    "id": "safety_checker",
+                    "label": "Safety / Novelty Check",
+                    "type": "specialist",
+                    "status": "active",
+                    "model": m,
+                    "description": "Stops contraindications, flags novel strategies for human review",
+                    "persona": "I perform safety-violation checks against the graded evidence. I block contraindicated recommendations with an immediate stop, and I flag novel strategies — ones no guideline has ever published — for human clinical review before they reach the doctor. I ensure clinical safety standards are met before anything is presented.",
+                },
+                {
+                    "id": "audit_logger",
+                    "label": "Audit Trail",
+                    "type": "specialist",
+                    "status": "active",
+                    "model": m,
+                    "description": "Inspection-ready log of the full decision chain",
+                    "persona": "I record the full chain — from clinical question to evidence validation to captured priorities to the frontier to projections to ranking to the doctor's final choice — in an inspection-ready audit trail. If anyone asks 'why was this recommended?' six months from now, the answer is complete and retrievable: who asked, what evidence was used, what was recommended, what was chosen, and why.",
+                },
+            ],
+            "connections": [
+                # Coordinator delegates the workflow
+                {"from": "cds_coordinator", "to": "hcp_priority_capture", "type": "delegates"},
+                {"from": "cds_coordinator", "to": "evidence_validator", "type": "delegates"},
+                {"from": "cds_coordinator", "to": "strategy_optimizer", "type": "delegates"},
+                {"from": "cds_coordinator", "to": "governance_layer", "type": "delegates"},
+                {"from": "cds_coordinator", "to": "learning_loop", "type": "delegates"},
+                # Evidence validation consults patient context and safety
+                {"from": "evidence_validator", "to": "patient_context", "type": "consults"},
+                {"from": "evidence_validator", "to": "safety_checker", "type": "consults"},
+                # Strategy optimization → scoring, grounded in patient context
+                {"from": "strategy_optimizer", "to": "multi_objective_engine", "type": "delegates"},
+                {"from": "strategy_optimizer", "to": "patient_context", "type": "consults"},
+                # Scoring → projection + tradeoffs; priority vector feeds the ranking
+                {"from": "multi_objective_engine", "to": "outcome_projector", "type": "delegates"},
+                {"from": "multi_objective_engine", "to": "tradeoff_explainer", "type": "delegates"},
+                {"from": "hcp_priority_capture", "to": "multi_objective_engine", "type": "advises"},
+                # Governance gates + audit
+                {"from": "governance_layer", "to": "safety_checker", "type": "delegates"},
+                {"from": "governance_layer", "to": "audit_logger", "type": "delegates"},
+                # Learning loop closes back to the doctor's priorities
+                {"from": "learning_loop", "to": "hcp_priority_capture", "type": "consults"},
+            ],
+        }
+
     async def get_network_topology(self, network_type: str = "insurance") -> Dict[str, Any]:
         """Get the full agent network topology with connections
 
@@ -1208,6 +1357,10 @@ Respond naturally as {agent_role} would in a real {industry_context} setting."""
             return topology
         if network_type == "automotive":
             topology = self._get_automotive_topology()
+            self.topology_cache[network_type] = topology
+            return topology
+        if network_type in ("rhea", "rhea_clinical_decision_support", "healthcare"):
+            topology = self._get_rhea_topology()
             self.topology_cache[network_type] = topology
             return topology
 
@@ -1448,6 +1601,90 @@ Respond naturally as {agent_role} would in a real {industry_context} setting."""
             logger.error(f"Failed to get network topology: {e}")
             return {"nodes": [], "connections": []}
 
+    def _detect_network_type(self, network_name: str, context: Dict[str, Any] = None) -> str:
+        """Map a frontman/agent id to its curated vertical (for persona fallback)."""
+        context = context or {}
+        if context.get("network_type"):
+            return context["network_type"]
+        rhea_ids = {
+            "cds_coordinator",
+            "hcp_priority_capture",
+            "evidence_validator",
+            "strategy_optimizer",
+            "multi_objective_engine",
+            "governance_layer",
+            "learning_loop",
+            "patient_context",
+            "outcome_projector",
+            "tradeoff_explainer",
+            "safety_checker",
+            "audit_logger",
+        }
+        if network_name in rhea_ids or "rhea" in network_name:
+            return "rhea"
+        if any(
+            x in network_name
+            for x in ["customer_service_representative", "account_manager", "loan_officer", "fraud_prevention"]
+        ):
+            return "banking"
+        if any(
+            x in network_name
+            for x in [
+                "automotive",
+                "manufacturing",
+                "dealership",
+                "supply_chain",
+                "production",
+                "factory",
+                "parts_inventory",
+                "supplier_relations",
+                "logistics",
+                "engineering_support",
+                "technical_service",
+                "warranty_claims",
+                "service_scheduling",
+                "recall",
+                "quality_control",
+                "sales_agent",
+                "customer_service_agent",
+            ]
+        ):
+            return "automotive"
+        return "insurance"
+
+    async def _persona_response(self, network_name, message, session_data, session_id):
+        """Curated-topology persona role-play via the Flask LLM path. Returns a
+        response dict, or None if the agent id is not in any curated topology."""
+        network_type = self._detect_network_type(network_name, {"network_type": session_data.get("network_type")})
+        topology = await self.get_network_topology(network_type)
+        agent_info = next((n for n in topology.get("nodes", []) if n["id"] == network_name), None)
+        if not agent_info:
+            return None
+        conversation_history = session_data["history"][-12:]
+        ai_response, actual_model = await self._call_ai_model(
+            agent_info,
+            message,
+            conversation_history=conversation_history,
+            session_id=session_id,
+            system_override=session_data.get("system_override"),
+            brand=session_data.get("brand"),
+        )
+        session_data["history"].append({"role": "assistant", "content": ai_response})
+        self.agent_activity[network_name] = {
+            "status": "completed",
+            "response": ai_response,
+            "timestamp": datetime.now().isoformat(),
+            "session_id": session_id,
+        }
+        return {
+            "response": ai_response,
+            "session_id": session_id,
+            "timestamp": datetime.now().isoformat(),
+            "model": actual_model,
+            "agent": agent_info.get("label", network_name),
+            "agent_id": network_name,
+        }
+
     async def send_message_to_network(
         self,
         network_name: str,
@@ -1580,24 +1817,21 @@ Respond naturally as {agent_role} would in a real {industry_context} setting."""
                 return response
 
             try:
-                # 0.6.x exposes streaming_chat only; aggregate the chunks into a
-                # single string for this REST-style /api/chat endpoint. The
-                # Socket.IO path emits the per-chunk MAXIMAL stream separately.
-                # Factory accepts "direct"/"http"/"https" — gRPC is no longer a
-                # client-facing transport in 0.6.x; use HTTP instead.
-
-                # Frontend sends FRONTMAN agent IDs (e.g. customer_service_representative);
-                # neuro-san HTTP expects the NETWORK name (e.g. banking_ops). Translate
-                # for the demo verticals; pass through for everything else.
+                # Real neuro-san networks run IN-PROCESS via DirectAgentSession.
+                # The http_host:port client path is dead on Cloud Run (Flask binds
+                # 8080 itself; there is no separate neuro-san HTTP server), so we
+                # use the same in-process session the /api/v1 adapter uses.
+                #
+                # Frontend sends FRONTMAN agent IDs (e.g. cds_coordinator); the
+                # session needs the NETWORK name (e.g. rhea_clinical_decision_support). Translate for the
+                # demo verticals; pass through for everything else.
                 neurosan_agent = _FRONTMAN_TO_NETWORK.get(network_name, network_name)
 
-                def _grpc_chat() -> str:
-                    session = AgentSessionFactory().create_session(
-                        "http",
-                        neurosan_agent,
-                        hostname=self.http_host,
-                        port=self.http_port,
-                    )
+                def _direct_chat() -> str:
+                    from neuro_san.client.direct_agent_session_factory import DirectAgentSessionFactory
+
+                    factory = DirectAgentSessionFactory()
+                    session = factory.create_session(agent_name=neurosan_agent)
                     request = {
                         "user_message": {
                             "type": ChatMessageType.HUMAN,
@@ -1614,7 +1848,9 @@ Respond naturally as {agent_role} would in a real {industry_context} setting."""
                             last_text = msg["text"]
                     return last_text
 
-                response = await asyncio.to_thread(_grpc_chat)
+                response = await asyncio.to_thread(_direct_chat)
+                if not response:
+                    raise ValueError("empty response from network")
 
                 result = {
                     "response": response,
@@ -1634,7 +1870,20 @@ Respond naturally as {agent_role} would in a real {industry_context} setting."""
                 return result
 
             except Exception as e:
-                logger.error(f"Failed to send message to {network_name}: {e}")
+                # The agent id may be a sub-agent node (not a top-level network) or
+                # a vertical with no real network (e.g. automotive). Fall back to
+                # curated-topology persona role-play so every node stays chattable.
+                logger.warning(
+                    f"In-process network chat failed for {network_name} "
+                    f"({neurosan_agent}): {e}; trying persona fallback"
+                )
+                try:
+                    persona = await self._persona_response(network_name, message, session_data, session_id)
+                    if persona is not None:
+                        return persona
+                except Exception as persona_err:  # noqa: BLE001
+                    logger.error(f"Persona fallback failed for {network_name}: {persona_err}")
+
                 error_result = {
                     "error": f"Failed to communicate with {network_name}: {str(e)}",
                     "timestamp": datetime.now().isoformat(),
@@ -1696,7 +1945,16 @@ if SYNTHETIC_API_AVAILABLE:
 
 @app.route("/")
 def index():
-    """Main network visualization page"""
+    """Root entry point — send visitors to the React Flow UI (the demo surface).
+
+    The legacy Flask template remains available at /legacy for reference.
+    """
+    return redirect("/v2/", code=302)
+
+
+@app.route("/legacy")
+def legacy_index():
+    """Legacy Flask network visualization page (vanilla-JS SVG topology)."""
     response = make_response(
         render_template(
             "network_pro.html",

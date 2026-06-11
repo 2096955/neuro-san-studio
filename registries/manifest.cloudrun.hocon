@@ -150,6 +150,9 @@
 
     # ---- Designer + experimental (mixed root + experimental/) ----
     "agent_network_designer.hocon": true,
+    # Hand-authored RHEA MCDI clinical decision support network (faithful to the
+    # Pareto-frontier / 7-objective / governance / audit workflow).
+    "rhea_clinical_decision_support.hocon": true,
     "experimental/six_thinking_hats.hocon": true,
     # Set the following agent network to true before running apps/cruse/interface_flask.py
     "experimental/cruse_agent.hocon": false,

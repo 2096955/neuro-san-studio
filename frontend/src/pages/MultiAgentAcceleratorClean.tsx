@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import ReactFlow, {
   type Node,
   type Edge,
@@ -18,6 +18,18 @@ import { User, Sparkles } from 'lucide-react';
 import 'reactflow/dist/style.css';
 
 import { API_BASE_URL } from '../config/api';
+import { neuroSanClient, sessionManager } from '../api/neuroSanClient';
+
+// Friendlier labels for headline demo networks; everything else is title-cased.
+const NETWORK_LABELS: Record<string, string> = {
+  rhea_clinical_decision_support: 'RHEA · Clinical Decision Support',
+};
+
+// Per-network starter prompt shown in the empty chat state.
+const NETWORK_HINTS: Record<string, string> = {
+  rhea_clinical_decision_support:
+    '“My patient just had an MI and has type 2 diabetes and CKD stage 3 — walk me through how you would select an SGLT2 inhibitor strategy.”',
+};
 
 interface TopologyNode {
   id: string;
@@ -115,6 +127,126 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction: 'TB' | 'LR
   return { nodes: layoutedNodes, edges };
 };
 
+interface ChatMessage {
+  role: 'user' | 'assistant' | 'error';
+  content: string;
+}
+
+// Self-contained chat panel (plain Tailwind, matches the accelerator look).
+// Talks to the selected network's front-man via /api/chat (real in-process run).
+const NetworkChat: React.FC<{
+  network: string;
+  displayName: string;
+  agentCount: number;
+  connectionCount: number;
+}> = ({ network, displayName, agentCount, connectionCount }) => {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const endRef = useRef<HTMLDivElement>(null);
+
+  // Reset the transcript whenever the selected network changes.
+  useEffect(() => {
+    setMessages([]);
+    setInput('');
+  }, [network]);
+
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, loading]);
+
+  const send = useCallback(async () => {
+    const text = input.trim();
+    if (!text || loading) return;
+    setInput('');
+    setMessages((m) => [...m, { role: 'user', content: text }]);
+    setLoading(true);
+    try {
+      const sessionId = sessionManager.getSessionId(network);
+      const res = await neuroSanClient.sendMessage(network, text, sessionId);
+      setMessages((m) => [...m, { role: 'assistant', content: res.response || '(no response)' }]);
+    } catch (err) {
+      setMessages((m) => [
+        ...m,
+        { role: 'error', content: err instanceof Error ? err.message : 'Request failed' },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  }, [input, loading, network]);
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="px-4 py-3 border-b border-gray-200">
+        <h3 className="text-lg font-semibold text-gray-900">Chat</h3>
+        <p className="text-sm text-gray-500 mt-0.5 break-words">{displayName}</p>
+        <p className="text-xs text-gray-400 mt-1">
+          {agentCount} agents · {connectionCount} connections
+        </p>
+      </div>
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
+        {messages.length === 0 && !loading && (
+          <div className="text-sm text-gray-400 text-center mt-8 px-2 leading-relaxed">
+            Ask the coordinator about a treatment decision.
+            {NETWORK_HINTS[network] && (
+              <div className="mt-3 text-gray-500 italic">{NETWORK_HINTS[network]}</div>
+            )}
+          </div>
+        )}
+        {messages.map((m, i) => (
+          <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div
+              className={`max-w-[85%] rounded-2xl px-4 py-2 text-sm whitespace-pre-wrap leading-relaxed ${
+                m.role === 'user'
+                  ? 'bg-blue-600 text-white'
+                  : m.role === 'error'
+                    ? 'bg-red-50 text-red-700 border border-red-200'
+                    : 'bg-white text-gray-800 border border-gray-200 shadow-sm'
+              }`}
+            >
+              {m.content}
+            </div>
+          </div>
+        ))}
+        {loading && (
+          <div className="flex justify-start">
+            <div className="bg-white border border-gray-200 rounded-2xl px-4 py-2 text-sm text-gray-500 shadow-sm flex items-center gap-2">
+              <span className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-blue-600" />
+              Thinking…
+            </div>
+          </div>
+        )}
+        <div ref={endRef} />
+      </div>
+      <div className="p-3 border-t border-gray-200 bg-white">
+        <div className="flex items-end gap-2">
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                send();
+              }
+            }}
+            placeholder="Ask the coordinator…"
+            rows={2}
+            className="flex-1 resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <button
+            type="button"
+            onClick={send}
+            disabled={!input.trim() || loading}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+          >
+            Send
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const MultiAgentAcceleratorInner: React.FC = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -179,10 +311,21 @@ const MultiAgentAcceleratorInner: React.FC = () => {
       const data = await response.json();
       // Backend may return strings or objects; normalize to Network[]
       const rawNetworks = data.networks ?? [];
+      const toLabel = (name: string) =>
+        NETWORK_LABELS[name] ?? name.replace(/_/g, ' ').replace(/\//g, ' / ');
       const normalized: Network[] = rawNetworks.map((n: string | Network) =>
-        typeof n === 'string' ? { name: n, display_name: n.replace(/_/g, ' ') } : n
+        typeof n === 'string' ? { name: n, display_name: toLabel(n) } : n
+      );
+      // Surface the headline RHEA network first.
+      normalized.sort((a, b) =>
+        a.name === 'rhea_clinical_decision_support' ? -1 : b.name === 'rhea_clinical_decision_support' ? 1 : 0
       );
       setNetworks(normalized);
+      // Auto-select RHEA so the demo lands on the clinical decision-support graph.
+      const rhea = normalized.find((n) => n.name === 'rhea_clinical_decision_support');
+      if (rhea) {
+        setSelectedNetwork((prev) => prev ?? rhea.name);
+      }
     } catch (err) {
       console.error('Error fetching networks:', err);
       setNetworksError(err instanceof Error ? err.message : 'Failed to load networks');
@@ -358,22 +501,20 @@ const MultiAgentAcceleratorInner: React.FC = () => {
             </ReactFlow>
           </div>
 
-          <div className="w-80 bg-white border-l border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Network Details</h3>
+          <div className="w-96 bg-white border-l border-gray-200 flex flex-col overflow-hidden">
             {selectedNetwork ? (
-              <div className="text-sm text-gray-600">
-                <p className="mb-2">
-                  <span className="font-medium">Selected:</span> {selectedNetwork}
-                </p>
-                <p className="mb-2">
-                  <span className="font-medium">Nodes:</span> {nodes.length}
-                </p>
-                <p>
-                  <span className="font-medium">Connections:</span> {edges.length}
-                </p>
-              </div>
+              <NetworkChat
+                network={selectedNetwork}
+                displayName={
+                  networks.find((n) => n.name === selectedNetwork)?.display_name || selectedNetwork
+                }
+                agentCount={nodes.length}
+                connectionCount={edges.length}
+              />
             ) : (
-              <p className="text-sm text-gray-500">Select a network to view details</p>
+              <div className="p-6 text-sm text-gray-500">
+                Select a network to view its graph and chat.
+              </div>
             )}
           </div>
         </div>

@@ -55,4 +55,5 @@
     # See registries/agentic_evidence_exchange.hocon and coded_tools/aeen/.
     #
     "agentic_evidence_exchange.hocon": true,
-}
+
+    "rhea_clinical_decision_support.hocon": true,}

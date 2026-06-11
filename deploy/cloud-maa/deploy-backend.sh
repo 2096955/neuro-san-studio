@@ -12,9 +12,15 @@ set -euo pipefail
 PROJECT="${PROJECT:-gbg-neuro}"
 REGION="${REGION:-us-central1}"
 SERVICE="${SERVICE:-neuro-san-maa-backend}"
-IMAGE="gcr.io/${PROJECT}/${SERVICE}:latest"
 STUDIO="$(cd "$(dirname "$0")/../.." && pwd)"          # repo root
+# Immutable image tag: <short-sha>-<timestamp>. Pinning the deploy to a unique tag (never :latest)
+# guarantees each revision points at exactly the bits we built, and makes rollbacks unambiguous.
+SHA=$(git -C "$STUDIO" rev-parse --short HEAD 2>/dev/null || echo nogit)
+STAMP=$(date +%Y%m%d-%H%M%S)
+TAG="${SHA}-${STAMP}"
+IMAGE="gcr.io/${PROJECT}/${SERVICE}:${TAG}"
 BT="$(mktemp -d /tmp/nsmaa-backend.XXXX)"
+trap 'rm -rf "$BT"' EXIT
 APP=/usr/local/neuro-san/myapp                          # APP_SOURCE inside the SDK image
 
 : "${GEMINI_API_KEY:?set GEMINI_API_KEY to a valid Google AI Studio key}"
@@ -31,7 +37,7 @@ APP=/usr/local/neuro-san/myapp                          # APP_SOURCE inside the 
 if [ -f "$STUDIO/.env" ]; then
   for _k in TAVILY_API_KEY BRAVE_API_KEY ARIZE_SPACE_ID ARIZE_API_KEY ARIZE_PROJECT_NAME; do
     if [ -z "${!_k:-}" ]; then
-      _v="$(grep -E "^${_k}=" "$STUDIO/.env" | tail -n1 | cut -d= -f2-)"
+      _v="$(grep -E "^${_k}=" "$STUDIO/.env" | tail -n1 | cut -d= -f2- || true)"
       [ -n "$_v" ] && export "${_k}=${_v}"
     fi
   done
@@ -66,11 +72,12 @@ else
   echo "  ARIZE_* not set -> backend runs WITHOUT tracing (otel_bootstrap is a no-op)"
 fi
 
-echo "[1/5] copy build context (exclude vcs/caches/heavy dirs + secrets)"
+echo "[1/6] copy build context (exclude vcs/caches/heavy dirs + secrets)"
 rsync -a --exclude '.git' --exclude 'node_modules' --exclude '__pycache__' \
-      --exclude 'logs' --exclude 'frontend' --exclude '.venv' --exclude '.env' "$STUDIO/" "$BT/"
+      --exclude 'logs' --exclude 'frontend' --exclude '.venv' \
+      --exclude '.env*' --exclude '*.key' "$STUDIO/" "$BT/"
 
-echo "[2/5] swap registries ollama -> gemini, then validate"
+echo "[2/6] swap registries ollama -> gemini, then validate"
 python3 "$STUDIO/deploy/cloud-maa/swap_llm_for_deploy.py" "$BT/registries"
 # `-r` recurses on its own; the previous shell glob `*.hocon` only matched root-level files,
 # so post-Phase-4 subdir registries (basic/ tools/ industry/ experimental/) escaped the gate.
@@ -90,7 +97,7 @@ sys.exit(0 if tb=="tavily_search" else "web_search did not resolve to tavily_sea
     || { echo "deploy gate failed: WEB_SEARCH_TOOLBOX override not honored by web_search.hocon"; exit 1; }
 fi
 
-echo "[3/5] lean requirements + cloud Dockerfile (py3.11 + gcc + neuro_san_studio package)"
+echo "[3/6] lean requirements + cloud Dockerfile (py3.11 + gcc + neuro_san_studio package)"
 cp "$STUDIO/deploy/cloud-maa/requirements-cloud.txt" "$BT/requirements.txt"
 cp "$BT/deploy/Dockerfile" "$BT/Dockerfile"
 python3 - "$BT/Dockerfile" <<'PY'
@@ -111,15 +118,51 @@ if 'build-essential' not in t:
     t = t.replace(a, 'RUN apt-get update && apt-get install -y --no-install-recommends gcc build-essential && rm -rf /var/lib/apt/lists/*\n' + a)
 f.write_text(t)
 PY
+# Assert the 3.13 -> 3.11 rewrite actually landed. If the base Dockerfile ever moves to a
+# different Python (so the .replace() finds nothing), we must NOT ship a 3.13 image against
+# the 3.11 site-packages paths — fail loudly instead.
+if ! grep -q 'python:3.11' "$BT/Dockerfile" || grep -q 'python:3.13' "$BT/Dockerfile"; then
+  echo "python-rewrite guard failed: staged Dockerfile is not pinned to python:3.11 (base image may have changed)"
+  exit 1
+fi
 
-echo "[4/5] build image"
+echo "[4/6] build image (immutable tag ${TAG}, also tagged :latest for compatibility)"
+echo "  IMAGE=${IMAGE}"
 ( cd "$BT" && gcloud builds submit --tag "$IMAGE" . )
+# gcloud builds submit takes only one --tag; mirror the immutable build to :latest afterwards.
+gcloud container images add-tag "$IMAGE" "gcr.io/${PROJECT}/${SERVICE}:latest" --quiet
 
-echo "[5/5] deploy public Cloud Run (Gemini + CORS + dotted AGENT_TOOL_PATH)"
+echo "[5/6] deploy public Cloud Run (Gemini + CORS + dotted AGENT_TOOL_PATH)"
+# Rollback breadcrumb: remember the currently-serving revision BEFORE we shift traffic.
+PREV_REV=$(gcloud run services describe "$SERVICE" --region "$REGION" --project "$PROJECT" \
+  --format 'value(status.latestReadyRevisionName)' 2>/dev/null || true)
+# Deploy the IMMUTABLE tag (never :latest) so the revision is pinned to exactly these bits.
+# --timeout 600 / --concurrency 16 are required for the 600s networks; pin them here so a
+# fresh service doesn't silently inherit Cloud Run defaults and break.
 gcloud run deploy "$SERVICE" --image "$IMAGE" --region "$REGION" --allow-unauthenticated \
-  --port 8080 --memory 4Gi --cpu 2 --timeout 600 --max-instances 5 \
+  --port 8080 --memory 4Gi --cpu 2 --timeout 600 --concurrency 16 --max-instances 5 \
   --min-instances 1 --cpu-boost \
   --set-env-vars "^@^AGENT_ALLOW_CORS_HEADERS=1@AGENT_MANIFEST_FILE=${APP}/registries/manifest.hocon@AGENT_TOOL_PATH=coded_tools@AGENT_TOOLBOX_INFO_FILE=${APP}/neuro_san_studio/toolbox/toolbox_info.hocon@AGENT_LLM_INFO_FILE=${APP}/llm_info_extra.hocon@GOOGLE_API_KEY=${GEMINI_API_KEY}${TAVILY_ENV}${WEB_SEARCH_ENV}${BRAVE_ENV}${ARIZE_ENV}"
 
-gcloud run services describe "$SERVICE" --region "$REGION" --format='value(status.url)'
-rm -rf "$BT"
+echo "[6/6] smoke test deployed revision (retry list endpoint, require rhea network present)"
+URL=$(gcloud run services describe "$SERVICE" --region "$REGION" --project "$PROJECT" \
+  --format 'value(status.url)')
+NEW_REV=$(gcloud run services describe "$SERVICE" --region "$REGION" --project "$PROJECT" \
+  --format 'value(status.latestReadyRevisionName)' 2>/dev/null || true)
+echo "  URL=${URL}"
+SMOKE_OK=0
+for _i in 1 2 3 4 5 6; do
+  if curl -fsS --max-time 30 "$URL/api/v1/list" 2>/dev/null | grep -q '"rhea_clinical_decision_support"'; then
+    SMOKE_OK=1
+    break
+  fi
+  echo "  smoke attempt ${_i}/6 not ready yet, sleeping 10s..."
+  sleep 10
+done
+if [ "$SMOKE_OK" -eq 1 ]; then
+  echo "SMOKE OK -> deployed revision ${NEW_REV} serving at ${URL}"
+else
+  echo "SMOKE FAILED after 6 attempts against ${URL}/api/v1/list"
+  echo "ROLLBACK: gcloud run services update-traffic ${SERVICE} --region ${REGION} --to-revisions ${PREV_REV}=100"
+  exit 1
+fi
